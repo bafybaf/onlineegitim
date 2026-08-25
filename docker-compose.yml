@@ -59,6 +59,8 @@ services:
       MTX_WEBRTC: "yes"
       MTX_HLSVARIANT: fmp4
       MTX_HLSALWAYSREMUX: "yes"
+      MTX_HLSSEGMENTCOUNT: "3"
+      MTX_HLSSEGMENTDURATION: "1s"
       MTX_HLSALLOWORIGINS: "*"
       MTX_WEBRTCALLOWORIGINS: "*"
       MTX_WEBRTCADDITIONALHOSTS: ${LIVE_HOST:-onlineilahiyat.com}

@@ -234,48 +234,56 @@
     stopWhep();
     stopHls();
     playMode = 'hls';
+    if (window.Hls && Hls.isSupported()) {
+      return new Promise((resolve) => {
+        let settled = false;
+        const done = (ok) => {
+          if (settled) return;
+          settled = true;
+          resolve(ok);
+        };
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          liveSyncDurationCount: 2,
+          liveMaxLatencyDurationCount: 4,
+          maxLiveSyncPlaybackRate: 1.2,
+          liveDurationInfinity: true,
+          maxBufferLength: 4,
+          maxMaxBufferLength: 6,
+          backBufferLength: 3,
+          maxBufferHole: 0.5,
+          manifestLoadingTimeOut: 6000,
+          startPosition: -1
+        });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setProto('Canlı');
+          const edge = hls.liveSyncPosition;
+          if (Number.isFinite(edge) && edge > 0) {
+            try { video.currentTime = edge; } catch (e) {}
+          }
+          video.play().catch(() => {});
+          done(true);
+        });
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (!data || !data.fatal) return;
+          onStall();
+          try { hls.startLoad(); } catch (e) {}
+          done(false);
+        });
+        setTimeout(() => done(playing), 9000);
+      });
+    }
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.srcObject = null;
       video.src = url;
       setProto('Canlı');
       return video.play().then(() => true).catch(() => false);
     }
-    if (!window.Hls || !Hls.isSupported()) {
-      setWait('Tarayıcı desteklemiyor', 'Chrome veya Edge kullanın.');
-      return Promise.resolve(false);
-    }
-    return new Promise((resolve) => {
-      let settled = false;
-      const done = (ok) => {
-        if (settled) return;
-        settled = true;
-        resolve(ok);
-      };
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 8,
-        maxBufferLength: 8,
-        maxMaxBufferLength: 12,
-        liveDurationInfinity: true,
-        manifestLoadingTimeOut: 8000
-      });
-      hls.loadSource(url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setProto('Canlı');
-        video.play().catch(() => {});
-        done(true);
-      });
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (!data || !data.fatal) return;
-        onStall();
-        try { hls.startLoad(); } catch (e) {}
-        done(false);
-      });
-      setTimeout(() => done(playing), 9000);
-    });
+    setWait('Tarayıcı desteklemiyor', 'Chrome veya Edge kullanın.');
+    return Promise.resolve(false);
   }
 
   async function tryWhepOrHls() {
