@@ -16,6 +16,11 @@ panel_head('admin', 'dashboard', 'Yönetim özeti | Admin', $u);
   <div class="stat"><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Sipariş</p><p class="font-display mt-1 text-2xl"><?= $nOrd ?></p></div>
 </div>
 <div class="mt-6 grid gap-4 md:grid-cols-2">
+  <a class="card p-5 hover:border-navy" href="<?= e(url('admin/anasayfa')) ?>">
+    <p class="stat-label">Site</p>
+    <h2 class="font-display mt-1 text-2xl">Anasayfa hero ve şerit</h2>
+    <p class="mt-2 text-sm text-muted">Slayt ekle · düzenle · sil</p>
+  </a>
   <a class="card p-5 hover:border-navy" href="<?= e(url('admin/programlar')) ?>">
     <p class="stat-label">Eğitim</p>
     <h2 class="font-display mt-1 text-2xl">Programlar, gruplar, üyelikler</h2>

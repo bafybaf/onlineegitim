@@ -46,6 +46,10 @@ require_once __DIR__ . '/catalog.php';
 if (is_file(__DIR__ . '/media.php')) {
     require_once __DIR__ . '/media.php';
 }
+if (is_file(__DIR__ . '/home.php')) {
+    require_once __DIR__ . '/home.php';
+    ensure_home_schema();
+}
 if (is_file(__DIR__ . '/groups.php')) {
     require_once __DIR__ . '/groups.php';
 }

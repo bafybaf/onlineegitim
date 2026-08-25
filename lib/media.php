@@ -52,7 +52,7 @@ function ensure_catalog_media_schema(): void
         } catch (Throwable) {
         }
     }
-    foreach (['books', 'programs', 'class_groups', 'packages', 'posts', 'campaigns', 'users', 'categories'] as $table) {
+    foreach (['books', 'programs', 'class_groups', 'packages', 'posts', 'campaigns', 'users', 'categories', 'home_slides', 'home_highlights'] as $table) {
         catalog_ensure_sort_column($table);
     }
     try {
@@ -556,6 +556,8 @@ function catalog_sort_tables(): array
         'posts' => "1=1",
         'campaigns' => "1=1",
         'users' => "1=1",
+        'home_slides' => "1=1",
+        'home_highlights' => "1=1",
     ];
 }
 

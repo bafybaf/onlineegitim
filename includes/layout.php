@@ -275,6 +275,7 @@ function panel_nav(string $role, string $page): array
     return [
         ['label' => 'Yönetim', 'items' => [
             ['id' => 'dashboard', 'href' => 'admin', 'label' => 'Yönetim özeti', 'icon' => 'home'],
+            ['id' => 'anasayfa', 'href' => 'admin/anasayfa', 'label' => 'Anasayfa', 'icon' => 'layers'],
             ['id' => 'kullanicilar', 'href' => 'admin/kullanicilar', 'label' => 'Kullanıcılar', 'icon' => 'users'],
             ['id' => 'hocalar', 'href' => 'admin/hocalar', 'label' => 'Hocalar', 'icon' => 'user'],
         ]],

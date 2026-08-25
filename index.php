@@ -10,7 +10,8 @@ try {
 }
 $homeTitle = setting('seo_home_title');
 $homeDesc = setting('seo_home_description');
-$homeH1 = setting('seo_home_h1');
+$heroSlides = home_slides(true);
+$heroStrip = home_highlights(true);
 $campBanner = campaign_banner();
 public_head(
     $homeTitle !== '' ? $homeTitle : 'Online İlahiyat — Canlı Ders, Program ve Kitap',
@@ -46,45 +47,55 @@ if ($campBanner):
   </div>
 </section>
 <?php endif; ?>
+<?php if ($heroSlides): ?>
 <section class="relative overflow-hidden bg-gradient-to-b from-[#f5f7ff] to-white">
+  <?php if (count($heroSlides) > 1): ?>
   <button id="hero-prev" class="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#e5e5e7] bg-white text-navy md:grid">‹</button>
   <button id="hero-next" class="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#e5e5e7] bg-white text-navy md:grid">›</button>
-  <article class="hero-slide is-active mx-auto max-w-7xl items-center gap-10 px-4 py-12 lg:grid-cols-2 lg:px-8 lg:py-16">
+  <?php endif; ?>
+  <?php foreach ($heroSlides as $i => $slide):
+      $img = home_image_src((string) ($slide['image'] ?? ''));
+      $heading = $i === 0 ? 'h1' : 'h2';
+      $b1 = trim((string) $slide['btn1_label']);
+      $b2 = trim((string) $slide['btn2_label']);
+      $href1 = home_public_href((string) $slide['btn1_url']);
+      $href2 = home_public_href((string) $slide['btn2_url']);
+      $call = ($slide['btn2_kind'] ?? '') === 'call';
+  ?>
+  <article class="hero-slide<?= $i === 0 ? ' is-active' : '' ?> mx-auto max-w-7xl items-center gap-10 px-4 py-12 lg:grid-cols-2 lg:px-8 lg:py-16">
     <div>
-      <span class="badge">2026 sezon kayıtları açık</span>
-      <h1 class="font-display mt-5 text-4xl leading-tight text-ink md:text-6xl"><?php if ($homeH1 !== ''): ?><?= e($homeH1) ?><?php else: ?>Evden canlı ilahiyat,<br><span class="text-accent">küçük grupta gerçek takip</span><?php endif; ?></h1>
-      <p class="mt-4 max-w-xl text-lg text-muted">Tefsir, hadis, fıkıh ve Arapça. En fazla 10 kişilik sınıflar, haftalık koçluk ve takıldığınız yerde hoca desteği.</p>
+      <?php if (trim((string) $slide['badge']) !== ''): ?><span class="badge"><?= e((string) $slide['badge']) ?></span><?php endif; ?>
+      <<?= $heading ?> class="font-display mt-5 text-4xl leading-tight text-ink md:text-6xl"><?= e((string) $slide['title']) ?><?php if (trim((string) $slide['title_accent']) !== ''): ?><br><span class="<?= e(home_accent_class((string) $slide['accent_class'])) ?>"><?= e((string) $slide['title_accent']) ?></span><?php endif; ?></<?= $heading ?>>
+      <?php if (trim((string) $slide['body']) !== ''): ?><p class="mt-4 max-w-xl text-lg text-muted"><?= e((string) $slide['body']) ?></p><?php endif; ?>
+      <?php if ($b1 !== '' || $b2 !== ''): ?>
       <div class="mt-7 flex flex-wrap gap-3">
-        <a href="<?= e(page_url('kayit-ders')) ?>" class="btn-primary">Canlı ders üyeliği al</a>
-        <button data-open-call class="btn-outline">Sizi Arayalım</button>
+        <?php if ($b1 !== '' && $href1 !== ''): ?><a href="<?= e($href1) ?>" class="btn-primary"><?= e($b1) ?></a><?php endif; ?>
+        <?php if ($b2 !== '' && $call): ?><button type="button" data-open-call class="btn-outline"><?= e($b2) ?></button>
+        <?php elseif ($b2 !== '' && $href2 !== ''): ?><a href="<?= e($href2) ?>" class="btn-outline"><?= e($b2) ?></a><?php endif; ?>
       </div>
+      <?php endif; ?>
     </div>
-    <img src="<?= e(url('assets/img/hero-cami.jpg')) ?>" alt="İlahiyat eğitimi" class="h-[360px] w-full rounded-[22px] object-cover shadow-[0_12px_40px_rgba(26,63,173,.15)] md:h-[440px]" />
+    <?php if ($img !== ''): ?>
+    <img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="h-[360px] w-full rounded-[22px] object-cover shadow-[0_12px_40px_rgba(26,63,173,.15)] md:h-[440px]" />
+    <?php endif; ?>
   </article>
-  <article class="hero-slide mx-auto max-w-7xl items-center gap-10 px-4 py-12 lg:grid-cols-2 lg:px-8 lg:py-16">
-    <div>
-      <span class="badge">Kitap mağazası</span>
-      <h2 class="font-display mt-5 text-4xl leading-tight text-ink md:text-6xl">Dersin yanında<br><span class="text-navy">seçme ilahiyat kitapları</span></h2>
-      <p class="mt-4 max-w-xl text-lg text-muted">Tefsir, hadis, fıkıh ve Arapça kaynakları. Sipariş panelinize düşer; kargo veya dijital erişim.</p>
-      <div class="mt-7 flex flex-wrap gap-3">
-        <a href="<?= e(url('kitaplar.php')) ?>" class="btn-primary">Mağazayı aç</a>
-        <a href="<?= e(url('sepet.php')) ?>" class="btn-outline">Sepete bak</a>
-      </div>
-    </div>
-    <img src="<?= e(url('assets/img/hero-kitap.jpg')) ?>" alt="Kitap mağazası" class="h-[360px] w-full rounded-[22px] object-cover md:h-[440px]" />
-  </article>
+  <?php endforeach; ?>
+  <?php if (count($heroSlides) > 1): ?>
   <div class="dots mx-auto flex max-w-7xl gap-2 px-4 pb-8 lg:px-8">
-    <button class="is-on" type="button"></button><button type="button"></button>
+    <?php foreach ($heroSlides as $i => $_): ?><button type="button"<?= $i === 0 ? ' class="is-on"' : '' ?>></button><?php endforeach; ?>
   </div>
+  <?php endif; ?>
 </section>
+<?php endif; ?>
+<?php if ($heroStrip): ?>
 <section class="border-y border-[#e5e5e7] bg-white">
   <div class="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
-    <p class="flex items-center gap-3 font-extrabold"><span class="grid h-10 w-10 place-items-center rounded-full bg-soft text-navy">10</span> En fazla 10 kişilik sınıf</p>
-    <p class="flex items-center gap-3 font-extrabold"><span class="grid h-10 w-10 place-items-center rounded-full bg-soft text-navy">▶</span> Canlı ders + kayıt</p>
-    <p class="flex items-center gap-3 font-extrabold"><span class="grid h-10 w-10 place-items-center rounded-full bg-soft text-navy">📚</span> Kitap mağazası</p>
-    <p class="flex items-center gap-3 font-extrabold"><span class="grid h-10 w-10 place-items-center rounded-full bg-soft text-navy">✓</span> Ücretsiz tanışma</p>
+    <?php foreach ($heroStrip as $row): ?>
+    <p class="flex items-center gap-3 font-extrabold"><span class="grid h-10 w-10 place-items-center rounded-full bg-soft text-navy"><?= e((string) $row['mark']) ?></span> <?= e((string) $row['label']) ?></p>
+    <?php endforeach; ?>
   </div>
 </section>
+<?php endif; ?>
 <section class="py-16">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
     <div class="flex items-end justify-between gap-4">

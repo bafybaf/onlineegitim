@@ -385,6 +385,33 @@ CREATE TABLE contacts (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+CREATE TABLE home_slides (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  badge VARCHAR(80) NOT NULL DEFAULT '',
+  title VARCHAR(200) NOT NULL,
+  title_accent VARCHAR(200) NOT NULL DEFAULT '',
+  accent_class VARCHAR(16) NOT NULL DEFAULT 'accent',
+  body TEXT NOT NULL,
+  btn1_label VARCHAR(80) NOT NULL DEFAULT '',
+  btn1_url VARCHAR(255) NOT NULL DEFAULT '',
+  btn2_label VARCHAR(80) NOT NULL DEFAULT '',
+  btn2_url VARCHAR(255) NOT NULL DEFAULT '',
+  btn2_kind VARCHAR(16) NOT NULL DEFAULT 'link',
+  image VARCHAR(255) NOT NULL DEFAULT '',
+  alt VARCHAR(160) NOT NULL DEFAULT '',
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  sort SMALLINT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE home_highlights (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  mark VARCHAR(16) NOT NULL DEFAULT '',
+  label VARCHAR(160) NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  sort SMALLINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
 CREATE TABLE settings (
   k VARCHAR(80) NOT NULL PRIMARY KEY,
   v TEXT NOT NULL
@@ -485,5 +512,15 @@ INSERT IGNORE INTO books (id, slug, title, author, category, category_id, price,
 (6, 'usul', 'Fıkıh Usulü Giriş', 'Usul Serisi', 'Fıkıh', 3, 410, 520, '#1a3fad', 'assets/img/books/usul.jpg', 6, 0, 'Delil türleri, emir-nehiy, umum-husus ve kıyas. Fıkıh programı omurgası.', 198, 'Usul Serisi'),
 (7, 'tecvid', 'Tecvid Atlası', 'Kıraat Birimi', 'Kıraat', 6, 260, 320, '#0f2a7a', 'assets/img/books/tecvid.jpg', 2, 0, 'Mahreç, sıfat, med ve idğam şemaları. Kıraat ve hafızlık için atlas.', 144, 'Kıraat Birimi'),
 (8, 'siyer', 'Siyer-i Nebi Özeti', 'Siyer Okulu', 'Siyer', 7, 310, 390, '#0a1a4e', 'assets/img/books/siyer.jpg', 11, 0, 'Mekke-Medine siyer özeti. Hutbe ve vaaz için işaretli başlıklar.', 188, 'Siyer Okulu');
+
+INSERT IGNORE INTO home_slides (id, badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES
+(1, '2026 sezon kayıtları açık', 'Evden canlı ilahiyat,', 'küçük grupta gerçek takip', 'accent', 'Tefsir, hadis, fıkıh ve Arapça. En fazla 10 kişilik sınıflar, haftalık koçluk ve takıldığınız yerde hoca desteği.', 'Canlı ders üyeliği al', 'kayit-ders', 'Sizi Arayalım', '', 'call', 'assets/img/hero-cami.jpg', 'İlahiyat eğitimi', 1, 10),
+(2, 'Kitap mağazası', 'Dersin yanında', 'seçme ilahiyat kitapları', 'navy', 'Tefsir, hadis, fıkıh ve Arapça kaynakları. Sipariş panelinize düşer; kargo veya dijital erişim.', 'Mağazayı aç', 'kitaplar', 'Sepete bak', 'sepet', 'link', 'assets/img/hero-kitap.jpg', 'Kitap mağazası', 1, 20);
+
+INSERT IGNORE INTO home_highlights (id, mark, label, active, sort) VALUES
+(1, '10', 'En fazla 10 kişilik sınıf', 1, 10),
+(2, '▶', 'Canlı ders + kayıt', 1, 20),
+(3, '📚', 'Kitap mağazası', 1, 30),
+(4, '✓', 'Ücretsiz tanışma', 1, 40);
 
 SET FOREIGN_KEY_CHECKS = 1;
