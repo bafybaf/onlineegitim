@@ -282,6 +282,74 @@ function admin_active_admin_count(int $exceptId = 0): int
     return (int) $st->fetchColumn();
 }
 
+function admin_delete_user(int $id, int $actorId): string
+{
+    if ($id < 1) {
+        throw new RuntimeException('Kullanıcı bulunamadı.');
+    }
+    if ($id === $actorId) {
+        throw new RuntimeException('Kendi hesabınızı silemezsiniz.');
+    }
+    $st = db()->prepare('SELECT * FROM users WHERE id = ?');
+    $st->execute([$id]);
+    $person = $st->fetch();
+    if (!$person) {
+        throw new RuntimeException('Kullanıcı bulunamadı.');
+    }
+    $isAdmin = ($person['role'] ?? '') === 'admin' && in_array((string) ($person['status'] ?? ''), ['aktif', 'bekliyor'], true);
+    if ($isAdmin && admin_active_admin_count($id) < 1) {
+        throw new RuntimeException('Son yönetici hesabı silinemez.');
+    }
+    $groups = db()->prepare('SELECT COUNT(*) FROM class_groups WHERE teacher_id = ?');
+    $groups->execute([$id]);
+    if ((int) $groups->fetchColumn() > 0) {
+        throw new RuntimeException('Bu hoca gruplara bağlı. Önce grupların hocasını değiştirin veya grupları silin.');
+    }
+
+    $orders = 0;
+    $pays = 0;
+    try {
+        $st = db()->prepare('SELECT COUNT(*) FROM orders WHERE user_id = ?');
+        $st->execute([$id]);
+        $orders = (int) $st->fetchColumn();
+    } catch (Throwable) {
+    }
+    try {
+        $st = db()->prepare('SELECT COUNT(*) FROM payments WHERE user_id = ?');
+        $st->execute([$id]);
+        $pays = (int) $st->fetchColumn();
+    } catch (Throwable) {
+    }
+    if ($orders > 0 || $pays > 0) {
+        db()->prepare("UPDATE users SET status = 'pasif' WHERE id = ?")->execute([$id]);
+        return 'Sipariş veya ödeme kaydı bağlı. Silinmedi, hesap pasife alındı.';
+    }
+
+    db_try_exec('DELETE FROM enrollments WHERE student_id = ?', [$id]);
+    db_try_exec('DELETE FROM notifications WHERE user_id = ?', [$id]);
+    db_try_exec('DELETE FROM messages WHERE thread_user_id = ? OR from_user_id = ?', [$id, $id]);
+    db_try_exec('DELETE FROM homework_subs WHERE student_id = ?', [$id]);
+    db_try_exec('DELETE FROM attendance WHERE student_id = ?', [$id]);
+    db_try_exec('DELETE FROM test_attempts WHERE student_id = ?', [$id]);
+    db_try_exec('DELETE FROM shop_books WHERE user_id = ?', [$id]);
+    db_try_exec('DELETE FROM certificates WHERE student_id = ?', [$id]);
+    db_try_exec('UPDATE live_chat SET user_id = NULL WHERE user_id = ?', [$id]);
+    db_try_exec('DELETE FROM tests WHERE teacher_id = ?', [$id]);
+    db_try_exec('DELETE FROM lesson_notes WHERE teacher_id = ?', [$id]);
+    db_try_exec('DELETE FROM recordings WHERE teacher_id = ?', [$id]);
+    db_try_exec('DELETE FROM live_schedule WHERE teacher_id = ?', [$id]);
+    db_try_exec('DELETE FROM live_rooms WHERE teacher_id = ?', [$id]);
+    db_try_exec('DELETE FROM addresses WHERE user_id = ?', [$id]);
+
+    try {
+        db()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+    } catch (Throwable) {
+        db()->prepare("UPDATE users SET status = 'pasif' WHERE id = ?")->execute([$id]);
+        return 'Bağlı kayıtlar var. Silinmedi, hesap pasife alındı.';
+    }
+    return 'Kullanıcı silindi.';
+}
+
 function admin_save_user(int $id, array $in, int $actorId): int
 {
     $name = trim((string) ($in['name'] ?? ''));

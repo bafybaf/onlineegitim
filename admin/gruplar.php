@@ -47,7 +47,11 @@ group_flash_html();
             <td><?= e((string) $r['days']) ?></td>
             <td><?= group_cap_html((int) $r['n'], (int) $r['cap']) ?></td>
             <td><?= (int) $r['hw_n'] ?> / <?= (int) $r['test_n'] ?></td>
-            <td><a class="text-sm font-extrabold text-navy" href="<?= e(grup_url((int) $r['id'])) ?>">Detay →</a></td>
+            <td class="whitespace-nowrap">
+              <a class="text-sm font-extrabold text-navy" href="<?= e(grup_url((int) $r['id'])) ?>">Detay →</a>
+              <span class="text-muted"> · </span>
+              <?= panel_delete_form(grup_url((int) $r['id']), ['action' => 'delete'], 'Grup silinsin mi? Öğrenciler, ödevler, testler ve takvim saatleri de silinir.') ?>
+            </td>
           </tr>
         <?php endforeach; ?>
       </tbody>

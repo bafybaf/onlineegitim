@@ -2,6 +2,17 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogretmen');
+$ok = flash_ok();
+$err = flash_error();
+if (post('delete_id')) {
+    try {
+        academy_delete_homework((int) post('delete_id'), (int) $u['id']);
+        flash_ok('Ödev silindi.');
+    } catch (Throwable $e) {
+        flash_error($e->getMessage());
+    }
+    redirect('ogretmen/odevler.php');
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('title')) {
         $gid = (int) post('group_id');
         db()->prepare('INSERT INTO homework (group_id, title, due_label, created_by) VALUES (?,?,?,?)')->execute([$gid, post('title'), post('due') ?: 'Bu hafta', $u['id']]);
@@ -26,6 +37,8 @@ $gids = array_column($groups, 'id') ?: [0];
 $hw = db()->query('SELECT h.*, g.name gname FROM homework h JOIN class_groups g ON g.id=h.group_id WHERE h.group_id IN (' . implode(',', array_map('intval', $gids)) . ') ORDER BY h.id DESC')->fetchAll();
 panel_head('ogretmen', 'odevler', 'Ödevler | Öğretmen Paneli', $u);
 ?>
+<?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
+<?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <form method="post" class="card mb-6 grid gap-3 p-5 md:grid-cols-4 md:items-end">
   <label class="text-sm font-bold">Grup<select name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2"><?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= e($g['name']) ?></option><?php endforeach; ?></select></label>
   <label class="text-sm font-bold md:col-span-2">Başlık<input name="title" required class="mt-1 w-full rounded-xl border px-3 py-2"></label>
@@ -35,7 +48,14 @@ panel_head('ogretmen', 'odevler', 'Ödevler | Öğretmen Paneli', $u);
     $subs = db()->prepare('SELECT s.*, u.name FROM homework_subs s JOIN users u ON u.id=s.student_id WHERE s.homework_id=?');
     $subs->execute([$h['id']]);
 ?>
-<article class="card mb-4 p-5"><h2 class="font-extrabold"><?= e($h['title']) ?></h2><p class="text-sm text-muted"><?= e($h['gname']) ?> · <?= e($h['due_label']) ?></p>
+<article class="card mb-4 p-5">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h2 class="font-extrabold"><?= e($h['title']) ?></h2>
+      <p class="text-sm text-muted"><?= e($h['gname']) ?> · <?= e($h['due_label']) ?></p>
+    </div>
+    <?= panel_delete_form('', ['delete_id' => (int) $h['id']], 'Ödev ve teslimler silinsin mi?') ?>
+  </div>
 <ul class="mt-3 text-sm">
 <?php foreach ($subs as $s): ?>
   <li class="flex flex-wrap items-center justify-between gap-2 border-t py-2"><?= e($s['name']) ?> · <?= e($s['status']) ?><?= $s['body'] ? ' · “' . e(mb_strimwidth($s['body'], 0, 40, '…')) . '”' : '' ?>

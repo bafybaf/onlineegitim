@@ -59,11 +59,12 @@ panel_head('admin', 'hocalar', 'Hocalar | Admin', $u);
         <p class="mt-2"><?= live_pill($r + ['status' => 'live']) ?> <?= e((string) $r['title']) ?>
           <a class="font-extrabold text-navy" href="<?= e(canli_url((int) $r['id'])) ?>">İzle</a></p>
       <?php endforeach; ?>
-      <p class="mt-4 flex flex-wrap gap-3">
+      <p class="mt-4 flex flex-wrap items-center gap-3">
         <a class="btn-primary text-sm" href="<?= e(hoca_admin_url($tid)) ?>">Düzenle</a>
         <?php if (!empty($t['slug'])): ?>
           <a class="btn-outline text-sm" href="<?= e(page_url('hoca', (string) $t['slug'])) ?>" target="_blank" rel="noreferrer">Kadro</a>
         <?php endif; ?>
+        <?= panel_delete_form(hoca_admin_url($tid), ['act' => 'sil'], 'Hoca silinsin mi? Gruplara bağlıysa silinmez.') ?>
       </p>
     </article>
   <?php endforeach; ?>

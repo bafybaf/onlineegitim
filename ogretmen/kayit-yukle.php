@@ -5,7 +5,15 @@ $u = require_role('ogretmen');
 $err = '';
 $ok = flash_ok();
 $groups = teacher_groups((int) $u['id']);
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (post('delete_id')) {
+    try {
+        academy_delete_recording((int) post('delete_id'), (int) $u['id']);
+        flash_ok('Kayıt silindi.');
+        redirect('ogretmen/kayit-yukle');
+    } catch (Throwable $e) {
+        $err = $e->getMessage();
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $gid = (int) post('group_id');
     $title = post('title');
     $mins = max(1, min(300, (int) post('mins')));
@@ -69,10 +77,13 @@ panel_head('ogretmen', 'kayitlar', 'Kayıt yükle | Öğretmen Paneli', $u);
   <button class="btn-primary md:col-span-2">Yükle</button>
 </form>
 <?php foreach ($rows as $r): ?>
-  <article class="card mb-3 p-5">
+  <article class="card mb-3 flex flex-wrap items-start justify-between gap-3 p-5">
+    <div>
     <p class="font-extrabold"><?= e($r['title']) ?></p>
     <p class="text-sm text-muted"><?= e($r['gname']) ?> · <?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</p>
     <p class="mt-1 text-xs text-muted"><?= !empty($r['video_path']) || !empty($r['video_url']) ? 'Video hazır' : 'Video yok' ?></p>
+    </div>
+    <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
   </article>
 <?php endforeach; ?>
 <?php if (!$rows): ?><p class="text-muted">Henüz kayıt yok.</p><?php endif; ?>

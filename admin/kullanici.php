@@ -34,6 +34,10 @@ $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $act = post('act');
     try {
+        if ($act === 'sil' && !$isNew) {
+            flash_ok(admin_delete_user($id, (int) $admin['id']));
+            redirect('admin/kullanicilar');
+        }
         if ($act === 'profil' || $act === 'hesap') {
             if ($act === 'hesap' && !$isNew) {
                 admin_save_user_status($id, post('status'));
@@ -199,6 +203,11 @@ $roles = admin_user_roles();
       <button class="btn-primary"><?= $isNew ? 'Kullanıcıyı oluştur' : 'Bilgileri kaydet' ?></button>
     </div>
   </form>
+  <?php if (!$isNew && (int) $person['id'] !== (int) $admin['id']): ?>
+    <div class="mt-3">
+      <?= panel_delete_form(kullanici_url($id), ['act' => 'sil'], 'Kullanıcı silinsin mi? Sipariş varsa yalnızca pasife alınır.', 'Hesabı sil', 'btn-outline') ?>
+    </div>
+  <?php endif; ?>
 </section>
 
 <?php if (!$isNew && $person['role'] === 'ogrenci'): ?>

@@ -17,9 +17,13 @@ if ($q !== '' || ($roleF !== '' && isset(admin_user_roles()[$roleF]))) {
         return str_contains($hay, mb_strtolower($q, 'UTF-8'));
     }));
 }
+$ok = flash_ok();
+$err = flash_error();
 panel_head('admin', 'kullanicilar', 'Kullanıcılar | Admin', $u);
 $roles = admin_user_roles();
 ?>
+<?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
+<?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
   <p class="text-sm text-muted">Tüm hesaplar. Satırın başındaki tutamacı sürükleyerek sırayı değiştirin. Ada tıklayınca kart açılır.</p>
   <a class="btn-primary text-sm" href="<?= e(kullanici_url(0)) ?>">Yeni kullanıcı</a>
@@ -71,7 +75,13 @@ $roles = admin_user_roles();
           <td><?= e((string) ($r['city'] ?: '—')) ?></td>
           <td><?= e(user_status_label((string) $r['status'])) ?></td>
           <td><span class="<?= e(membership_kind_class((string) $mem['kind'])) ?>"><?= e((string) $mem['label']) ?></span></td>
-          <td><a class="text-sm font-extrabold text-navy" href="<?= e(kullanici_url((int) $r['id'])) ?>">Düzenle</a></td>
+          <td class="whitespace-nowrap">
+            <a class="text-sm font-extrabold text-navy" href="<?= e(kullanici_url((int) $r['id'])) ?>">Düzenle</a>
+            <?php if ((int) $r['id'] !== (int) $u['id']): ?>
+              <span class="text-muted"> · </span>
+              <?= panel_delete_form(kullanici_url((int) $r['id']), ['act' => 'sil'], 'Kullanıcı silinsin mi? Sipariş varsa yalnızca pasife alınır.') ?>
+            <?php endif; ?>
+          </td>
         </tr>
       <?php endforeach; ?>
     </tbody>

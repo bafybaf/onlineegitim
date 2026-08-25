@@ -490,6 +490,72 @@ function group_add_student(int $groupId, int $studentId): string
     return '';
 }
 
+function group_delete(int $id): void
+{
+    $g = group_by_id($id);
+    if (!$g) {
+        throw new RuntimeException('Grup bulunamadı.');
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        db_try_exec('UPDATE packages SET default_group_id = NULL WHERE default_group_id = ?', [$id]);
+        db_try_exec('UPDATE payments SET group_id = NULL WHERE group_id = ?', [$id]);
+        db_try_exec('DELETE FROM enrollments WHERE group_id = ?', [$id]);
+        if (group_table_exists('homework_subs') && group_table_exists('homework')) {
+            $hw = $pdo->prepare('SELECT id FROM homework WHERE group_id = ?');
+            $hw->execute([$id]);
+            $files = $pdo->prepare('SELECT file_path FROM homework_subs WHERE homework_id = ?');
+            foreach ($hw as $row) {
+                $files->execute([(int) $row['id']]);
+                foreach ($files as $f) {
+                    if (function_exists('academy_unlink_stored')) {
+                        academy_unlink_stored($f['file_path'] ?? null);
+                    }
+                }
+            }
+            $pdo->prepare('DELETE FROM homework WHERE group_id = ?')->execute([$id]);
+        }
+        if (group_table_exists('tests')) {
+            $pdo->prepare('DELETE FROM tests WHERE group_id = ?')->execute([$id]);
+        }
+        if (group_table_exists('live_schedule')) {
+            $pdo->prepare('DELETE FROM live_schedule WHERE group_id = ?')->execute([$id]);
+        }
+        if (group_table_exists('live_rooms')) {
+            $pdo->prepare('DELETE FROM live_rooms WHERE group_id = ?')->execute([$id]);
+        }
+        if (group_table_exists('recordings')) {
+            $st = $pdo->prepare('SELECT video_path FROM recordings WHERE group_id = ?');
+            $st->execute([$id]);
+            foreach ($st as $row) {
+                if (function_exists('academy_unlink_stored')) {
+                    academy_unlink_stored($row['video_path'] ?? null);
+                }
+            }
+            $pdo->prepare('DELETE FROM recordings WHERE group_id = ?')->execute([$id]);
+        }
+        if (group_table_exists('lesson_notes')) {
+            $st = $pdo->prepare('SELECT file_path FROM lesson_notes WHERE group_id = ?');
+            $st->execute([$id]);
+            foreach ($st as $row) {
+                if (function_exists('academy_unlink_stored')) {
+                    academy_unlink_stored($row['file_path'] ?? null);
+                }
+            }
+            $pdo->prepare('DELETE FROM lesson_notes WHERE group_id = ?')->execute([$id]);
+        }
+        db_try_exec('DELETE FROM certificates WHERE group_id = ?', [$id]);
+        $pdo->prepare('DELETE FROM class_groups WHERE id = ?')->execute([$id]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw new RuntimeException('Grup silinemedi. Bağlı kayıtlar var olabilir.');
+    }
+}
+
 function group_remove_student(int $groupId, int $studentId): string
 {
     $st = db()->prepare('DELETE FROM enrollments WHERE student_id = ? AND group_id = ?');
@@ -525,6 +591,16 @@ function group_handle_admin_post(int $id = 0): int
     }
     if ($id < 1) {
         return $id;
+    }
+    if ($action === 'delete') {
+        try {
+            group_delete($id);
+            groups_notice('Grup silindi.');
+            redirect('admin/gruplar');
+        } catch (Throwable $e) {
+            groups_error($e->getMessage());
+            redirect(grup_url($id));
+        }
     }
     if ($action === 'add_student') {
         $err = group_add_student($id, (int) post('student_id'));

@@ -48,7 +48,11 @@ panel_head('admin', 'uyelikler', 'Üyelik paketleri | Admin', $u);
           <td><?= money((int) $r['price']) ?></td>
           <td><?= e(package_access_label($r)) ?></td>
           <td><?= (int) $r['active'] ? 'Aktif' : 'Pasif' ?></td>
-          <td><a class="text-sm font-extrabold text-navy" href="<?= e(paket_admin_url((int) $r['id'])) ?>">Düzenle</a></td>
+          <td class="whitespace-nowrap">
+            <a class="text-sm font-extrabold text-navy" href="<?= e(paket_admin_url((int) $r['id'])) ?>">Düzenle</a>
+            <span class="text-muted"> · </span>
+            <?= panel_delete_form(paket_admin_url((int) $r['id']), ['act' => 'sil'], 'Paket silinsin mi? Kayıt varsa yalnızca pasife alınır.') ?>
+          </td>
         </tr>
       <?php endforeach; ?>
     </tbody>

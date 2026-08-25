@@ -27,44 +27,54 @@ if ($id > 0) {
 
 $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = post('title');
-    $level = post('level');
-    $hours = post('hours');
-    $tag = post('tag');
-    $description = post('description');
-    $priceOld = max(0, (int) post('price_old'));
-    $priceNow = max(1, (int) post('price_now'));
-    if ($title === '' || $description === '') {
-        $err = 'Başlık ve açıklama zorunludur.';
-    } else {
+    if (post('act') === 'sil' && $id > 0) {
         try {
-            $slug = $id > 0 ? (string) $p['slug'] : academy_unique_slug('programs', $title);
-            if ($id < 1) {
-                db()->prepare(
-                    'INSERT INTO programs (slug, title, level, hours, tag, description, price_old, price_now, image) VALUES (?,?,?,?,?,?,?,?,?)'
-                )->execute([$slug, $title, $level, $hours, $tag, $description, $priceOld, $priceNow, null]);
-                $id = (int) db()->lastInsertId();
-                media_attach_uploads('program', $id, 'images', $slug);
-                flash_ok('Program oluşturuldu.');
-            } else {
-                db()->prepare(
-                    'UPDATE programs SET title=?, level=?, hours=?, tag=?, description=?, price_old=?, price_now=? WHERE id=?'
-                )->execute([$title, $level, $hours, $tag, $description, $priceOld, $priceNow, $id]);
-                media_attach_uploads('program', $id, 'images', $slug);
-                flash_ok('Program kaydedildi.');
-            }
-            redirect('admin/program.php?id=' . $id);
+            admin_delete_program($id);
+            flash_ok('Program silindi.');
+            redirect('admin/programlar');
         } catch (Throwable $e) {
             $err = $e->getMessage();
         }
+    } else {
+        $title = post('title');
+        $level = post('level');
+        $hours = post('hours');
+        $tag = post('tag');
+        $description = post('description');
+        $priceOld = max(0, (int) post('price_old'));
+        $priceNow = max(1, (int) post('price_now'));
+        if ($title === '' || $description === '') {
+            $err = 'Başlık ve açıklama zorunludur.';
+        } else {
+            try {
+                $slug = $id > 0 ? (string) $p['slug'] : academy_unique_slug('programs', $title);
+                if ($id < 1) {
+                    db()->prepare(
+                        'INSERT INTO programs (slug, title, level, hours, tag, description, price_old, price_now, image) VALUES (?,?,?,?,?,?,?,?,?)'
+                    )->execute([$slug, $title, $level, $hours, $tag, $description, $priceOld, $priceNow, null]);
+                    $id = (int) db()->lastInsertId();
+                    media_attach_uploads('program', $id, 'images', $slug);
+                    flash_ok('Program oluşturuldu.');
+                } else {
+                    db()->prepare(
+                        'UPDATE programs SET title=?, level=?, hours=?, tag=?, description=?, price_old=?, price_now=? WHERE id=?'
+                    )->execute([$title, $level, $hours, $tag, $description, $priceOld, $priceNow, $id]);
+                    media_attach_uploads('program', $id, 'images', $slug);
+                    flash_ok('Program kaydedildi.');
+                }
+                redirect('admin/program.php?id=' . $id);
+            } catch (Throwable $e) {
+                $err = $e->getMessage();
+            }
+        }
+        $p['title'] = $title;
+        $p['level'] = $level;
+        $p['hours'] = $hours;
+        $p['tag'] = $tag;
+        $p['description'] = $description;
+        $p['price_old'] = $priceOld;
+        $p['price_now'] = $priceNow;
     }
-    $p['title'] = $title;
-    $p['level'] = $level;
-    $p['hours'] = $hours;
-    $p['tag'] = $tag;
-    $p['description'] = $description;
-    $p['price_old'] = $priceOld;
-    $p['price_now'] = $priceNow;
 }
 
 $ok = flash_ok();
@@ -118,6 +128,7 @@ panel_head('admin', 'programlar', ($isNew ? 'Yeni program' : 'Program düzenle')
     </div>
     <a class="btn-outline text-center" href="<?= e(page_url('program', (string) $p['slug'])) ?>">Sitede gör</a>
     <a class="btn-outline text-center" href="<?= e(url('admin/gruplar')) ?>">Gruplar</a>
+    <?= panel_delete_form(program_admin_url($id), ['act' => 'sil'], 'Program silinsin mi? Bağlı grup varsa silinmez.', 'Programı sil', 'btn-outline text-center') ?>
     <?php else: ?>
     <p class="text-sm text-muted">Kayıttan sonra kapak ve genel sayfa linki görünür.</p>
     <?php endif; ?>

@@ -396,6 +396,13 @@ function media_delete(int $id, ?string $type = null, int $ownerId = 0): void
     media_sync_cover((string) $row['owner_type'], (int) $row['owner_id']);
 }
 
+function media_delete_owner(string $type, int $ownerId): void
+{
+    foreach (media_items($type, $ownerId) as $row) {
+        media_delete((int) $row['id']);
+    }
+}
+
 function media_reorder(string $type, int $ownerId, array $ids): void
 {
     $ids = array_values(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0));

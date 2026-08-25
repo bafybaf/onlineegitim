@@ -34,6 +34,15 @@ if (!$isNew) {
 $cats = shop_categories();
 $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (post('act') === 'sil' && !$isNew) {
+        try {
+            admin_delete_book($id);
+            flash_ok('Ürün silindi.');
+            redirect('admin/urunler');
+        } catch (Throwable $e) {
+            $err = $e->getMessage();
+        }
+    } else {
     $title = post('title');
     $slugIn = post('slug');
     $author = post('author');
@@ -120,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $b['stock'] = $stock;
     $b['pages'] = $pages;
     $b['is_digital'] = $digital;
+    }
 }
 
 $ok = flash_ok();
@@ -191,6 +201,7 @@ panel_head('admin', 'urunler', ($isNew ? 'Yeni ürün' : 'Ürün düzenle') . ' 
       </div>
     </div>
     <a class="btn-outline text-center" href="<?= e(page_url('kitap', (string) $b['slug'])) ?>">Sitede gör</a>
+    <?= panel_delete_form(urun_admin_url($id), ['act' => 'sil'], 'Ürün silinsin mi? Siparişte geçen ürün silinmez.', 'Ürünü sil', 'btn-outline text-center') ?>
     <?php else: ?>
     <div class="card p-4 text-sm text-muted">Kayıttan sonra kapak önizlemesi ve sitede gör linki açılır.</div>
     <?php endif; ?>

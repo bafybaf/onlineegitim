@@ -26,9 +26,11 @@ $books = db()->query(
     'SELECT b.*, c.name AS category_name FROM books b LEFT JOIN categories c ON c.id = b.category_id ORDER BY ' . catalog_order_sql('b', 'books')
 )->fetchAll();
 $ok = flash_ok();
+$err = flash_error();
 panel_head('admin', 'urunler', 'Ürünler | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
+<?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
   <p class="text-sm text-muted">Mağaza ürünleri. Satırları tutup sürükleyerek sırayı değiştirin. Kapak için <b>Düzenle</b>.</p>
   <a class="btn-primary text-sm" href="<?= e(urun_yeni_url()) ?>">Yeni ürün</a>

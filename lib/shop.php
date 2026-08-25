@@ -1,5 +1,25 @@
 <?php
 
+function admin_delete_book(int $id): void
+{
+    $st = db()->prepare('SELECT id FROM books WHERE id = ?');
+    $st->execute([$id]);
+    if (!$st->fetch()) {
+        throw new RuntimeException('Ürün bulunamadı.');
+    }
+    $n = db()->prepare('SELECT COUNT(*) FROM order_items WHERE book_id = ?');
+    $n->execute([$id]);
+    if ((int) $n->fetchColumn() > 0) {
+        throw new RuntimeException('Bu ürün siparişte geçiyor. Katalogdan silinemez.');
+    }
+    db_try_exec('DELETE FROM shop_books WHERE book_id = ?', [$id]);
+    db_try_exec('UPDATE packages SET gift_book_id = NULL WHERE gift_book_id = ?', [$id]);
+    if (function_exists('media_delete_owner')) {
+        media_delete_owner('book', $id);
+    }
+    db()->prepare('DELETE FROM books WHERE id = ?')->execute([$id]);
+}
+
 function shop_date(?string $dt): string
 {
     if ($dt === null || $dt === '') {

@@ -32,6 +32,14 @@ if (!$isNew) {
 
 $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (post('act') === 'sil' && !$isNew) {
+        try {
+            flash_ok(admin_delete_user($id, (int) $admin['id']));
+            redirect('admin/hocalar');
+        } catch (Throwable $e) {
+            $err = $e->getMessage();
+        }
+    } else {
     try {
         $id = admin_save_user($isNew ? 0 : $id, [
             'name' => post('name'),
@@ -53,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $person['city'] = post('city');
         $person['bio'] = post('bio');
         $person['status'] = post('status') ?: $person['status'];
+    }
     }
 }
 
@@ -135,6 +144,11 @@ panel_head('admin', 'hocalar', ($isNew ? 'Yeni hoca' : 'Hoca') . ' | Admin', $ad
       <button class="btn-primary"><?= $isNew ? 'Hocayı ekle' : 'Kaydet' ?></button>
     </div>
   </form>
+  <?php if (!$isNew): ?>
+    <div class="mt-3">
+      <?= panel_delete_form(hoca_admin_url($id), ['act' => 'sil'], 'Hoca silinsin mi? Gruplara bağlıysa silinmez.', 'Hocayı sil', 'btn-outline') ?>
+    </div>
+  <?php endif; ?>
 </section>
 
 <?php if (!$isNew): ?>

@@ -5,7 +5,15 @@ $u = require_role('ogretmen');
 $err = '';
 $ok = flash_ok();
 $groups = teacher_groups((int) $u['id']);
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('title')) {
+if (post('delete_id')) {
+    try {
+        academy_delete_note((int) post('delete_id'), (int) $u['id']);
+        flash_ok('Not silindi.');
+        redirect('ogretmen/notlar');
+    } catch (Throwable $e) {
+        $err = $e->getMessage();
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && post('title')) {
     $gid = (int) post('group_id');
     $owns = false;
     foreach ($groups as $g) {
@@ -60,6 +68,7 @@ panel_head('ogretmen', 'notlar', 'Ders notları | Öğretmen Paneli', $u);
       <p class="text-sm text-muted"><?= e($n['gname']) ?> · <?= e($n['created_at']) ?></p>
     </div>
     <a class="btn-outline text-sm" href="<?= e(url('api/dosya.php?tur=not&id=' . (int) $n['id'])) ?>">İndir</a>
+    <?= panel_delete_form('', ['delete_id' => (int) $n['id']], 'Bu ders notu silinsin mi?') ?>
   </article>
 <?php endforeach; ?>
 <?php if (!$rows): ?><p class="text-muted">Henüz not yok.</p><?php endif; ?>

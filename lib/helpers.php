@@ -103,3 +103,24 @@ function live_mins(string $startedAt): int
     $t = strtotime($startedAt);
     return max(1, (int) round((time() - $t) / 60));
 }
+
+function db_try_exec(string $sql, array $args = []): void
+{
+    try {
+        db()->prepare($sql)->execute($args);
+    } catch (Throwable) {
+    }
+}
+
+function panel_delete_form(string $url, array $fields, string $confirm = 'Silinsin mi?', string $label = 'Sil', string $btnClass = 'text-sm font-extrabold text-accent'): string
+{
+    $html = '<form method="post" action="' . e($url) . '" class="inline" onsubmit=\'return confirm(' . json_encode($confirm, JSON_UNESCAPED_UNICODE) . ')\'>';
+    if (function_exists('csrf_field')) {
+        $html .= csrf_field();
+    }
+    foreach ($fields as $name => $value) {
+        $html .= '<input type="hidden" name="' . e((string) $name) . '" value="' . e((string) $value) . '">';
+    }
+    $html .= '<button class="' . e($btnClass) . '">' . e($label) . '</button></form>';
+    return $html;
+}

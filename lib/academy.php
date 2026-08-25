@@ -216,6 +216,79 @@ function academy_file_readable(string $rel): ?string
     return $real;
 }
 
+function academy_unlink_stored(?string $rel): void
+{
+    $rel = trim((string) $rel);
+    if ($rel === '') {
+        return;
+    }
+    $abs = academy_file_readable($rel);
+    if ($abs) {
+        @unlink($abs);
+    }
+}
+
+function admin_delete_program(int $id): void
+{
+    $st = db()->prepare('SELECT id FROM programs WHERE id = ?');
+    $st->execute([$id]);
+    if (!$st->fetch()) {
+        throw new RuntimeException('Program bulunamadı.');
+    }
+    $n = db()->prepare('SELECT COUNT(*) FROM class_groups WHERE program_id = ?');
+    $n->execute([$id]);
+    if ((int) $n->fetchColumn() > 0) {
+        throw new RuntimeException('Bu programa bağlı grup var. Önce grupları silin.');
+    }
+    db_try_exec('UPDATE packages SET program_id = NULL WHERE program_id = ?', [$id]);
+    db_try_exec('UPDATE payments SET program_id = NULL WHERE program_id = ?', [$id]);
+    if (function_exists('media_delete_owner')) {
+        media_delete_owner('program', $id);
+    }
+    db()->prepare('DELETE FROM programs WHERE id = ?')->execute([$id]);
+}
+
+function academy_delete_homework(int $homeworkId, int $teacherId): void
+{
+    $st = db()->prepare(
+        'SELECT h.id FROM homework h JOIN class_groups g ON g.id = h.group_id WHERE h.id = ? AND g.teacher_id = ?'
+    );
+    $st->execute([$homeworkId, $teacherId]);
+    if (!$st->fetch()) {
+        throw new RuntimeException('Ödev bulunamadı.');
+    }
+    $files = db()->prepare('SELECT file_path FROM homework_subs WHERE homework_id = ?');
+    $files->execute([$homeworkId]);
+    foreach ($files as $row) {
+        academy_unlink_stored($row['file_path'] ?? null);
+    }
+    db()->prepare('DELETE FROM homework WHERE id = ?')->execute([$homeworkId]);
+}
+
+function academy_delete_note(int $noteId, int $teacherId): void
+{
+    $st = db()->prepare('SELECT * FROM lesson_notes WHERE id = ? AND teacher_id = ?');
+    $st->execute([$noteId, $teacherId]);
+    $row = $st->fetch();
+    if (!$row) {
+        throw new RuntimeException('Not bulunamadı.');
+    }
+    academy_unlink_stored($row['file_path'] ?? null);
+    db()->prepare('DELETE FROM lesson_notes WHERE id = ? AND teacher_id = ?')->execute([$noteId, $teacherId]);
+}
+
+function academy_delete_recording(int $recId, int $teacherId): void
+{
+    $st = db()->prepare('SELECT * FROM recordings WHERE id = ? AND teacher_id = ?');
+    $st->execute([$recId, $teacherId]);
+    $row = $st->fetch();
+    if (!$row) {
+        throw new RuntimeException('Kayıt bulunamadı.');
+    }
+    academy_unlink_stored($row['video_path'] ?? null);
+    db()->prepare('DELETE FROM recordings WHERE id = ? AND teacher_id = ?')->execute([$recId, $teacherId]);
+}
+
 function notify_user(int $userId, string $title, string $body, string $link = ''): void
 {
     try {

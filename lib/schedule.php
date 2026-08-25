@@ -272,6 +272,19 @@ function schedule_save(array $data): int
     return (int) db()->lastInsertId();
 }
 
+function schedule_delete(int $id, ?int $teacherId = null): bool
+{
+    $sql = 'DELETE FROM live_schedule WHERE id=?';
+    $args = [$id];
+    if ($teacherId) {
+        $sql .= ' AND teacher_id=?';
+        $args[] = $teacherId;
+    }
+    $st = db()->prepare($sql);
+    $st->execute($args);
+    return $st->rowCount() > 0;
+}
+
 function schedule_cancel(int $id, ?int $teacherId = null): bool
 {
     $sql = "UPDATE live_schedule SET status='iptal' WHERE id=? AND status<>'iptal'";
@@ -343,6 +356,12 @@ function schedule_actions(array $row, string $role, string $pageBase): string
             . '<input type="hidden" name="action" value="cancel">'
             . '<input type="hidden" name="id" value="' . (int) $row['id'] . '">'
             . '<button class="btn-outline h-8 px-3 text-xs">İptal</button></form>';
+    }
+    if (in_array($role, ['ogretmen', 'admin'], true)) {
+        $html .= '<form method="post" class="inline" onsubmit="return confirm(\'Bu ders saati silinsin mi?\');">'
+            . '<input type="hidden" name="action" value="delete">'
+            . '<input type="hidden" name="id" value="' . (int) $row['id'] . '">'
+            . '<button class="btn-outline h-8 px-3 text-xs">Sil</button></form>';
     }
     return $html;
 }
@@ -427,6 +446,9 @@ function schedule_handle_post(array $u, bool $admin): string
     if ($action === 'cancel') {
         return schedule_cancel((int) post('id'), $teacherId) ? 'Ders saati iptal edildi.' : 'İptal edilemedi.';
     }
+    if ($action === 'delete') {
+        return schedule_delete((int) post('id'), $teacherId) ? 'Ders saati silindi.' : 'Silinemedi.';
+    }
     if ($action !== 'create' && $action !== 'update') {
         return '';
     }
@@ -498,6 +520,13 @@ function schedule_form(array $groups, ?array $edit, string $submitLabel): void
       <?php if ($edit): ?><a class="btn-outline" href="?">Vazgeç</a><?php endif; ?>
     </div>
   </form>
+    <?php if ($edit): ?>
+  <form method="post" class="mt-3" onsubmit="return confirm('Bu ders saati silinsin mi?');">
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="id" value="<?= (int) $edit['id'] ?>">
+    <button class="btn-outline">Ders saatini sil</button>
+  </form>
+    <?php endif; ?>
     <?php
 }
 

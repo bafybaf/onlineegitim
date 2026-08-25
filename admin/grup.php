@@ -109,6 +109,9 @@ panel_head('admin', 'gruplar', (string) $g['name'] . ' | Grup | Admin', $u);
       <button class="btn-primary">Değişiklikleri kaydet</button>
     </div>
   </form>
+  <div class="mt-3">
+    <?= panel_delete_form(grup_url($id), ['action' => 'delete'], 'Grup silinsin mi? Öğrenciler, ödevler, testler ve takvim saatleri de silinir.', 'Grubu sil', 'btn-outline') ?>
+  </div>
 </section>
 
 <section class="card mt-6 overflow-hidden">
