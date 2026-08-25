@@ -14,13 +14,15 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_NAME: ${ADMIN_NAME:-Yönetici}
       LIVE_HOST: ${LIVE_HOST:-onlineilahiyat.com}
-      LIVE_HLS_BASE: ${LIVE_HLS_BASE:-https://hls.onlineilahiyat.com}
-      LIVE_WHEP_BASE: ${LIVE_WHEP_BASE:-https://whep.onlineilahiyat.com}
+      LIVE_HLS_BASE: ${LIVE_HLS_BASE:-}
+      LIVE_WHEP_BASE: ${LIVE_WHEP_BASE:-}
     volumes:
       - app_storage:/var/www/html/storage
     depends_on:
       db:
         condition: service_healthy
+      mediamtx:
+        condition: service_started
     expose:
       - "80"
     healthcheck:

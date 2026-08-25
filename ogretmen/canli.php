@@ -12,7 +12,7 @@ panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
   <form method="post" action="<?= e(url('api/live.php')) ?>" class="card p-6">
     <h2 class="font-display text-2xl">Yeni canlı oda</h2>
     <p class="mt-2 text-sm text-muted">Açık olan <?= count($all) ?> oda kapanmaz. Aynı anda birden fazla hoca ders yapabilir. Öğrenciler sizi görür; siz onları kamerada görmezsiniz.</p>
-    <p class="mt-2 text-xs text-muted">Yayın için önce <b>start-live-server.bat</b> çalıştırın (yml değiştiyse pencereyi kapatıp yeniden açın). OBS Servis <b>Özel</b>: sunucu <code>rtmp://127.0.0.1:1935/live</code>, yayın anahtarı canlı sınıf sayfasındaki anahtar (boş değil). Tarayıcıda HLS linki <code>#EXTM3U</code> göstermeli. Öğrenciler kameraya çıkmaz.</p>
+    <p class="mt-2 text-xs text-muted">Odayı açmak yayını başlatmaz. OBS Servis <b>Özel</b>: sunucu <code>rtmp://<?= e(live_obs_host()) ?>:1935/live</code>, yayın anahtarı canlı sınıf sayfasındaki anahtar. Öğrenciler kameraya çıkmaz.<?= live_in_docker() ? '' : ' Yerelde önce <b>start-live-server.bat</b> çalışsın.' ?></p>
     <input type="hidden" name="action" value="start"><input type="hidden" name="html" value="1">
     <label class="mt-4 block text-sm font-bold">Grup
       <select name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2"><?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= e($g['name']) ?></option><?php endforeach; ?></select>

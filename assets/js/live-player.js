@@ -125,11 +125,29 @@
     const url = healthUrl || hlsUrls[0];
     if (!url) return 'unknown';
     try {
-      await fetch(url, { method: 'GET', cache: 'no-store', mode: 'cors' });
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 4000);
+      await fetch(url, { method: 'GET', cache: 'no-store', mode: 'cors', signal: ctrl.signal });
+      clearTimeout(t);
       return 'up';
     } catch (e) {
       return 'down';
     }
+  }
+
+  function isLocalDev() {
+    const h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+  }
+
+  function waitHint(kind) {
+    if (kind === 'down') {
+      if (isLocalDev()) {
+        return ['Sunucu kapalı', 'Yerelde start-live-server.bat çalıştırın.'];
+      }
+      return ['Yayın henüz yok', 'OBS’te sunucu rtmp://' + location.hostname + ':1935/live — yayın anahtarı bu sınıftaki anahtar.'];
+    }
+    return ['Yayın bekleniyor', 'OBS’i başlatın. Sunucu rtmp://' + location.hostname + ':1935/live'];
   }
 
   async function startWhep(url) {
@@ -271,11 +289,6 @@
     busy = true;
     try {
       const mtx = await pingMtx();
-      if (mtx === 'down') {
-        setWait('Sunucu kapalı', 'start-live-server.bat çalışsın.');
-        playMode = 'none';
-        return;
-      }
       if (playMode !== 'hls') {
         let whepResult = null;
         for (let i = 0; i < whepUrls.length; i++) {
@@ -283,16 +296,13 @@
           whepResult = await startWhep(whepUrls[i]);
           if (whepResult === true) return;
           if (whepResult === 'offline') {
-            setWait('Sunucu kapalı', 'start-live-server.bat çalışsın.');
-            return;
+            continue;
           }
           if (whepResult === 'notrack' || whepResult === 'ice') {
             break;
           }
         }
-        if (whepResult) {
-          setWait('Yayın bekleniyor', '');
-        }
+        if (whepResult === true) return;
       }
       for (let i = 0; i < hlsUrls.length; i++) {
         const ok = await attachHls(hlsUrls[i]);
@@ -300,7 +310,8 @@
         stopHls();
         playMode = 'none';
       }
-      setWait('Yayın bekleniyor', 'OBS’i başlatın.');
+      const hint = waitHint(mtx === 'down' ? 'down' : 'wait');
+      setWait(hint[0], hint[1]);
       playMode = 'none';
     } catch (e) {
       setWait('Yayın bekleniyor', '');

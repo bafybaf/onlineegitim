@@ -17,11 +17,9 @@ ADMIN_PASSWORD=en-az-10-karakter
 ADMIN_NAME=Yönetici
 BASE_URL=
 LIVE_HOST=onlineilahiyat.com
-LIVE_HLS_BASE=https://hls.onlineilahiyat.com
-LIVE_WHEP_BASE=https://whep.onlineilahiyat.com
 ```
 
-3. Domain: `onlineilahiyat.com` ve `www` → `app:80`. HLS / WHEP alt alanlarını `mediamtx` 8888 / 8889 portlarına bağlayın.
+3. Domain: `onlineilahiyat.com` ve `www` → `app:80`. Canlı izleme aynı siteden (`/mtx-hls`, `/mtx-whep`) gider; ayrı HLS/WHEP alt alanı gerekmez. OBS: `rtmp://onlineilahiyat.com:1935/live` (VPS’te **1935** açık).
 4. Deploy. İlk açılışta şema yüklenir ve yönetici hesabı oluşur. `ADMIN_PASSWORD` yoksa tarayıcıda `/kurulum` açılır.
 
 Yönetim: `https://onlineilahiyat.com/wiys`

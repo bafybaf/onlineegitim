@@ -25,6 +25,59 @@ function live_public_host(): string
     return live_page_host();
 }
 
+function live_page_origin(): string
+{
+    $https = function_exists('security_https') && security_https();
+    return ($https ? 'https' : 'http') . '://' . live_page_host();
+}
+
+function live_in_docker(): bool
+{
+    return defined('DB_HOST') && DB_HOST === 'db';
+}
+
+function live_strip_legacy_cdn(string $base): string
+{
+    $base = rtrim($base, '/');
+    if ($base === '') {
+        return '';
+    }
+    $legacy = [
+        'https://hls.onlineilahiyat.com',
+        'http://hls.onlineilahiyat.com',
+        'https://whep.onlineilahiyat.com',
+        'http://whep.onlineilahiyat.com',
+    ];
+    if (live_in_docker() && in_array(strtolower($base), $legacy, true)) {
+        return '';
+    }
+    return $base;
+}
+
+function live_hls_base(): string
+{
+    $base = live_strip_legacy_cdn(defined('LIVE_HLS_BASE') ? (string) LIVE_HLS_BASE : '');
+    if ($base !== '') {
+        return $base;
+    }
+    if (live_in_docker()) {
+        return rtrim(live_page_origin(), '/') . '/mtx-hls';
+    }
+    return 'http://' . live_page_host() . ':8888';
+}
+
+function live_whep_base(): string
+{
+    $base = live_strip_legacy_cdn(defined('LIVE_WHEP_BASE') ? (string) LIVE_WHEP_BASE : '');
+    if ($base !== '') {
+        return $base;
+    }
+    if (live_in_docker()) {
+        return rtrim(live_page_origin(), '/') . '/mtx-whep';
+    }
+    return 'http://' . live_page_host() . ':8889';
+}
+
 function live_stream_paths(string $streamKey): array
 {
     $key = trim($streamKey);
@@ -46,11 +99,7 @@ function live_hls_url(string $streamKey, int $which = 0): string
     if (!isset($paths[$which])) {
         return '';
     }
-    $base = defined('LIVE_HLS_BASE') ? LIVE_HLS_BASE : '';
-    if ($base !== '') {
-        return $base . '/' . $paths[$which] . '/index.m3u8?cookieCheck=1';
-    }
-    return 'http://' . live_page_host() . ':8888/' . $paths[$which] . '/index.m3u8?cookieCheck=1';
+    return live_hls_base() . '/' . $paths[$which] . '/index.m3u8?cookieCheck=1';
 }
 
 function live_whep_url(string $streamKey, int $which = 0): string
@@ -59,20 +108,12 @@ function live_whep_url(string $streamKey, int $which = 0): string
     if (!isset($paths[$which])) {
         return '';
     }
-    $base = defined('LIVE_WHEP_BASE') ? LIVE_WHEP_BASE : '';
-    if ($base !== '') {
-        return $base . '/' . $paths[$which] . '/whep';
-    }
-    return 'http://' . live_page_host() . ':8889/' . $paths[$which] . '/whep';
+    return live_whep_base() . '/' . $paths[$which] . '/whep';
 }
 
 function live_health_url(): string
 {
-    $base = defined('LIVE_HLS_BASE') ? LIVE_HLS_BASE : '';
-    if ($base !== '') {
-        return $base . '/';
-    }
-    return 'http://' . live_page_host() . ':8888/';
+    return rtrim(live_hls_base(), '/') . '/';
 }
 
 function live_new_stream_key(PDO $pdo): string
