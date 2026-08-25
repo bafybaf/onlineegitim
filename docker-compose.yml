@@ -1,0 +1,74 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_NAME: online_ilahiyat
+      DB_USER: ilahiyat
+      DB_PASS: ${DB_PASS}
+      BASE_URL: ${BASE_URL:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@onlineilahiyat.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NAME: ${ADMIN_NAME:-Yönetici}
+      LIVE_HOST: ${LIVE_HOST:-onlineilahiyat.com}
+      LIVE_HLS_BASE: ${LIVE_HLS_BASE:-https://hls.onlineilahiyat.com}
+      LIVE_WHEP_BASE: ${LIVE_WHEP_BASE:-https://whep.onlineilahiyat.com}
+    volumes:
+      - app_storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD-SHELL", "pidof apache2 >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: online_ilahiyat
+      MYSQL_USER: ilahiyat
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MARIADB_AUTO_UPGRADE: "1"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  mediamtx:
+    image: bluenviron/mediamtx:1.12.2
+    restart: unless-stopped
+    environment:
+      MTX_RTMP: "yes"
+      MTX_HLS: "yes"
+      MTX_WEBRTC: "yes"
+      MTX_HLSVARIANT: fmp4
+      MTX_HLSALWAYSREMUX: "yes"
+      MTX_HLSALLOWORIGINS: "*"
+      MTX_WEBRTCALLOWORIGINS: "*"
+      MTX_WEBRTCADDITIONALHOSTS: ${LIVE_HOST:-onlineilahiyat.com}
+    ports:
+      - "1935:1935"
+      - "8888:8888"
+      - "8889:8889"
+      - "8189:8189/udp"
+    expose:
+      - "8888"
+      - "8889"
+
+volumes:
+  db_data:
+  app_storage:

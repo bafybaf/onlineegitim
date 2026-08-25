@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+composer.phar
+Thumbs.db
+.DS_Store
+*.log
+storage/*.log
+storage/security/*.json
+storage/academy/**
+!storage/academy/.gitkeep
+tools/mediamtx/*.exe
+tools/mediamtx/*.log
+tools/mediamtx/*.zip
+tools/mediamtx/auto.crt
+tools/mediamtx/auto.key

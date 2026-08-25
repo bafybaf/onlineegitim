@@ -1,0 +1,324 @@
+(function () {
+  const cfg = window.LIVE_PLAYER || {};
+  const video = document.getElementById('live-video');
+  const overlay = document.getElementById('wait-overlay');
+  const protoEl = document.getElementById('live-proto');
+  const waitTitle = document.getElementById('wait-title') || document.querySelector('#wait-overlay .font-display');
+  const waitDetail = document.getElementById('wait-detail');
+  if (!video) return;
+
+  const whepUrls = [cfg.whepUrl, cfg.whepUrlAlt].filter(Boolean);
+  const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
+  const healthUrl = cfg.healthUrl || '';
+  let hls = null;
+  let pc = null;
+  let playing = false;
+  let playMode = 'none';
+  let busy = false;
+  let ended = false;
+  let lastHint = '';
+
+  function showWait(on) {
+    if (overlay) overlay.classList.toggle('is-off', !on);
+  }
+  function setProto(text) {
+    lastHint = text || '';
+    if (!protoEl) return;
+    protoEl.textContent = lastHint;
+    protoEl.hidden = !lastHint;
+  }
+  function setWait(title, detail) {
+    if (waitTitle) waitTitle.textContent = title;
+    if (waitDetail) {
+      waitDetail.textContent = detail || '';
+      waitDetail.hidden = !detail;
+    }
+    showWait(true);
+    setProto('');
+  }
+  function onPlaying() {
+    playing = true;
+    showWait(false);
+  }
+  function onStall() {
+    playing = false;
+    showWait(true);
+  }
+
+  video.addEventListener('playing', onPlaying);
+  video.addEventListener('waiting', () => { if (!playing) showWait(true); });
+  video.addEventListener('error', onStall);
+
+  function stopHls() {
+    if (hls) {
+      try { hls.destroy(); } catch (e) {}
+      hls = null;
+    }
+    if (!video.srcObject) {
+      video.removeAttribute('src');
+    }
+  }
+
+  function stopWhep() {
+    if (pc) {
+      try { pc.close(); } catch (e) {}
+      pc = null;
+    }
+    if (video.srcObject) {
+      video.srcObject = null;
+    }
+  }
+
+  function waitIceGather(conn, ms) {
+    if (conn.iceGatheringState === 'complete') {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const t = setTimeout(resolve, ms);
+      conn.addEventListener('icegatheringstatechange', () => {
+        if (conn.iceGatheringState === 'complete') {
+          clearTimeout(t);
+          resolve();
+        }
+      });
+    });
+  }
+
+  function waitPcReady(conn, ms) {
+    if (conn.connectionState === 'connected') {
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+      const t = setTimeout(() => {
+        resolve(conn.connectionState === 'connected');
+      }, ms);
+      const onChange = () => {
+        if (conn.connectionState === 'connected') {
+          clearTimeout(t);
+          resolve(true);
+        } else if (conn.connectionState === 'failed' || conn.connectionState === 'closed') {
+          clearTimeout(t);
+          resolve(false);
+        }
+      };
+      conn.addEventListener('connectionstatechange', onChange);
+    });
+  }
+
+  function waitForFrames(ms) {
+    if (video.videoWidth > 0 || video.readyState >= 2) {
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+      const started = Date.now();
+      const tick = setInterval(() => {
+        const ok = video.videoWidth > 0 || video.readyState >= 2 || (!video.paused && video.currentTime > 0);
+        if (ok || Date.now() - started >= ms) {
+          clearInterval(tick);
+          resolve(ok);
+        }
+      }, 200);
+    });
+  }
+
+  async function pingMtx() {
+    const url = healthUrl || hlsUrls[0];
+    if (!url) return 'unknown';
+    try {
+      await fetch(url, { method: 'GET', cache: 'no-store', mode: 'cors' });
+      return 'up';
+    } catch (e) {
+      return 'down';
+    }
+  }
+
+  async function startWhep(url) {
+    if (!url || typeof RTCPeerConnection === 'undefined') {
+      return 'unsupported';
+    }
+    if (pc && ['new', 'connecting', 'connected'].indexOf(pc.connectionState) !== -1) {
+      return 'busy';
+    }
+    stopWhep();
+    const conn = new RTCPeerConnection({ iceServers: [] });
+    pc = conn;
+    conn.addTransceiver('video', { direction: 'recvonly' });
+    conn.addTransceiver('audio', { direction: 'recvonly' });
+    conn.ontrack = (ev) => {
+      if (ended || conn !== pc) return;
+      let stream = ev.streams && ev.streams[0];
+      if (!stream) {
+        stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+        if (!stream.getTracks().includes(ev.track)) {
+          stream.addTrack(ev.track);
+        }
+      }
+      if (video.srcObject !== stream) {
+        video.srcObject = stream;
+      }
+      video.play().catch(() => {});
+    };
+    conn.onconnectionstatechange = () => {
+      if (conn !== pc) return;
+      if (conn.connectionState === 'failed' || conn.connectionState === 'disconnected') {
+        onStall();
+        stopWhep();
+        if (playMode === 'webrtc') playMode = 'none';
+      }
+    };
+    const offer = await conn.createOffer();
+    await conn.setLocalDescription(offer);
+    await waitIceGather(conn, 1500);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/sdp',
+          Accept: 'application/sdp'
+        },
+        body: conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp
+      });
+    } catch (e) {
+      stopWhep();
+      return 'offline';
+    }
+    if (!res.ok) {
+      stopWhep();
+      return res.status;
+    }
+    const sdp = await res.text();
+    if (!sdp) {
+      stopWhep();
+      return 204;
+    }
+    await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
+    const ready = await waitPcReady(conn, 8000);
+    if (!ready && conn === pc && conn.connectionState !== 'connected') {
+      stopWhep();
+      return 'ice';
+    }
+    const framed = await waitForFrames(4000);
+    if (!framed || !video.srcObject) {
+      stopWhep();
+      return 'notrack';
+    }
+    playMode = 'webrtc';
+    setProto('Canlı');
+    return true;
+  }
+
+  function attachHls(url) {
+    if (!url) {
+      showWait(true);
+      return Promise.resolve(false);
+    }
+    stopWhep();
+    stopHls();
+    playMode = 'hls';
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.srcObject = null;
+      video.src = url;
+      setProto('Canlı');
+      return video.play().then(() => true).catch(() => false);
+    }
+    if (!window.Hls || !Hls.isSupported()) {
+      setWait('Tarayıcı desteklemiyor', 'Chrome veya Edge kullanın.');
+      return Promise.resolve(false);
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (ok) => {
+        if (settled) return;
+        settled = true;
+        resolve(ok);
+      };
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 8,
+        maxBufferLength: 8,
+        maxMaxBufferLength: 12,
+        liveDurationInfinity: true,
+        manifestLoadingTimeOut: 8000
+      });
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setProto('Canlı');
+        video.play().catch(() => {});
+        done(true);
+      });
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (!data || !data.fatal) return;
+        onStall();
+        try { hls.startLoad(); } catch (e) {}
+        done(false);
+      });
+      setTimeout(() => done(playing), 9000);
+    });
+  }
+
+  async function tryWhepOrHls() {
+    if (ended || playing || busy) return;
+    if (playMode === 'webrtc' && pc && playing) return;
+    if (playMode === 'hls' && hls && playing) return;
+    if (playMode === 'webrtc' && !playing) {
+      stopWhep();
+      playMode = 'none';
+    }
+    busy = true;
+    try {
+      const mtx = await pingMtx();
+      if (mtx === 'down') {
+        setWait('Sunucu kapalı', 'start-live-server.bat çalışsın.');
+        playMode = 'none';
+        return;
+      }
+      if (playMode !== 'hls') {
+        let whepResult = null;
+        for (let i = 0; i < whepUrls.length; i++) {
+          setWait('Bağlanıyor…', '');
+          whepResult = await startWhep(whepUrls[i]);
+          if (whepResult === true) return;
+          if (whepResult === 'offline') {
+            setWait('Sunucu kapalı', 'start-live-server.bat çalışsın.');
+            return;
+          }
+          if (whepResult === 'notrack' || whepResult === 'ice') {
+            break;
+          }
+        }
+        if (whepResult) {
+          setWait('Yayın bekleniyor', '');
+        }
+      }
+      for (let i = 0; i < hlsUrls.length; i++) {
+        const ok = await attachHls(hlsUrls[i]);
+        if (ok || playing) return;
+        stopHls();
+        playMode = 'none';
+      }
+      setWait('Yayın bekleniyor', 'OBS’i başlatın.');
+      playMode = 'none';
+    } catch (e) {
+      setWait('Yayın bekleniyor', '');
+      playMode = 'none';
+    } finally {
+      busy = false;
+    }
+  }
+
+  window.livePlayerMarkEnded = function () {
+    ended = true;
+    playing = false;
+    stopWhep();
+    stopHls();
+    setWait('Ders bitti', '');
+    setProto('');
+  };
+
+  tryWhepOrHls();
+  setInterval(tryWhepOrHls, 4000);
+})();

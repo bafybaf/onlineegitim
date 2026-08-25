@@ -1,0 +1,136 @@
+Options -Indexes
+DirectoryIndex index.php
+AddDefaultCharset UTF-8
+<IfModule mod_php.c>
+  php_value default_charset UTF-8
+</IfModule>
+<IfModule mod_php8.c>
+  php_value default_charset UTF-8
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /online-ilahiyat/
+
+  RewriteRule ^storage/ - [F,L]
+  RewriteRule ^(config|lib|sql|vendor|tools|scripts|docs)(/|$) - [F,L]
+  RewriteRule ^(composer\.(json|lock)|\.env)$ - [F,L]
+
+  RewriteRule ^(api|assets)(/|$) - [L]
+
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/program-detay\.php\?slug=([^\s&]+) [NC]
+  RewriteRule ^ program/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/kitap-detay\.php\?slug=([^\s&]+) [NC]
+  RewriteRule ^ kitap/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/canli-sinif\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ canli-sinif/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/odeme\.php\?oid=([A-Za-z0-9]+) [NC]
+  RewriteRule ^ odeme/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/odeme-sonuc\.php\?durum=(ok|hata)&oid=([A-Za-z0-9]+) [NC]
+  RewriteRule ^ odeme-sonuc/%1/%2? [R=301,L]
+
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/giris-admin\.php[\s?] [NC]
+  RewriteRule ^giris-admin\.php$ wiys [R=301,L,QSA]
+
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/(ogrenci|ogretmen|admin|magaza)/index\.php[\s?] [NC]
+  RewriteRule ^(ogrenci|ogretmen|admin|magaza)/index\.php$ $1 [R=301,L,QSA]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/paket\.php\?id=0[\s&] [NC]
+  RewriteRule ^ admin/paket/yeni? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/paket\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ admin/paket/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/hoca\.php\?id=0[\s&] [NC]
+  RewriteRule ^ admin/hoca/yeni? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/hoca\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ admin/hoca/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/kullanici\.php\?id=0[\s&] [NC]
+  RewriteRule ^ admin/kullanici/yeni? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/kullanici\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ admin/kullanici/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/siparis\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ admin/siparis/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/grup\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ admin/grup/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/ogretmen/grup\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ ogretmen/grup/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/ogretmen/ogrenci\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ ogretmen/ogrenci/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/urun-duzenle\.php\?id=([0-9]+) [NC]
+  RewriteRule ^ admin/urun/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/admin/urun-duzenle\.php[\s?] [NC]
+  RewriteRule ^admin/urun-duzenle\.php$ admin/urun/yeni [R=301,L,QSA]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/kitaplar\.php\?kategori=([A-Za-z0-9\-_]+) [NC]
+  RewriteRule ^ kitaplar/%1? [R=301,L]
+  RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/(ogrenci|ogretmen|admin|magaza)/([A-Za-z0-9\-]+)\.php[\s?] [NC]
+  RewriteRule ^(ogrenci|ogretmen|admin|magaza)/([A-Za-z0-9\-]+)\.php$ $1/$2 [R=301,L,QSA]
+
+  RewriteRule ^(canli-sinif|odeme|odeme-sonuc)\.php$ - [L]
+
+  RewriteRule ^(ogrenci|ogretmen|admin|magaza)/?$ $1/index.php [L]
+  RewriteRule ^admin/paket/yeni/?$ admin/paket.php?id=0 [L]
+  RewriteRule ^admin/paket/([0-9]+)/?$ admin/paket.php?id=$1 [L,QSA]
+  RewriteRule ^admin/hoca/yeni/?$ admin/hoca.php?id=0 [L]
+  RewriteRule ^admin/hoca/([0-9]+)/?$ admin/hoca.php?id=$1 [L,QSA]
+  RewriteRule ^admin/kullanici/yeni/?$ admin/kullanici.php?id=0 [L]
+  RewriteRule ^admin/kullanici/([0-9]+)/?$ admin/kullanici.php?id=$1 [L,QSA]
+  RewriteRule ^admin/siparis/([0-9]+)/?$ admin/siparis.php?id=$1 [L,QSA]
+  RewriteRule ^admin/grup/([0-9]+)/?$ admin/grup.php?id=$1 [L,QSA]
+  RewriteRule ^ogretmen/grup/([0-9]+)/?$ ogretmen/grup.php?id=$1 [L,QSA]
+  RewriteRule ^ogretmen/ogrenci/([0-9]+)/?$ ogretmen/ogrenci.php?id=$1 [L,QSA]
+  RewriteRule ^admin/program/yeni/?$ admin/program.php?id=0 [L]
+  RewriteRule ^admin/program/([0-9]+)/?$ admin/program.php?id=$1 [L,QSA]
+  RewriteRule ^ogrenci/kayit/([0-9]+)/?$ ogrenci/kayit-izle.php?id=$1 [L,QSA]
+  RewriteRule ^admin/urun/yeni/?$ admin/urun-duzenle.php [L]
+  RewriteRule ^admin/urun/([0-9]+)/?$ admin/urun-duzenle.php?id=$1 [L,QSA]
+  RewriteCond %{DOCUMENT_ROOT}/online-ilahiyat/$1/$2.php -f
+  RewriteRule ^(ogrenci|ogretmen|admin|magaza)/([A-Za-z0-9\-]+)/?$ $1/$2.php [L]
+
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteRule ^$ index.php [L]
+  RewriteRule ^programlar/?$ programlar.php [L]
+  RewriteRule ^program/([A-Za-z0-9\-_]+)/?$ program-detay.php?slug=$1 [L,QSA]
+  RewriteRule ^kitaplar/?$ kitaplar.php [L]
+  RewriteRule ^kitaplar/([A-Za-z0-9\-_]+)/?$ kitaplar.php?kategori=$1 [L,QSA]
+  RewriteRule ^kitap/([A-Za-z0-9\-_]+)/?$ kitap-detay.php?slug=$1 [L,QSA]
+  RewriteRule ^kadro/?$ kadro.php [L]
+  RewriteRule ^hoca/([A-Za-z0-9\-_]+)/?$ hoca.php?slug=$1 [L,QSA]
+  RewriteRule ^kvkk/?$ kvkk.php [L]
+  RewriteRule ^gizlilik/?$ gizlilik.php [L]
+  RewriteRule ^blog/?$ blog.php [L]
+  RewriteRule ^blog/([A-Za-z0-9\-_]+)/?$ blog-detay.php?slug=$1 [L,QSA]
+  RewriteRule ^sitemap\.xml$ sitemap.php [L]
+  RewriteRule ^robots\.txt$ robots.php [L]
+  RewriteRule ^sertifika/([A-Za-z0-9\-]+)/?$ sertifika.php?code=$1 [L,QSA]
+  RewriteRule ^iletisim/?$ iletisim.php [L]
+  RewriteRule ^giris/?$ giris.php [L]
+  RewriteRule ^kayit/?$ kayit.php [L]
+  RewriteRule ^giris-magaza/?$ giris-magaza.php [L]
+  RewriteRule ^giris-ders/?$ giris-ders.php [L]
+  RewriteRule ^kayit-magaza/?$ kayit-magaza.php [L]
+  RewriteRule ^kayit-ders/?$ kayit-ders.php [L]
+  RewriteRule ^uyelik-magaza/?$ uyelik-magaza.php [L]
+  RewriteRule ^uyelik-ders/?$ uyelik-ders.php [L]
+  RewriteRule ^google-basla/?$ google-basla.php [L,QSA]
+  RewriteRule ^google-callback/?$ google-callback.php [L,QSA]
+  RewriteRule ^wiys/?$ giris-admin.php [L]
+  RewriteRule ^kurulum/?$ kurulum.php [L]
+  RewriteRule ^sepet/?$ sepet.php [L]
+  RewriteRule ^cikis/?$ cikis.php [L]
+  RewriteRule ^canli-sinif/([0-9]+)/?$ canli-sinif.php?id=$1 [L,QSA]
+  RewriteRule ^odeme/([A-Za-z0-9]+)/?$ odeme.php?oid=$1 [L,QSA]
+  RewriteRule ^odeme-sonuc/(ok|hata)/([A-Za-z0-9]+)/?$ odeme-sonuc.php?durum=$1&oid=$2 [L,QSA]
+  RewriteRule ^odeme-sonuc/?$ odeme-sonuc.php [L,QSA]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ router.php?r=$1 [L,QSA]
+</IfModule>
+
+<FilesMatch "(?i)\.(sql|md|log|yml|yaml|ini|bak|dist|env)$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "(?i)^composer\.(json|lock)$">
+  Require all denied
+</FilesMatch>

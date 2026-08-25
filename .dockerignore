@@ -1,0 +1,11 @@
+.git
+.gitignore
+*.md
+docs
+tools/mediamtx/*.exe
+tools/mediamtx/*.log
+tools/mediamtx/auto.crt
+tools/mediamtx/auto.key
+storage/security/*.json
+**/.DS_Store
+Thumbs.db
