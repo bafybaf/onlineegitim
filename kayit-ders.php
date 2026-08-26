@@ -89,19 +89,23 @@ public_head('Ders kaydı | Online İlahiyat');
       </select>
     </label>
     <p class="mt-4 text-sm font-extrabold">Program ve grup</p>
+    <?php if (!$packages): ?>
+      <p class="mt-2 text-sm text-muted">Satışa açık paket henüz yok. Yönetim panelinden grup ve üyelik paketi ekleyin.</p>
+    <?php else: ?>
     <div class="mt-2 grid gap-2">
       <?php foreach ($packages as $pkg): ?>
         <label class="flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 <?= $sel === (int) $pkg['id'] ? 'border-navy' : '' ?>">
           <input type="radio" name="package_id" value="<?= (int) $pkg['id'] ?>" <?= $sel === (int) $pkg['id'] ? 'checked' : '' ?> class="mt-1">
           <span>
             <span class="block font-extrabold"><?= e($pkg['name']) ?></span>
-            <span class="text-sm text-muted"><?= money((int) $pkg['price']) ?> - <?= (int) $pkg['duration_days'] ?> gün<?= !empty($pkg['group_name']) ? ' - ' . e($pkg['group_name']) : '' ?> · <?= e(package_access_label($pkg)) ?></span>
+            <span class="text-sm text-muted"><?= money((int) $pkg['price']) ?> - <?= (int) $pkg['duration_days'] ?> gün<?= !empty($pkg['group_name']) ? ' - ' . e($pkg['group_name']) : (!empty($pkg['program_title']) ? ' · ' . e($pkg['program_title']) : '') ?> · <?= e(package_access_label($pkg)) ?></span>
           </span>
         </label>
       <?php endforeach; ?>
     </div>
     <p class="mt-3 text-xs text-muted">Program sayfasından kart çekilmez; paket seçince kayıt hesabınıza düşer.</p>
     <button class="btn-primary mt-5 w-full">Satın al</button>
+    <?php endif; ?>
     <?php google_button('ders', '', 'mt-4'); ?>
     <p class="mt-3 text-center text-sm text-muted">Hesabınız var mı? <a class="font-extrabold text-navy" href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a></p>
   </form>

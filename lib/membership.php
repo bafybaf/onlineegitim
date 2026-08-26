@@ -93,8 +93,41 @@ function package_by_id(int $id): ?array
     return $row;
 }
 
+function ensure_ders_packages_from_catalog(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec(
+            "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active)
+             SELECT 'ders', g.program_id, g.id, CONCAT(g.name, ' — yıllık'), 365, GREATEST(1, COALESCE(pr.price_now, 1)), 0, 1
+             FROM class_groups g
+             JOIN programs pr ON pr.id = g.program_id
+             WHERE NOT EXISTS (
+               SELECT 1 FROM packages x WHERE x.kind = 'ders' AND x.default_group_id = g.id
+             )"
+        );
+        db()->exec(
+            "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active)
+             SELECT 'ders', pr.id, NULL, CONCAT(pr.title, ' — yıllık'), 365, GREATEST(1, COALESCE(pr.price_now, 1)), 0, 1
+             FROM programs pr
+             WHERE NOT EXISTS (
+               SELECT 1 FROM packages x WHERE x.kind = 'ders' AND x.program_id = pr.id
+             )"
+        );
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
 function packages_active(string $kind): array
 {
+    if ($kind === 'ders') {
+        ensure_ders_packages_from_catalog();
+    }
     $st = db()->prepare(
         'SELECT p.*, g.name AS group_name, pr.title AS program_title, pr.slug AS program_slug
          FROM packages p
@@ -116,6 +149,7 @@ function packages_active(string $kind): array
 
 function packages_all(): array
 {
+    ensure_ders_packages_from_catalog();
     $rows = db()->query(
         'SELECT p.*, g.name AS group_name, pr.title AS program_title
          FROM packages p
@@ -168,7 +202,11 @@ function membership_paid(array $u): bool
         return ($u['status'] ?? '') === 'aktif';
     }
     if ($u['role'] === 'ogrenci') {
-        return student_has_active_enrollment((int) $u['id']);
+        if (function_exists('student_has_active_enrollment') && student_has_active_enrollment((int) $u['id'])) {
+            return true;
+        }
+        $exp = (string) ($u['membership_expires_at'] ?? '');
+        return $exp !== '' && strtotime($exp) > time();
     }
     return true;
 }
@@ -216,8 +254,8 @@ function membership_start_checkout(array $user, array $package, ?int $groupId = 
     }
     $gid = $groupId ?? (int) ($package['default_group_id'] ?? 0);
     $pid = (int) ($package['program_id'] ?? 0);
-    if ($kind === 'uyelik_ders' && $gid < 1) {
-        throw new RuntimeException('Grup seçin.');
+    if ($kind === 'uyelik_ders' && $gid < 1 && $pid < 1) {
+        throw new RuntimeException('Grup veya program paketi seçin.');
     }
     $pending = membership_pending_payment((int) $user['id'], $kind);
     if (

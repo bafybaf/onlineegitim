@@ -53,20 +53,25 @@ public_head('Canlı ders üyeliği | Online İlahiyat');
     </div>
   <?php endif; ?>
   <form method="post" class="card mt-6 p-6">
+    <?= csrf_field() ?>
     <?php if ($err): ?><p class="mb-3 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
+    <?php if (!$packages): ?>
+      <p class="text-sm text-muted">Satışa açık paket henüz yok. Yönetim panelinden program grubu ve üyelik paketi ekleyin.</p>
+    <?php else: ?>
     <div class="grid gap-2">
       <?php foreach ($packages as $pkg): ?>
         <label class="flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 <?= $sel === (int) $pkg['id'] ? 'border-navy' : '' ?>">
           <input type="radio" name="package_id" value="<?= (int) $pkg['id'] ?>" <?= $sel === (int) $pkg['id'] ? 'checked' : '' ?> class="mt-1">
           <span>
             <span class="block font-extrabold"><?= e($pkg['name']) ?></span>
-            <span class="text-sm text-muted"><?= money((int) $pkg['price']) ?> · <?= (int) $pkg['duration_days'] ?> gün<?= !empty($pkg['group_name']) ? ' · ' . e($pkg['group_name']) : '' ?> · <?= e(package_access_label($pkg)) ?></span>
+            <span class="text-sm text-muted"><?= money((int) $pkg['price']) ?> · <?= (int) $pkg['duration_days'] ?> gün<?= !empty($pkg['group_name']) ? ' · ' . e($pkg['group_name']) : (!empty($pkg['program_title']) ? ' · ' . e($pkg['program_title']) : '') ?> · <?= e(package_access_label($pkg)) ?></span>
           </span>
         </label>
       <?php endforeach; ?>
     </div>
-    <p class="mt-3 text-xs text-muted">Satın alınca grup kaydı hemen hesabınıza düşer.</p>
+    <p class="mt-3 text-xs text-muted">Satın alınca grup kaydı hemen hesabınıza düşer. Grup henüz yoksa üyelik açılır; grup açılınca yerleştirilirsiniz.</p>
     <button class="btn-primary mt-5 w-full">Satın al</button>
+    <?php endif; ?>
   </form>
 </main>
 <?php public_foot();

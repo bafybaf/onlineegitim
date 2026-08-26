@@ -207,8 +207,25 @@ function fulfill_class_membership(PDO $pdo, array $payment): void
         $packageId = (int) ($basket[0]['package_id'] ?? 0);
     }
     $days = membership_duration_from_payment($pdo, $payment);
-    $pdo->prepare('UPDATE users SET status = ? WHERE id = ?')->execute(['aktif', $userId]);
+    $ust = $pdo->prepare('SELECT membership_expires_at FROM users WHERE id = ? FOR UPDATE');
+    $ust->execute([$userId]);
+    $cur = $ust->fetchColumn();
+    $userBase = time();
+    if (is_string($cur) && $cur !== '' && strtotime($cur) > $userBase) {
+        $userBase = (int) strtotime($cur);
+    }
+    $userExpires = date('Y-m-d H:i:s', $userBase + ($days * 86400));
+    $pdo->prepare('UPDATE users SET status = ?, membership_expires_at = ? WHERE id = ?')
+        ->execute(['aktif', $userExpires, $userId]);
     if ($groupId < 1) {
+        if ($packageId > 0) {
+            $pst = $pdo->prepare('SELECT gift_book_id FROM packages WHERE id = ?');
+            $pst->execute([$packageId]);
+            $gift = (int) ($pst->fetchColumn() ?: 0);
+            if ($gift > 0 && function_exists('academy_gift_book')) {
+                academy_gift_book($pdo, $userId, $gift);
+            }
+        }
         return;
     }
     $chk = $pdo->prepare('SELECT id, expires_at FROM enrollments WHERE student_id = ? AND group_id = ? FOR UPDATE');
