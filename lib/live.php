@@ -111,6 +111,124 @@ function live_whep_url(string $streamKey, int $which = 0): string
     return live_whep_base() . '/' . $paths[$which] . '/whep';
 }
 
+function live_whip_url(string $streamKey, int $which = 0): string
+{
+    $paths = live_stream_paths($streamKey);
+    if (!isset($paths[$which])) {
+        return '';
+    }
+    return live_whep_base() . '/' . $paths[$which] . '/whip';
+}
+
+function live_play_modes(): array
+{
+    return [
+        'hls' => [
+            'label' => 'OBS + HLS',
+            'hint' => 'Mevcut düzen. OBS ile yayın; öğrenciler HLS izler.',
+        ],
+        'webrtc' => [
+            'label' => 'OBS + WebRTC',
+            'hint' => 'OBS ile yayın; öğrenciler önce WHEP dener, olmazsa HLS.',
+        ],
+        'browser' => [
+            'label' => 'Tarayıcı kamerası',
+            'hint' => 'OBS yok. Sınıfta kamerayı açın; öğrenciler sizi izler.',
+        ],
+    ];
+}
+
+function live_normalize_play_mode(?string $mode): string
+{
+    $mode = strtolower(trim((string) $mode));
+    return isset(live_play_modes()[$mode]) ? $mode : 'hls';
+}
+
+function live_last_play_mode(): string
+{
+    return live_normalize_play_mode($_SESSION['live_play_mode'] ?? 'hls');
+}
+
+function live_remember_play_mode(string $mode): string
+{
+    $mode = live_normalize_play_mode($mode);
+    $_SESSION['live_play_mode'] = $mode;
+    return $mode;
+}
+
+function ensure_live_play_mode_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $has = false;
+        foreach (db()->query('SHOW COLUMNS FROM live_rooms')->fetchAll() as $row) {
+            if (($row['Field'] ?? '') === 'play_mode') {
+                $has = true;
+                break;
+            }
+        }
+        if (!$has) {
+            db()->exec("ALTER TABLE live_rooms ADD COLUMN play_mode VARCHAR(20) NOT NULL DEFAULT 'hls' AFTER stream_key");
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function live_room_play_mode(array $room): string
+{
+    ensure_live_play_mode_schema();
+    return live_normalize_play_mode($room['play_mode'] ?? null);
+}
+
+function live_start_chat_message(string $mode): string
+{
+    return match (live_normalize_play_mode($mode)) {
+        'browser' => 'Oda açıldı. Sınıfta Kamerayı açın; öğrenciler sizi izler.',
+        'webrtc' => 'Oda açıldı. OBS ile yayın başlatın (WebRTC). Yayın anahtarı canlı sınıf sayfasındadır.',
+        default => 'Oda açıldı. Diğer hocaların canlı dersleri devam ediyor. OBS ile yayın başlatın.',
+    };
+}
+
+function live_play_mode_picker(string $name = 'play_mode', ?string $selected = null, string $layout = 'cards'): string
+{
+    $selected = live_normalize_play_mode($selected ?? live_last_play_mode());
+    if ($layout === 'hidden') {
+        return '<input type="hidden" name="' . e($name) . '" value="' . e($selected) . '">';
+    }
+    if ($layout === 'select') {
+        $html = '<label class="live-mode-select">Yayın yöntemi';
+        $html .= '<select name="' . e($name) . '" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm">';
+        foreach (live_play_modes() as $key => $meta) {
+            $sel = $key === $selected ? ' selected' : '';
+            $html .= '<option value="' . e($key) . '"' . $sel . '>' . e($meta['label']) . '</option>';
+        }
+        $html .= '</select></label>';
+        return $html;
+    }
+    $cls = $layout === 'inline' ? 'live-mode-list live-mode-list--inline' : 'live-mode-list';
+    $html = '<fieldset class="live-mode-pick">';
+    $html .= '<legend class="live-mode-legend">Yayın yöntemi</legend>';
+    $html .= '<div class="' . $cls . '">';
+    foreach (live_play_modes() as $key => $meta) {
+        $id = preg_replace('/[^a-z0-9_-]+/i', '-', $name) . '-' . $key . '-' . substr(md5($layout . $selected), 0, 4);
+        $checked = $key === $selected ? ' checked' : '';
+        $html .= '<label class="live-mode-card" for="' . e($id) . '">';
+        $html .= '<input type="radio" name="' . e($name) . '" id="' . e($id) . '" value="' . e($key) . '"' . $checked . '>';
+        $html .= '<span class="live-mode-title">' . e($meta['label']) . '</span>';
+        if ($layout !== 'inline') {
+            $html .= '<span class="live-mode-hint">' . e($meta['hint']) . '</span>';
+        }
+        $html .= '</label>';
+    }
+    $html .= '</div></fieldset>';
+    return $html;
+}
+
 function live_health_url(): string
 {
     return rtrim(live_hls_base(), '/') . '/';
@@ -202,5 +320,6 @@ function live_public_room(array $room): array
         'group_id' => (int) $room['group_id'],
         'broadcasting' => (int) ($room['broadcasting'] ?? 0),
         'started_at' => (string) ($room['started_at'] ?? ''),
+        'play_mode' => live_room_play_mode($room),
     ];
 }

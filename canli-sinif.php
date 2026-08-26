@@ -53,13 +53,23 @@ $students = $stu->fetchAll();
 $canPublish = live_user_can_publish($u, $room);
 $canEnd = $canPublish;
 $playKey = live_ensure_stream_key(db(), $room);
+$playMode = live_room_play_mode($room);
+$isBrowser = $playMode === 'browser';
 $streamKey = $canPublish ? $playKey : '';
 $rtmpUrl = $canPublish ? live_rtmp_url() : '';
 $hlsUrl = live_hls_url($playKey);
 $hlsUrlAlt = live_hls_url($playKey, 1);
 $whepUrl = live_whep_url($playKey);
 $whepUrlAlt = live_whep_url($playKey, 1);
+$whipUrl = $canPublish ? live_whip_url($playKey) : '';
+$whipUrlAlt = $canPublish ? live_whip_url($playKey, 1) : '';
 $healthUrl = live_health_url();
+$waitTitle = $canPublish
+    ? ($isBrowser ? 'Kamerayı açın' : 'Yayın bekleniyor')
+    : 'Hoca bağlanıyor';
+$waitDetail = $canPublish
+    ? ($isBrowser ? 'Aşağıdaki düğmeyle tarayıcı kamerasını açın. Öğrenciler sizi izler.' : 'OBS’i başlatın.')
+    : '';
 $presentN = 0;
 foreach ($students as $s) {
     if ((int) $s['present'] === 1) {
@@ -76,7 +86,7 @@ foreach ($students as $s) {
   <title>Canlı Sınıf | <?= e($room['title']) ?></title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={theme:{extend:{colors:{navy:'#1a3fad',navy3:'#0a1a4e',accent:'#e8232a'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
-  <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>" />
+  <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/css/site.css') ?>" />
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
 </head>
 <body class="bg-black">
@@ -105,8 +115,8 @@ foreach ($students as $s) {
     <div class="live-stage">
       <video id="live-video" playsinline autoplay muted controls></video>
       <div id="wait-overlay" class="live-wait">
-        <p id="wait-title" class="font-display text-2xl"><?= $canPublish ? 'Yayın bekleniyor' : 'Hoca bağlanıyor' ?></p>
-        <p id="wait-detail" class="mt-2 text-sm text-white/70"<?= $canPublish ? '' : ' hidden' ?>><?= $canPublish ? 'OBS’i başlatın.' : '' ?></p>
+        <p id="wait-title" class="font-display text-2xl"><?= e($waitTitle) ?></p>
+        <p id="wait-detail" class="mt-2 text-sm text-white/70"<?= $waitDetail === '' ? ' hidden' : '' ?>><?= e($waitDetail) ?></p>
       </div>
       <p id="live-proto" class="absolute bottom-14 left-4 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white/80" hidden></p>
       <div class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= $presentN ?>/<?= count($students) ?> · <?= live_mins($room['started_at']) ?> dk</div>
@@ -128,7 +138,20 @@ foreach ($students as $s) {
     </aside>
   </div>
   <?php if ($canPublish): ?>
-  <section class="live-obs text-white">
+  <section class="live-obs live-obs--mode text-white">
+    <form method="post" action="<?= e(url('api/live.php')) ?>" class="live-mode-bar">
+      <input type="hidden" name="action" value="set_mode">
+      <input type="hidden" name="id" value="<?= $id ?>">
+      <input type="hidden" name="html" value="1">
+      <?= live_play_mode_picker('play_mode', $playMode, 'inline') ?>
+      <button class="live-mode-apply">Uygula</button>
+    </form>
+    <?php if ($isBrowser): ?>
+    <div class="live-obs-cam">
+      <button type="button" id="whip-toggle" class="live-cam-btn">Kamerayı aç</button>
+      <p class="live-obs-hint">Kamera ve mikrofon izni isteyecek. OBS gerekmez.</p>
+    </div>
+    <?php else: ?>
     <label class="live-obs-field">Sunucu
       <span class="live-obs-row">
         <input id="obs-server" readonly value="<?= e($rtmpUrl) ?>">
@@ -141,6 +164,7 @@ foreach ($students as $s) {
         <button type="button" data-copy="obs-key">Kopyala</button>
       </span>
     </label>
+    <?php endif; ?>
   </section>
   <?php endif; ?>
 </div>
@@ -148,10 +172,14 @@ foreach ($students as $s) {
 const base = <?= json_encode(url('')) ?>;
 const roomId = <?= $id ?>;
 window.LIVE_PLAYER = {
+  method: <?= json_encode($playMode) ?>,
+  publish: <?= $canPublish && $isBrowser ? 'true' : 'false' ?>,
   hlsUrl: <?= json_encode($hlsUrl) ?>,
   hlsUrlAlt: <?= json_encode($hlsUrlAlt) ?>,
   whepUrl: <?= json_encode($whepUrl) ?>,
   whepUrlAlt: <?= json_encode($whepUrlAlt) ?>,
+  whipUrl: <?= json_encode($whipUrl) ?>,
+  whipUrlAlt: <?= json_encode($whipUrlAlt) ?>,
   healthUrl: <?= json_encode($healthUrl) ?>
 };
 
@@ -185,8 +213,15 @@ setInterval(async () => {
   if (j.room && j.room.status === 'ended') {
     if (typeof window.livePlayerMarkEnded === 'function') window.livePlayerMarkEnded();
   }
+  const nextMode = j.room && j.room.play_mode;
+  if (nextMode && nextMode !== window.LIVE_PLAYER.method) {
+    location.reload();
+  }
 }, 2000);
 </script>
 <script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
+<?php if ($canPublish && $isBrowser): ?>
+<script src="<?= e(url('assets/js/live-publisher.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-publisher.js') ?>"></script>
+<?php endif; ?>
 </body>
 </html>

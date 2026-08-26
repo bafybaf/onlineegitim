@@ -10,6 +10,9 @@
   const whepUrls = [cfg.whepUrl, cfg.whepUrlAlt].filter(Boolean);
   const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
   const healthUrl = cfg.healthUrl || '';
+  const method = (cfg.method === 'webrtc' || cfg.method === 'browser' || cfg.method === 'hls')
+    ? cfg.method
+    : 'hls';
   let hls = null;
   let pc = null;
   let playing = false;
@@ -141,6 +144,9 @@
   }
 
   function waitHint(kind) {
+    if (method === 'browser') {
+      return ['Hoca bağlanıyor', 'Hoca tarayıcı kamerasını açınca ders başlar.'];
+    }
     if (kind === 'down') {
       if (isLocalDev()) {
         return ['Sunucu kapalı', 'Yerelde start-live-server.bat çalıştırın.'];
@@ -297,7 +303,8 @@
     busy = true;
     try {
       const mtx = await pingMtx();
-      if (playMode !== 'hls') {
+      const wantWhep = method === 'webrtc' || method === 'browser';
+      if (wantWhep && playMode !== 'hls') {
         let whepResult = null;
         for (let i = 0; i < whepUrls.length; i++) {
           setWait('Bağlanıyor…', '');
@@ -337,6 +344,10 @@
     setWait('Ders bitti', '');
     setProto('');
   };
+
+  if (cfg.publish) {
+    return;
+  }
 
   tryWhepOrHls();
   setInterval(tryWhepOrHls, 4000);

@@ -56,10 +56,11 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
     <?php if ($live): ?>
       <a class="btn-primary text-sm" href="<?= e(canli_url((int) $live['id'])) ?>">Odada devam et</a>
     <?php else: ?>
-      <form method="post" action="<?= e(url('api/live.php')) ?>">
+      <form method="post" action="<?= e(url('api/live.php')) ?>" class="flex flex-wrap items-end gap-2">
         <input type="hidden" name="action" value="start"><input type="hidden" name="html" value="1">
         <input type="hidden" name="group_id" value="<?= (int) $g['id'] ?>"><input type="hidden" name="topic" value="Ders">
         <input type="hidden" name="record" value="1"><input type="hidden" name="yoklama" value="1">
+        <?= live_play_mode_picker('play_mode', live_last_play_mode(), 'select') ?>
         <button class="btn-primary text-sm">Bu grubu canlı aç</button>
       </form>
     <?php endif; ?>
@@ -173,11 +174,12 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
             <td><?= e((string) $row['title']) ?><?= !empty($row['topic']) ? ' · ' . e((string) $row['topic']) : '' ?></td>
             <td><?= function_exists('schedule_badge') ? schedule_badge((string) $row['display_status']) : e((string) $row['display_status']) ?></td>
             <td><?php if (!empty($row['can_join']) && !empty($row['live_room'])): ?><a class="font-extrabold text-navy" href="<?= e(canli_url((int) $row['live_room']['id'])) ?>">Sınıfa gir</a><?php elseif (!empty($row['can_open'])): ?>
-              <form method="post" action="<?= e(url('api/live.php')) ?>" class="inline">
+              <form method="post" action="<?= e(url('api/live.php')) ?>" class="inline-flex flex-wrap items-end gap-2">
                 <input type="hidden" name="action" value="start"><input type="hidden" name="html" value="1">
                 <input type="hidden" name="group_id" value="<?= (int) $row['group_id'] ?>">
                 <input type="hidden" name="topic" value="<?= e((string) ($row['topic'] ?: $row['title'])) ?>">
                 <input type="hidden" name="record" value="1"><input type="hidden" name="yoklama" value="1">
+                <?= live_play_mode_picker('play_mode', live_last_play_mode(), 'hidden') ?>
                 <button class="btn-primary h-8 px-3 text-xs">Odayı aç</button>
               </form>
             <?php else: ?><a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/takvim')) ?>">Takvim</a><?php endif; ?></td>

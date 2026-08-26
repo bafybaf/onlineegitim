@@ -18,16 +18,23 @@ if ($action === 'start' && $u['role'] === 'ogretmen') {
     if (!$g) {
         json_out(['ok' => false, 'error' => 'group']);
     }
+    ensure_live_play_mode_schema();
+    $mode = live_remember_play_mode(post('play_mode'));
     $ex = $pdo->prepare("SELECT * FROM live_rooms WHERE group_id = ? AND status = 'live'");
     $ex->execute([$gid]);
     $room = $ex->fetch();
     if (!$room) {
         $key = live_new_stream_key($pdo);
-        $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key) VALUES (?,?,?,?,?,?,?)')
-            ->execute([$u['id'], $gid, $g['name'], post('topic') ?: 'Ders', post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key]);
+        try {
+            $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode) VALUES (?,?,?,?,?,?,?,?)')
+                ->execute([$u['id'], $gid, $g['name'], post('topic') ?: 'Ders', post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key, $mode]);
+        } catch (Throwable $e) {
+            $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key) VALUES (?,?,?,?,?,?,?)')
+                ->execute([$u['id'], $gid, $g['name'], post('topic') ?: 'Ders', post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key]);
+        }
         $rid = (int) $pdo->lastInsertId();
         $pdo->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')
-            ->execute([$rid, $u['id'], 'Sistem', 'Oda açıldı. Diğer hocaların canlı dersleri devam ediyor. OBS ile yayın başlatın.']);
+            ->execute([$rid, $u['id'], 'Sistem', live_start_chat_message($mode)]);
         $stu = $pdo->prepare('SELECT student_id FROM enrollments WHERE group_id = ?');
         $stu->execute([$gid]);
         $att = $pdo->prepare('INSERT INTO attendance (room_id, student_id, present) VALUES (?,?,0)');
@@ -37,11 +44,36 @@ if ($action === 'start' && $u['role'] === 'ogretmen') {
         $room = ['id' => $rid];
     } else {
         live_ensure_stream_key($pdo, $room);
+        try {
+            $pdo->prepare('UPDATE live_rooms SET play_mode = ? WHERE id = ?')->execute([$mode, (int) $room['id']]);
+        } catch (Throwable $e) {
+        }
     }
     if (post('html')) {
         redirect(canli_url((int) $room['id']));
     }
-    json_out(['ok' => true, 'id' => (int) $room['id']]);
+    json_out(['ok' => true, 'id' => (int) $room['id'], 'play_mode' => $mode]);
+}
+
+if ($action === 'set_mode' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
+    $id = (int) post('id');
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    ensure_live_play_mode_schema();
+    $mode = live_remember_play_mode(post('play_mode'));
+    try {
+        $pdo->prepare('UPDATE live_rooms SET play_mode = ? WHERE id = ?')->execute([$mode, $id]);
+    } catch (Throwable $e) {
+        json_out(['ok' => false, 'error' => 'schema'], 500);
+    }
+    if (post('html')) {
+        redirect(canli_url($id));
+    }
+    json_out(['ok' => true, 'play_mode' => $mode]);
 }
 
 if ($action === 'end') {
@@ -136,6 +168,8 @@ if ($action === 'poll') {
     if (live_user_can_publish($u, $room)) {
         $payload['rtmp_url'] = live_rtmp_url();
         $payload['stream_key'] = $key;
+        $payload['whip_url'] = live_whip_url($key);
+        $payload['whip_url_alt'] = live_whip_url($key, 1);
     }
     json_out($payload);
 }
