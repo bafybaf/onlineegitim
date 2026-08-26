@@ -48,7 +48,40 @@
     showWait(true);
   }
 
-  video.addEventListener('playing', onPlaying);
+  const unmuteBtn = document.getElementById('live-unmute');
+
+  function enableViewerSound() {
+    if (cfg.publish) return;
+    video.volume = 1;
+    video.muted = false;
+    video.removeAttribute('muted');
+    const playP = video.play();
+    if (playP) {
+      playP.catch(() => {
+        video.muted = true;
+        if (unmuteBtn) unmuteBtn.hidden = false;
+      });
+    }
+    if (unmuteBtn) unmuteBtn.hidden = !video.muted;
+  }
+
+  if (unmuteBtn) {
+    unmuteBtn.addEventListener('click', () => {
+      video.muted = false;
+      video.removeAttribute('muted');
+      video.volume = 1;
+      video.play().catch(() => {});
+      unmuteBtn.hidden = true;
+    });
+  }
+
+  video.addEventListener('playing', () => {
+    onPlaying();
+    enableViewerSound();
+  });
+  video.addEventListener('volumechange', () => {
+    if (unmuteBtn && !cfg.publish) unmuteBtn.hidden = !video.muted;
+  });
   video.addEventListener('waiting', () => { if (!playing) showWait(true); });
   video.addEventListener('error', onStall);
 
@@ -164,22 +197,22 @@
       return 'busy';
     }
     stopWhep();
-    const conn = new RTCPeerConnection({ iceServers: [] });
+    const conn = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
     pc = conn;
     conn.addTransceiver('video', { direction: 'recvonly' });
     conn.addTransceiver('audio', { direction: 'recvonly' });
     conn.ontrack = (ev) => {
       if (ended || conn !== pc) return;
-      let stream = ev.streams && ev.streams[0];
-      if (!stream) {
-        stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
-        if (!stream.getTracks().includes(ev.track)) {
-          stream.addTrack(ev.track);
-        }
+      let stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+      if (!stream.getTracks().includes(ev.track)) {
+        stream.addTrack(ev.track);
       }
       if (video.srcObject !== stream) {
         video.srcObject = stream;
       }
+      enableViewerSound();
       video.play().catch(() => {});
     };
     conn.onconnectionstatechange = () => {
@@ -229,6 +262,7 @@
     }
     playMode = 'webrtc';
     setProto('Canlı');
+    enableViewerSound();
     return true;
   }
 
@@ -266,6 +300,7 @@
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setProto('Canlı');
+          enableViewerSound();
           const edge = hls.liveSyncPosition;
           if (Number.isFinite(edge) && edge > 0) {
             try { video.currentTime = edge; } catch (e) {}
@@ -286,6 +321,7 @@
       video.srcObject = null;
       video.src = url;
       setProto('Canlı');
+      enableViewerSound();
       return video.play().then(() => true).catch(() => false);
     }
     setWait('Tarayıcı desteklemiyor', 'Chrome veya Edge kullanın.');

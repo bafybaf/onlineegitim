@@ -119,6 +119,7 @@ foreach ($students as $s) {
         <p id="wait-detail" class="mt-2 text-sm text-white/70"<?= $waitDetail === '' ? ' hidden' : '' ?>><?= e($waitDetail) ?></p>
       </div>
       <p id="live-proto" class="absolute bottom-14 left-4 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white/80" hidden></p>
+      <button type="button" id="live-unmute" class="live-unmute-btn" hidden>Sesi aç</button>
       <div class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= $presentN ?>/<?= count($students) ?> · <?= live_mins($room['started_at']) ?> dk</div>
     </div>
     <aside class="chat">
@@ -149,7 +150,9 @@ foreach ($students as $s) {
     <?php if ($isBrowser): ?>
     <div class="live-obs-cam">
       <button type="button" id="whip-toggle" class="live-cam-btn">Kamerayı aç</button>
-      <p class="live-obs-hint">Kamera ve mikrofon izni isteyecek. OBS gerekmez.</p>
+      <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Önizlemede ses kapalı</button>
+      <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
+      <p class="live-obs-hint">Kamera ve mikrofon izni isteyecek. Önizleme eko olmaması için sessizdir; öğrenciler sesi duyar. Kontrol için “Önizlemede ses”e basın.</p>
     </div>
     <?php else: ?>
     <label class="live-obs-field">Sunucu

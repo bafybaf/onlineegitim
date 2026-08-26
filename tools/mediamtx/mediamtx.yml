@@ -431,7 +431,7 @@ webrtcSTUNGatherTimeout: 5s
 # Time to wait for the WebRTC handshake to complete.
 webrtcHandshakeTimeout: 10s
 # Maximum time to gather tracks.
-webrtcTrackGatherTimeout: 2s
+webrtcTrackGatherTimeout: 5s
 
 ###############################################
 # Global settings -> SRT server

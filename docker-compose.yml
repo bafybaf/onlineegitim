@@ -64,6 +64,7 @@ services:
       MTX_HLSALLOWORIGINS: "*"
       MTX_WEBRTCALLOWORIGINS: "*"
       MTX_WEBRTCADDITIONALHOSTS: ${LIVE_HOST:-onlineilahiyat.com}
+      MTX_WEBRTCTRACKGATHERTIMEOUT: 5s
     ports:
       - "1935:1935"
       - "8888:8888"
