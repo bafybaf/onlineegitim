@@ -53,23 +53,22 @@ $students = $stu->fetchAll();
 $canPublish = live_user_can_publish($u, $room);
 $canEnd = $canPublish;
 $playKey = live_ensure_stream_key(db(), $room);
-$playMode = live_room_play_mode($room);
-$isBrowser = $playMode === 'browser';
-$streamKey = $canPublish ? $playKey : '';
-$rtmpUrl = $canPublish ? live_rtmp_url() : '';
 $hlsUrl = live_hls_url($playKey);
 $hlsUrlAlt = live_hls_url($playKey, 1);
 $whepUrl = live_whep_url($playKey);
 $whepUrlAlt = live_whep_url($playKey, 1);
 $whipUrl = $canPublish ? live_whip_url($playKey) : '';
 $whipUrlAlt = $canPublish ? live_whip_url($playKey, 1) : '';
+$screenKey = $playKey . '-screen';
+$hlsScreenUrl = live_hls_url($screenKey);
+$hlsScreenUrlAlt = live_hls_url($screenKey, 1);
+$whepScreenUrl = live_whep_url($screenKey);
+$whepScreenUrlAlt = live_whep_url($screenKey, 1);
+$whipScreenUrl = $canPublish ? live_whip_url($screenKey) : '';
+$whipScreenUrlAlt = $canPublish ? live_whip_url($screenKey, 1) : '';
 $healthUrl = live_health_url();
-$waitTitle = $canPublish
-    ? ($isBrowser ? 'Kamerayı açın' : 'Yayın bekleniyor')
-    : 'Hoca bağlanıyor';
-$waitDetail = $canPublish
-    ? ($isBrowser ? 'Aşağıdaki düğmeyle tarayıcı kamerasını açın. Öğrenciler sizi izler.' : 'OBS’i başlatın.')
-    : '';
+$doRecord = $canPublish && (int) ($room['record'] ?? 1) === 1 && ($room['status'] ?? '') === 'live';
+$waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
 $presentN = 0;
 foreach ($students as $s) {
     if ((int) $s['present'] === 1) {
@@ -88,6 +87,8 @@ foreach ($students as $s) {
   <script>tailwind.config={theme:{extend:{colors:{navy:'#1a3fad',navy3:'#0a1a4e',accent:'#e8232a'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/css/site.css') ?>" />
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body class="bg-black">
 <div class="live-shell<?= $canPublish ? ' live-shell--obs' : '' ?>">
@@ -108,21 +109,54 @@ foreach ($students as $s) {
       <?php if ($canEnd && $room['status'] === 'live'): ?>
         <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($back) ?>"><button class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Dersi bitir</button></form>
       <?php endif; ?>
-      <a href="<?= e(url($back)) ?>" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Ayrıl</a>
+      <a href="<?= e(url($back)) ?>" id="live-leave" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Ayrıl</a>
     </div>
   </header>
   <div class="live-main text-white">
-    <div class="live-stage">
-      <video id="live-video" playsinline autoplay muted controls></video>
-      <div id="wait-overlay" class="live-wait">
-        <p id="wait-title" class="font-display text-2xl"><?= e($waitTitle) ?></p>
-        <p id="wait-detail" class="mt-2 text-sm text-white/70"<?= $waitDetail === '' ? ' hidden' : '' ?>><?= e($waitDetail) ?></p>
+    <section class="live-board" id="live-board">
+      <?php if ($canPublish): ?>
+      <div class="live-board-bar">
+        <button type="button" class="live-board-tool is-on" data-tool="pen">Kalem</button>
+        <button type="button" class="live-board-tool" data-tool="erase">Silgi</button>
+        <button type="button" class="live-board-tool" data-tool="pan">Kaydır</button>
+        <span class="live-board-swatches">
+          <button type="button" class="live-board-dot is-on" data-color="#111827" style="background:#111827"></button>
+          <button type="button" class="live-board-dot" data-color="#e8232a" style="background:#e8232a"></button>
+          <button type="button" class="live-board-dot" data-color="#1a3fad" style="background:#1a3fad"></button>
+          <button type="button" class="live-board-dot" data-color="#047857" style="background:#047857"></button>
+          <button type="button" class="live-board-dot" data-color="#ffffff" style="background:#fff"></button>
+        </span>
+        <input type="range" id="board-size" min="2" max="18" value="4" aria-label="Kalınlık">
+        <button type="button" class="live-board-tool" data-act="undo">Geri</button>
+        <button type="button" class="live-board-tool" data-act="clear">Temizle</button>
+        <label class="live-board-tool live-board-file">PDF<input type="file" id="board-pdf" accept="application/pdf" hidden></label>
+        <button type="button" class="live-board-tool" data-act="zoomout">−</button>
+        <span id="board-zoom">100%</span>
+        <button type="button" class="live-board-tool" data-act="zoomin">+</button>
+        <button type="button" class="live-board-tool" data-act="zoomreset">1:1</button>
+        <button type="button" class="live-board-tool" data-act="prev">‹</button>
+        <span id="board-page">1</span>
+        <button type="button" class="live-board-tool" data-act="next">›</button>
       </div>
-      <p id="live-proto" class="absolute bottom-14 left-4 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white/80" hidden></p>
-      <button type="button" id="live-unmute" class="live-unmute-btn" hidden>Sesi aç</button>
-      <div class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= $presentN ?>/<?= count($students) ?> · <?= live_mins($room['started_at']) ?> dk</div>
-    </div>
-    <aside class="chat">
+      <?php endif; ?>
+      <div class="live-board-stage" id="board-stage">
+        <video id="board-screen" playsinline autoplay muted></video>
+        <canvas id="board-bg"></canvas>
+        <canvas id="board-draw"></canvas>
+      </div>
+    </section>
+    <div class="live-side">
+      <div class="live-stage">
+        <video id="live-video" playsinline autoplay muted controls></video>
+        <div id="wait-overlay" class="live-wait">
+          <p id="wait-title" class="font-display text-2xl"><?= e($waitTitle) ?></p>
+          <p id="wait-detail" hidden></p>
+        </div>
+        <p id="live-proto" class="absolute bottom-14 left-4 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white/80" hidden></p>
+        <button type="button" id="live-unmute" class="live-unmute-btn" hidden>Sesi aç</button>
+        <div class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= $presentN ?>/<?= count($students) ?> · <?= live_mins($room['started_at']) ?> dk</div>
+      </div>
+      <aside class="chat">
       <div class="border-b border-[#1d2744] px-4 py-3 font-extrabold">Sohbet · Yoklama</div>
       <div id="chat-log" class="chat-log text-sm"><?php foreach ($msgs as $m): ?><p><b><?= e($m['who_label']) ?>:</b> <?= e($m['body']) ?></p><?php endforeach; ?></div>
       <?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?>
@@ -136,38 +170,17 @@ foreach ($students as $s) {
         <input name="q" class="flex-1 rounded-lg bg-[#0b1020] px-3 py-2 text-sm outline-none" placeholder="Mesaj yazın" autocomplete="off">
         <button class="rounded-lg bg-navy px-3 font-extrabold">Gönder</button>
       </form>
-    </aside>
+      </aside>
+    </div>
   </div>
   <?php if ($canPublish): ?>
-  <section class="live-obs live-obs--mode text-white">
-    <form method="post" action="<?= e(url('api/live.php')) ?>" class="live-mode-bar">
-      <input type="hidden" name="action" value="set_mode">
-      <input type="hidden" name="id" value="<?= $id ?>">
-      <input type="hidden" name="html" value="1">
-      <?= live_play_mode_picker('play_mode', $playMode, 'inline') ?>
-      <button class="live-mode-apply">Uygula</button>
-    </form>
-    <?php if ($isBrowser): ?>
+  <section class="live-obs text-white">
     <div class="live-obs-cam">
       <button type="button" id="whip-toggle" class="live-cam-btn">Kamerayı aç</button>
+      <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranı beyaz tahtada paylaşın; kamera açık kalır">Ekran paylaş</button>
       <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Önizlemede ses kapalı</button>
       <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
-      <p class="live-obs-hint">Kamera ve mikrofon izni isteyecek. Önizleme eko olmaması için sessizdir; öğrenciler sesi duyar. Kontrol için “Önizlemede ses”e basın.</p>
     </div>
-    <?php else: ?>
-    <label class="live-obs-field">Sunucu
-      <span class="live-obs-row">
-        <input id="obs-server" readonly value="<?= e($rtmpUrl) ?>">
-        <button type="button" data-copy="obs-server">Kopyala</button>
-      </span>
-    </label>
-    <label class="live-obs-field">Anahtar
-      <span class="live-obs-row">
-        <input id="obs-key" readonly value="<?= e($streamKey) ?>">
-        <button type="button" data-copy="obs-key">Kopyala</button>
-      </span>
-    </label>
-    <?php endif; ?>
   </section>
   <?php endif; ?>
 </div>
@@ -175,15 +188,32 @@ foreach ($students as $s) {
 const base = <?= json_encode(url('')) ?>;
 const roomId = <?= $id ?>;
 window.LIVE_PLAYER = {
-  method: <?= json_encode($playMode) ?>,
-  publish: <?= $canPublish && $isBrowser ? 'true' : 'false' ?>,
+  method: 'browser',
+  publish: <?= $canPublish ? 'true' : 'false' ?>,
   hlsUrl: <?= json_encode($hlsUrl) ?>,
   hlsUrlAlt: <?= json_encode($hlsUrlAlt) ?>,
   whepUrl: <?= json_encode($whepUrl) ?>,
   whepUrlAlt: <?= json_encode($whepUrlAlt) ?>,
   whipUrl: <?= json_encode($whipUrl) ?>,
   whipUrlAlt: <?= json_encode($whipUrlAlt) ?>,
+  hlsScreenUrl: <?= json_encode($hlsScreenUrl) ?>,
+  hlsScreenUrlAlt: <?= json_encode($hlsScreenUrlAlt) ?>,
+  whepScreenUrl: <?= json_encode($whepScreenUrl) ?>,
+  whepScreenUrlAlt: <?= json_encode($whepScreenUrlAlt) ?>,
+  whipScreenUrl: <?= json_encode($whipScreenUrl) ?>,
+  whipScreenUrlAlt: <?= json_encode($whipScreenUrlAlt) ?>,
   healthUrl: <?= json_encode($healthUrl) ?>
+};
+window.LIVE_BOARD = {
+  publish: <?= $canPublish ? 'true' : 'false' ?>,
+  roomId: <?= $id ?>,
+  url: <?= json_encode(url('api/live.php')) ?>
+};
+window.LIVE_RECORD = {
+  on: <?= $doRecord ? 'true' : 'false' ?>,
+  roomId: <?= $id ?>,
+  url: <?= json_encode(url('api/live.php')) ?>,
+  started: <?= json_encode((string) ($room['started_at'] ?? '')) ?>
 };
 
 function esc(s) {
@@ -199,13 +229,6 @@ document.getElementById('chat-form').onsubmit = async (e) => {
 document.querySelectorAll('.att').forEach((cb) => cb.addEventListener('change', () => {
   fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=attend&room_id='+roomId+'&student_id='+cb.dataset.sid+'&present='+(cb.checked?'1':'0') });
 }));
-document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
-  const el = document.getElementById(b.dataset.copy);
-  if (!el) return;
-  try { await navigator.clipboard.writeText(el.value); b.textContent = 'Kopyalandı'; }
-  catch (err) { el.select(); document.execCommand('copy'); b.textContent = 'Kopyalandı'; }
-  setTimeout(() => { b.textContent = 'Kopyala'; }, 1500);
-}));
 setInterval(async () => {
   const r = await fetch(base + 'api/live.php?action=poll&id=' + roomId);
   const j = await r.json();
@@ -216,15 +239,13 @@ setInterval(async () => {
   if (j.room && j.room.status === 'ended') {
     if (typeof window.livePlayerMarkEnded === 'function') window.livePlayerMarkEnded();
   }
-  const nextMode = j.room && j.room.play_mode;
-  if (nextMode && nextMode !== window.LIVE_PLAYER.method) {
-    location.reload();
-  }
 }, 2000);
 </script>
 <script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
-<?php if ($canPublish && $isBrowser): ?>
+<script src="<?= e(url('assets/js/live-board.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-board.js') ?>"></script>
+<?php if ($canPublish): ?>
 <script src="<?= e(url('assets/js/live-publisher.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-publisher.js') ?>"></script>
+<script src="<?= e(url('assets/js/live-record.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-record.js') ?>"></script>
 <?php endif; ?>
 </body>
 </html>

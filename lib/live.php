@@ -120,40 +120,20 @@ function live_whip_url(string $streamKey, int $which = 0): string
     return live_whep_base() . '/' . $paths[$which] . '/whip';
 }
 
-function live_play_modes(): array
+function live_normalize_play_mode(?string $mode = null): string
 {
-    return [
-        'hls' => [
-            'label' => 'OBS + HLS',
-            'hint' => 'Mevcut düzen. OBS ile yayın; öğrenciler HLS izler.',
-        ],
-        'webrtc' => [
-            'label' => 'OBS + WebRTC',
-            'hint' => 'OBS ile yayın; öğrenciler önce WHEP dener, olmazsa HLS.',
-        ],
-        'browser' => [
-            'label' => 'Tarayıcı kamerası',
-            'hint' => 'OBS yok. Sınıfta kamerayı açın; öğrenciler sizi izler.',
-        ],
-    ];
-}
-
-function live_normalize_play_mode(?string $mode): string
-{
-    $mode = strtolower(trim((string) $mode));
-    return isset(live_play_modes()[$mode]) ? $mode : 'hls';
+    return 'browser';
 }
 
 function live_last_play_mode(): string
 {
-    return live_normalize_play_mode($_SESSION['live_play_mode'] ?? 'hls');
+    return 'browser';
 }
 
-function live_remember_play_mode(string $mode): string
+function live_remember_play_mode(string $mode = 'browser'): string
 {
-    $mode = live_normalize_play_mode($mode);
-    $_SESSION['live_play_mode'] = $mode;
-    return $mode;
+    $_SESSION['live_play_mode'] = 'browser';
+    return 'browser';
 }
 
 function ensure_live_play_mode_schema(): void
@@ -172,7 +152,7 @@ function ensure_live_play_mode_schema(): void
             }
         }
         if (!$has) {
-            db()->exec("ALTER TABLE live_rooms ADD COLUMN play_mode VARCHAR(20) NOT NULL DEFAULT 'hls' AFTER stream_key");
+            db()->exec("ALTER TABLE live_rooms ADD COLUMN play_mode VARCHAR(20) NOT NULL DEFAULT 'browser' AFTER stream_key");
         }
     } catch (Throwable $e) {
         $done = false;
@@ -185,48 +165,155 @@ function live_room_play_mode(array $room): string
     return live_normalize_play_mode($room['play_mode'] ?? null);
 }
 
-function live_start_chat_message(string $mode): string
+function live_start_chat_message(string $mode = 'browser'): string
 {
-    return match (live_normalize_play_mode($mode)) {
-        'browser' => 'Oda açıldı. Sınıfta Kamerayı açın; öğrenciler sizi izler.',
-        'webrtc' => 'Oda açıldı. OBS ile yayın başlatın (WebRTC). Yayın anahtarı canlı sınıf sayfasındadır.',
-        default => 'Oda açıldı. Diğer hocaların canlı dersleri devam ediyor. OBS ile yayın başlatın.',
-    };
+    return 'Oda açıldı.';
+}
+
+function ensure_live_board_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec(
+            'CREATE TABLE IF NOT EXISTS live_board (
+              room_id INT UNSIGNED PRIMARY KEY,
+              pdf_path VARCHAR(255) NOT NULL DEFAULT \'\',
+              page INT UNSIGNED NOT NULL DEFAULT 1,
+              pages INT UNSIGNED NOT NULL DEFAULT 0,
+              zoom DECIMAL(5,2) NOT NULL DEFAULT 1,
+              pan_x DECIMAL(6,3) NOT NULL DEFAULT 0,
+              pan_y DECIMAL(6,3) NOT NULL DEFAULT 0,
+              strokes MEDIUMTEXT NOT NULL,
+              rev INT UNSIGNED NOT NULL DEFAULT 0,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB'
+        );
+        $cols = [];
+        foreach (db()->query('SHOW COLUMNS FROM live_board')->fetchAll() as $col) {
+            $cols[(string) $col['Field']] = true;
+        }
+        if (!isset($cols['zoom'])) {
+            db()->exec('ALTER TABLE live_board ADD COLUMN zoom DECIMAL(5,2) NOT NULL DEFAULT 1');
+        }
+        if (!isset($cols['pan_x'])) {
+            db()->exec('ALTER TABLE live_board ADD COLUMN pan_x DECIMAL(6,3) NOT NULL DEFAULT 0');
+        }
+        if (!isset($cols['pan_y'])) {
+            db()->exec('ALTER TABLE live_board ADD COLUMN pan_y DECIMAL(6,3) NOT NULL DEFAULT 0');
+        }
+        if (!isset($cols['screen'])) {
+            db()->exec('ALTER TABLE live_board ADD COLUMN screen TINYINT NOT NULL DEFAULT 0');
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function live_board_row(PDO $pdo, int $roomId): array
+{
+    ensure_live_board_schema();
+    $st = $pdo->prepare('SELECT * FROM live_board WHERE room_id = ?');
+    $st->execute([$roomId]);
+    $row = $st->fetch();
+    if ($row) {
+        return $row;
+    }
+    $pdo->prepare('INSERT INTO live_board (room_id, strokes) VALUES (?,?)')->execute([$roomId, '{}']);
+    $st->execute([$roomId]);
+    return $st->fetch() ?: [
+        'room_id' => $roomId,
+        'pdf_path' => '',
+        'page' => 1,
+        'pages' => 0,
+        'strokes' => '{}',
+        'rev' => 0,
+    ];
+}
+
+function live_board_public(array $row, int $roomId): array
+{
+    $pdf = trim((string) ($row['pdf_path'] ?? ''));
+    $strokes = json_decode((string) ($row['strokes'] ?? '{}'), true);
+    if (!is_array($strokes)) {
+        $strokes = [];
+    }
+    return [
+        'rev' => (int) ($row['rev'] ?? 0),
+        'page' => max(1, (int) ($row['page'] ?? 1)),
+        'pages' => max(0, (int) ($row['pages'] ?? 0)),
+        'pdf' => $pdf !== '' ? url('api/dosya.php') . '?tur=tahta&id=' . $roomId : '',
+        'strokes' => $strokes,
+        'zoom' => max(1, min(6, (float) ($row['zoom'] ?? 1))),
+        'panX' => max(-3, min(3, (float) ($row['pan_x'] ?? 0))),
+        'panY' => max(-3, min(3, (float) ($row['pan_y'] ?? 0))),
+        'screen' => !empty($row['screen']) ? 1 : 0,
+    ];
+}
+
+function live_board_save(PDO $pdo, int $roomId, array $fields): array
+{
+    $row = live_board_row($pdo, $roomId);
+    $pdf = array_key_exists('pdf_path', $fields) ? (string) $fields['pdf_path'] : (string) $row['pdf_path'];
+    $page = array_key_exists('page', $fields) ? max(1, (int) $fields['page']) : max(1, (int) $row['page']);
+    $pages = array_key_exists('pages', $fields) ? max(0, (int) $fields['pages']) : max(0, (int) $row['pages']);
+    $strokes = array_key_exists('strokes', $fields) ? (string) $fields['strokes'] : (string) $row['strokes'];
+    $zoom = array_key_exists('zoom', $fields) ? max(1, min(6, (float) $fields['zoom'])) : max(1, min(6, (float) ($row['zoom'] ?? 1)));
+    $panX = array_key_exists('pan_x', $fields) ? max(-3, min(3, (float) $fields['pan_x'])) : max(-3, min(3, (float) ($row['pan_x'] ?? 0)));
+    $panY = array_key_exists('pan_y', $fields) ? max(-3, min(3, (float) $fields['pan_y'])) : max(-3, min(3, (float) ($row['pan_y'] ?? 0)));
+    $screen = array_key_exists('screen', $fields) ? ((int) $fields['screen'] ? 1 : 0) : ((int) ($row['screen'] ?? 0) ? 1 : 0);
+    $rev = (int) ($row['rev'] ?? 0) + 1;
+    try {
+        $pdo->prepare('UPDATE live_board SET pdf_path=?, page=?, pages=?, zoom=?, pan_x=?, pan_y=?, screen=?, strokes=?, rev=? WHERE room_id=?')
+            ->execute([$pdf, $page, $pages, $zoom, $panX, $panY, $screen, $strokes, $rev, $roomId]);
+    } catch (Throwable $e) {
+        $pdo->prepare('UPDATE live_board SET pdf_path=?, page=?, pages=?, strokes=?, rev=? WHERE room_id=?')
+            ->execute([$pdf, $page, $pages, $strokes, $rev, $roomId]);
+    }
+    return live_board_row($pdo, $roomId);
+}
+
+function live_board_parse_stroke($raw): ?array
+{
+    if (!is_array($raw)) {
+        return null;
+    }
+    $type = ($raw['t'] ?? '') === 'erase' ? 'erase' : 'pen';
+    $color = (string) ($raw['c'] ?? '#111827');
+    if (!preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
+        $color = '#111827';
+    }
+    $width = (float) ($raw['w'] ?? 3);
+    $width = max(1, min(28, $width));
+    $pts = $raw['p'] ?? [];
+    if (!is_array($pts) || count($pts) < 1 || count($pts) > 400) {
+        return null;
+    }
+    $out = [];
+    foreach ($pts as $pt) {
+        if (!is_array($pt) || !isset($pt[0], $pt[1])) {
+            continue;
+        }
+        $x = max(0, min(1, (float) $pt[0]));
+        $y = max(0, min(1, (float) $pt[1]));
+        $pr = isset($pt[2]) ? max(0.05, min(1, (float) $pt[2])) : 1;
+        $out[] = [round($x, 4), round($y, 4), round($pr, 3)];
+        if (count($out) >= 400) {
+            break;
+        }
+    }
+    if ($out === []) {
+        return null;
+    }
+    return ['t' => $type, 'c' => $color, 'w' => $width, 'p' => $out];
 }
 
 function live_play_mode_picker(string $name = 'play_mode', ?string $selected = null, string $layout = 'cards'): string
 {
-    $selected = live_normalize_play_mode($selected ?? live_last_play_mode());
-    if ($layout === 'hidden') {
-        return '<input type="hidden" name="' . e($name) . '" value="' . e($selected) . '">';
-    }
-    if ($layout === 'select') {
-        $html = '<label class="live-mode-select">Yayın yöntemi';
-        $html .= '<select name="' . e($name) . '" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm">';
-        foreach (live_play_modes() as $key => $meta) {
-            $sel = $key === $selected ? ' selected' : '';
-            $html .= '<option value="' . e($key) . '"' . $sel . '>' . e($meta['label']) . '</option>';
-        }
-        $html .= '</select></label>';
-        return $html;
-    }
-    $cls = $layout === 'inline' ? 'live-mode-list live-mode-list--inline' : 'live-mode-list';
-    $html = '<fieldset class="live-mode-pick">';
-    $html .= '<legend class="live-mode-legend">Yayın yöntemi</legend>';
-    $html .= '<div class="' . $cls . '">';
-    foreach (live_play_modes() as $key => $meta) {
-        $id = preg_replace('/[^a-z0-9_-]+/i', '-', $name) . '-' . $key . '-' . substr(md5($layout . $selected), 0, 4);
-        $checked = $key === $selected ? ' checked' : '';
-        $html .= '<label class="live-mode-card" for="' . e($id) . '">';
-        $html .= '<input type="radio" name="' . e($name) . '" id="' . e($id) . '" value="' . e($key) . '"' . $checked . '>';
-        $html .= '<span class="live-mode-title">' . e($meta['label']) . '</span>';
-        if ($layout !== 'inline') {
-            $html .= '<span class="live-mode-hint">' . e($meta['hint']) . '</span>';
-        }
-        $html .= '</label>';
-    }
-    $html .= '</div></fieldset>';
-    return $html;
+    return '';
 }
 
 function live_health_url(): string

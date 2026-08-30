@@ -15,7 +15,7 @@ define('DB_USER', oi_env('DB_USER', 'root'));
 define('DB_PASS', oi_env('DB_PASS', ''));
 define('BASE_URL', oi_env('BASE_URL', '/online-ilahiyat'));
 define('APP_NAME', 'Online İlahiyat');
-// OBS RTMP host. Boşsa admin live_host, o da boşsa sayfa host'u.
+// WebRTC ICE / MediaMTX ek host. Boşsa admin live_host, o da boşsa sayfa host'u.
 define('LIVE_HOST', oi_env('LIVE_HOST', ''));
 // HTTPS alt alanlar (Coolify). Boşsa yerel http://HOST:8888 / :8889 kullanılır.
 define('LIVE_HLS_BASE', rtrim(oi_env('LIVE_HLS_BASE', ''), '/'));

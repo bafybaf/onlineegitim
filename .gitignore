@@ -9,6 +9,12 @@ storage/*.log
 storage/security/*.json
 storage/academy/**
 !storage/academy/.gitkeep
+storage/vod/**
+!storage/vod/.gitkeep
+storage/live-board/**
+!storage/live-board/.gitkeep
+storage/notes/**
+!storage/notes/.gitkeep
 tools/mediamtx/*.exe
 tools/mediamtx/*.log
 tools/mediamtx/*.zip

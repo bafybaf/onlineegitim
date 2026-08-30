@@ -51,11 +51,10 @@ group_flash_html();
       <?php if (!empty($g['live_room'])): ?>
         <a class="btn-primary text-sm" href="<?= e(canli_url((int) $g['live_room']['id'])) ?>">Odada devam et</a>
       <?php else: ?>
-        <form method="post" action="<?= e(url('api/live.php')) ?>" class="flex flex-wrap items-end gap-2">
+        <form method="post" action="<?= e(url('api/live.php')) ?>">
           <input type="hidden" name="action" value="start"><input type="hidden" name="html" value="1">
           <input type="hidden" name="group_id" value="<?= (int) $g['id'] ?>"><input type="hidden" name="topic" value="Ders">
           <input type="hidden" name="record" value="1"><input type="hidden" name="yoklama" value="1">
-          <?= live_play_mode_picker('play_mode', live_last_play_mode(), 'select') ?>
           <button class="btn-outline text-sm">Bu grubu canlı aç</button>
         </form>
       <?php endif; ?>

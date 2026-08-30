@@ -10,9 +10,6 @@
   const whepUrls = [cfg.whepUrl, cfg.whepUrlAlt].filter(Boolean);
   const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
   const healthUrl = cfg.healthUrl || '';
-  const method = (cfg.method === 'webrtc' || cfg.method === 'browser' || cfg.method === 'hls')
-    ? cfg.method
-    : 'hls';
   let hls = null;
   let pc = null;
   let playing = false;
@@ -177,16 +174,10 @@
   }
 
   function waitHint(kind) {
-    if (method === 'browser') {
-      return ['Hoca bağlanıyor', 'Hoca tarayıcı kamerasını açınca ders başlar.'];
+    if (kind === 'down' && isLocalDev()) {
+      return ['Sunucu kapalı', ''];
     }
-    if (kind === 'down') {
-      if (isLocalDev()) {
-        return ['Sunucu kapalı', 'Yerelde start-live-server.bat çalıştırın.'];
-      }
-      return ['Yayın henüz yok', 'OBS’te sunucu rtmp://' + location.hostname + ':1935/live — yayın anahtarı bu sınıftaki anahtar.'];
-    }
-    return ['Yayın bekleniyor', 'OBS’i başlatın. Sunucu rtmp://' + location.hostname + ':1935/live'];
+    return ['Hoca bağlanıyor', ''];
   }
 
   async function startWhep(url) {
@@ -324,7 +315,7 @@
       enableViewerSound();
       return video.play().then(() => true).catch(() => false);
     }
-    setWait('Tarayıcı desteklemiyor', 'Chrome veya Edge kullanın.');
+    setWait('Tarayıcı desteklemiyor', '');
     return Promise.resolve(false);
   }
 
@@ -339,8 +330,7 @@
     busy = true;
     try {
       const mtx = await pingMtx();
-      const wantWhep = method === 'webrtc' || method === 'browser';
-      if (wantWhep && playMode !== 'hls') {
+      if (playMode !== 'hls') {
         let whepResult = null;
         for (let i = 0; i < whepUrls.length; i++) {
           setWait('Bağlanıyor…', '');
@@ -377,6 +367,9 @@
     playing = false;
     stopWhep();
     stopHls();
+    if (typeof window.liveScreenWatch === 'function') {
+      window.liveScreenWatch(false);
+    }
     setWait('Ders bitti', '');
     setProto('');
   };
@@ -387,4 +380,119 @@
 
   tryWhepOrHls();
   setInterval(tryWhepOrHls, 4000);
+})();
+
+(function () {
+  const cfg = window.LIVE_PLAYER || {};
+  const el = document.getElementById('board-screen');
+  if (!el || cfg.publish) return;
+
+  const whepUrls = [cfg.whepScreenUrl, cfg.whepScreenUrlAlt].filter(Boolean);
+  const hlsUrls = [cfg.hlsScreenUrl, cfg.hlsScreenUrlAlt].filter(Boolean);
+  let want = false;
+  let pc = null;
+  let hls = null;
+  let busy = false;
+
+  function stop() {
+    if (pc) {
+      try { pc.close(); } catch (e) {}
+      pc = null;
+    }
+    if (hls) {
+      try { hls.destroy(); } catch (e) {}
+      hls = null;
+    }
+    el.srcObject = null;
+    el.removeAttribute('src');
+  }
+
+  async function startWhep(url) {
+    if (!url || typeof RTCPeerConnection === 'undefined') return false;
+    stop();
+    const conn = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    pc = conn;
+    conn.addTransceiver('video', { direction: 'recvonly' });
+    conn.ontrack = (ev) => {
+      if (conn !== pc || !want) return;
+      el.srcObject = ev.streams[0] || new MediaStream([ev.track]);
+      el.muted = true;
+      el.play().catch(() => {});
+    };
+    const offer = await conn.createOffer();
+    await conn.setLocalDescription(offer);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp', Accept: 'application/sdp' },
+        body: conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp
+      });
+    } catch (e) {
+      stop();
+      return false;
+    }
+    if (!res.ok) {
+      stop();
+      return false;
+    }
+    const sdp = await res.text();
+    if (!sdp) {
+      stop();
+      return false;
+    }
+    await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
+    return true;
+  }
+
+  function startHls(url) {
+    if (!url) return false;
+    stop();
+    if (window.Hls && Hls.isSupported()) {
+      hls = new Hls({ lowLatencyMode: false, liveSyncDurationCount: 2, maxBufferLength: 4 });
+      hls.loadSource(url);
+      hls.attachMedia(el);
+      el.muted = true;
+      el.play().catch(() => {});
+      return true;
+    }
+    if (el.canPlayType('application/vnd.apple.mpegurl')) {
+      el.src = url;
+      el.muted = true;
+      el.play().catch(() => {});
+      return true;
+    }
+    return false;
+  }
+
+  async function connect() {
+    if (!want || busy) return;
+    if (el.videoWidth > 0 || (el.srcObject && el.readyState >= 2)) return;
+    busy = true;
+    try {
+      for (let i = 0; i < whepUrls.length; i++) {
+        if (await startWhep(whepUrls[i])) return;
+      }
+      for (let i = 0; i < hlsUrls.length; i++) {
+        if (startHls(hlsUrls[i])) return;
+      }
+    } finally {
+      busy = false;
+    }
+  }
+
+  window.liveScreenWatch = function (on) {
+    want = !!on;
+    if (!want) {
+      stop();
+      return;
+    }
+    connect();
+  };
+
+  setInterval(() => {
+    if (want) connect();
+  }, 4000);
 })();

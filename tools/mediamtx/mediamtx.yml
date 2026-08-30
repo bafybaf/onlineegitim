@@ -1,5 +1,5 @@
-# Online Ilahiyat: OBS sunucu rtmp://HOST:1935/live  +  anahtar {ANAHTAR}
-# (OBS birlestirince rtmp://HOST:1935/live/{ANAHTAR} = MediaMTX path live/{ANAHTAR})
+# Online Ilahiyat: tarayici kamerasi WHIP / izleme WHEP + HLS
+# RTMP/OBS kapali. Path: live/{ANAHTAR}
 # Oynatma: WHEP http://SAYFA_HOST:8889/live/{ANAHTAR}/whep
 #          HLS  http://SAYFA_HOST:8888/live/{ANAHTAR}/index.m3u8?cookieCheck=1
 # yml degisince start-live-server.bat kapatilip yeniden acilmali.
@@ -292,7 +292,7 @@ rtspTrustedProxies: []
 # Global settings -> RTMP server
 
 # Enable the RTMP server, which allows to publish and read streams with the RTMP protocol.
-rtmp: true
+rtmp: false
 # Use the secure protocol variant (RTMPS).
 # Available values are "no", "strict", "optional".
 rtmpEncryption: "no"

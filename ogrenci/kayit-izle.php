@@ -16,6 +16,8 @@ $r = $st->fetch();
 if (!$r) {
     redirect('ogrenci/kayitlar');
 }
+$backGid = (int) ($_GET['grup'] ?? $r['group_id'] ?? 0);
+$back = $backGid > 0 ? 'ogrenci/kayitlar.php?grup=' . $backGid : 'ogrenci/kayitlar';
 $src = '';
 if (!empty($r['video_path'])) {
     $src = url('api/dosya.php?tur=video&id=' . (int) $r['id']);
@@ -24,7 +26,7 @@ if (!empty($r['video_path'])) {
 }
 panel_head('ogrenci', 'kayitlar', (string) $r['title'] . ' | Kayıt', $u);
 ?>
-<p class="mb-4"><a class="text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/kayitlar')) ?>">← Ders kayıtları</a></p>
+<p class="mb-4"><a class="text-sm font-extrabold text-navy" href="<?= e(url($back)) ?>">← <?= e($r['gname']) ?> kayıtları</a></p>
 <article class="card overflow-hidden p-5">
   <p class="text-xs font-extrabold uppercase text-navy"><?= e($r['gname']) ?> · <?= e($r['tname']) ?></p>
   <h2 class="font-display mt-1 text-3xl"><?= e($r['title']) ?></h2>
@@ -34,7 +36,7 @@ panel_head('ogrenci', 'kayitlar', (string) $r['title'] . ' | Kayıt', $u);
   <?php elseif (!empty($r['video_url']) && empty($r['video_path']) && !preg_match('/\.(mp4|webm|mov)(\?|$)/i', $src)): ?>
     <p class="mt-6"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
   <?php else: ?>
-    <video class="mt-6 w-full rounded-2xl bg-black" controls preload="metadata" src="<?= e($src) ?>"></video>
+    <video class="mt-6 w-full rounded-2xl bg-black aspect-video object-contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" src="<?= e($src) ?>" oncontextmenu="return false"></video>
   <?php endif; ?>
 </article>
 <?php panel_foot();

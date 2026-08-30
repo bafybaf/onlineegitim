@@ -20,7 +20,7 @@ membership_panel_banner($u);
   <?php if ($can): ?>
   <a class="btn-primary" href="<?= e(canli_url((int) $r['id'])) ?>">Gir</a>
   <?php else: ?>
-  <a class="btn-outline" href="<?= e(url('ogrenci/kayitlar')) ?>">Kayıttan izle</a>
+  <a class="btn-outline" href="<?= e(url('ogrenci/kayitlar.php?grup=' . (int) $r['group_id'])) ?>">Kayıttan izle</a>
   <?php endif; ?>
   </div>
 <?php endforeach; if (!$mine) echo '<p class="text-muted">Açık oda yok.</p>'; ?>

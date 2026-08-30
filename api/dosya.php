@@ -51,6 +51,22 @@ if ($tur === 'video') {
     }
     $rel = (string) $row['file_path'];
     $downloadName = academy_slug((string) $row['title']);
+} elseif ($tur === 'tahta') {
+    $st = db()->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_access($u, $room)) {
+        http_response_code(403);
+        exit('Yetkiniz yok.');
+    }
+    ensure_live_board_schema();
+    $board = live_board_row(db(), $id);
+    $rel = trim((string) ($board['pdf_path'] ?? ''));
+    if ($rel === '') {
+        http_response_code(404);
+        exit('Dosya yok.');
+    }
+    $downloadName = 'tahta';
 } else {
     http_response_code(404);
     exit('Dosya yok.');
@@ -73,7 +89,14 @@ $mime = match ($ext) {
     default => 'application/octet-stream',
 };
 $inline = in_array($ext, ['mp4', 'webm', 'mov', 'pdf', 'jpg', 'jpeg', 'png', 'webp'], true);
+$isVideo = in_array($ext, ['mp4', 'webm', 'mov'], true);
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . (string) filesize($abs));
-header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $downloadName . '.' . $ext . '"');
+header('Cache-Control: private, no-store');
+if ($isVideo) {
+    header('Content-Disposition: inline');
+    header('X-Content-Type-Options: nosniff');
+} else {
+    header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . $downloadName . '.' . $ext . '"');
+}
 readfile($abs);

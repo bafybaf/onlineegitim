@@ -348,7 +348,6 @@ function schedule_actions(array $row, string $role, string $pageBase): string
             . '<input type="hidden" name="topic" value="' . e((string) ($row['topic'] ?: $row['title'])) . '">'
             . '<input type="hidden" name="record" value="1">'
             . '<input type="hidden" name="yoklama" value="1">'
-            . live_play_mode_picker('play_mode', live_last_play_mode(), 'hidden')
             . '<button class="btn-primary h-8 px-3 text-xs">Odayı aç</button></form>';
     }
     if (in_array($role, ['ogretmen', 'admin'], true) && ($row['status'] ?? '') !== 'iptal' && ($row['display_status'] ?? '') !== 'bitti') {

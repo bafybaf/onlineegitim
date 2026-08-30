@@ -1,6 +1,6 @@
 # onlineilahiyat.com — Coolify kurulum kılavuzu
 
-Bu dosya VPS + Coolify ile siteyi, veritabanını ve canlı yayını (OBS + MediaMTX) ayağa kaldırmak içindir. Adımları **sırayla** uygulayın; birini atlamayın.
+Bu dosya VPS + Coolify ile siteyi, veritabanını ve canlı yayını (tarayıcı kamerası + MediaMTX) ayağa kaldırmak içindir. Adımları **sırayla** uygulayın; birini atlamayın.
 
 Yerel XAMPP (`http://localhost/online-ilahiyat`) durur. Üretim adresi: `https://onlineilahiyat.com`
 
@@ -57,7 +57,6 @@ Aşağıdaki portlar **açık** olmalı. Hostinger’da hem panel güvenlik duva
 | 443 TCP | Gelen | Site, Coolify proxy, SSL |
 | 8000 TCP | Gelen | Coolify panel (isterseniz sonra kapatıp alt alan kullanın) |
 | 6001–6002 TCP | Gelen | Coolify websocket (panel terminal) |
-| **1935 TCP** | Gelen | OBS RTMP |
 | **8888 TCP** | Gelen | HLS (yedek / doğrudan) |
 | **8889 TCP** | Gelen | WebRTC WHEP |
 | **8189 UDP** | Gelen | WebRTC ICE |
@@ -70,7 +69,6 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 ufw allow 8000/tcp
 ufw allow 6001:6002/tcp
-ufw allow 1935/tcp
 ufw allow 8888:8889/tcp
 ufw allow 8189/udp
 ufw enable
@@ -151,7 +149,7 @@ LIVE_WHEP_BASE=https://whep.onlineilahiyat.com
 
 - `BASE_URL` **boş** kalacak (site kök domainde).
 - `ADMIN_PASSWORD` en az 10 karakter. Container açılınca yönetici bu bilgilerle oluşur. Boş bırakırsanız ilk ziyaret `https://onlineilahiyat.com/kurulum` sayfasını açar.
-- `LIVE_HOST` OBS’in bağlanacağı host; genelde aynı domain.
+- `LIVE_HOST` WebRTC ICE için ek host; genelde aynı domain.
 - Şifrelerde `:` `#` `=` gibi karakterlerden kaçının (Coolify parse hatası olmasın).
 
 Kaydet.
@@ -186,7 +184,7 @@ DNS oturduktan sonra:
 
 Coolify tek servise iki domain/port vermezse: **+ New Resource** → aynı `mediamtx` imajına proxy yerine, Compose’da `expose: 8888/8889` duruyor; UI’de “Ports Exposes” / “Make it public” ile ayrı FQDN atayın.
 
-OBS **RTMP** proxy’den geçmez. `1935` host’a `ports:` ile açıktır: `rtmp://onlineilahiyat.com:1935/live`
+Tercih edilen kurulum: HLS/WHEP aynı siteden (`/mtx-hls`, `/mtx-whep`) gider; ayrı `hls` / `whep` alt alanı gerekmez. `LIVE_HLS_BASE` ve `LIVE_WHEP_BASE` boş bırakılabilir.
 
 ---
 
@@ -200,7 +198,7 @@ OBS **RTMP** proxy’den geçmez. `1935` host’a `ports:` ile açıktır: `rtmp
 Hata örnekleri:
 
 - **SSL pending** → DNS henüz `76.13.14.253` adresine bakmıyor
-- **port already allocated 1935** → sunucuda başka MediaMTX / eski compose var; durdurun
+- **port already allocated 8888/8889** → sunucuda başka MediaMTX / eski compose var; durdurun
 - **app unhealthy** → log: `docker` / Coolify Logs; çoğu zaman DB şifresi eşleşmiyor veya `ADMIN_PASSWORD` 10 karakterden kısa
 
 ---
@@ -231,7 +229,7 @@ Kırık CSS / yönlendirme `/online-ilahiyat/...` görürseniz `BASE_URL` boş g
 `https://onlineilahiyat.com/wiys` → giriş.
 
 1. **SEO / site URL** (varsa `seo_canonical_base` / site adresi): `https://onlineilahiyat.com`
-2. **Canlı yayın / live_host**: `onlineilahiyat.com` (OBS RTMP host)
+2. Canlı yayın: hoca sınıfta **Kamerayı aç** ile tarayıcıdan yayınlar; ayrı OBS kurulumu yok
 3. **SMTP** — iletişim ve kayıt mailleri
 4. **PayTR** — sonraki madde
 5. **Google** — sonraki madde
@@ -266,21 +264,17 @@ Admin → Google: Client ID / Secret, özelliği açın. Eski `localhost` URI’
 
 ---
 
-## 14) Canlı yayın (OBS)
+## 14) Canlı yayın (tarayıcı kamerası)
 
 1. Coolify’de `mediamtx` **running**
-2. Öğretmen: `https://onlineilahiyat.com/giris-ders` → canlı sınıf
-3. OBS:
-   - Servis: **Özel**
-   - Sunucu: `rtmp://onlineilahiyat.com:1935/live`
-   - Yayın anahtarı: sınıftaki anahtar (ör. `oda-…`) — sunucu satırına yapıştırmayın
-4. Önerilen: 720p30, keyframe 1–2 sn, kulaklık (hoparlör yankı yapar)
-5. Öğrenci aynı odayı **HTTPS** siteden açmalı; yayın `https://hls.onlineilahiyat.com` / `https://whep.onlineilahiyat.com` üzerinden gelir
+2. Öğretmen: `https://onlineilahiyat.com/giris-ders` → odayı aç → sınıfta **Kamerayı aç**
+3. Tarayıcı kamera ve mikrofon izni ister (HTTPS gerekir; localhost hariç)
+4. Öğrenciler aynı odayı **HTTPS** siteden açar; önce WHEP, olmazsa HLS
 
 Kontrol:
 
-- VPS IP:1935 dışarıdan kapalıysa OBS “bağlanılamıyor”
-- HLS SSL yoksa tarayıcı yayını bloklar (karma içerik) — 7.2 tamamlanmış olmalı
+- Kamera izni reddedilirse yayın başlamaz
+- HLS/WHEP SSL yoksa tarayıcı yayını bloklar (karma içerik)
 - `LIVE_HLS_BASE` / `LIVE_WHEP_BASE` env yanlışsa oynatıcı localhost portuna gider; Redeploy
 
 WebRTC ICE için UDP **8189** şart. Sadece TCP 8889 yetmez.
@@ -328,7 +322,7 @@ mariadb-dump -u root -p online_ilahiyat > /root/backup-$(date +%F).sql
 İşiniz bitince işaretleyin:
 
 - [ ] Coolify admin hesabı oluştu
-- [ ] Firewall: 80, 443, 1935, 8888, 8889, 8189/udp
+- [ ] Firewall: 80, 443, 8888, 8889, 8189/udp
 - [ ] DNS: `@`, `www`, `hls`, `whep` → `76.13.14.253`
 - [ ] GitHub `bafybaf/onlineegitim` + Coolify erişimi
 - [ ] Env: `DB_PASS`, `ADMIN_PASSWORD` (10+), `BASE_URL` boş, HLS/WHEP https
@@ -338,7 +332,7 @@ mariadb-dump -u root -p online_ilahiyat > /root/backup-$(date +%F).sql
 - [ ] `/wiys` ile yönetici girişi
 - [ ] PayTR callback HTTPS
 - [ ] Google redirect HTTPS
-- [ ] OBS `rtmp://onlineilahiyat.com:1935/live` + anahtar
+- [ ] Hoca sınıfta Kamerayı aç; öğrenci HTTPS’ten izler
 - [ ] Öğrenci tarayıcıda ses/görüntü (HTTPS HLS veya WHEP)
 
 ---
@@ -351,8 +345,8 @@ Coolify proxy `X-Forwarded-Proto: https` gönderir; uygulama bunu kullanır. Hâ
 **Linkler `/online-ilahiyat/` ile üretiliyor**  
 `BASE_URL` boş değil. Env’i boş kaydedip Redeploy.
 
-**OBS bağlanıyor, izleyici boş**  
-8888/8889 domain SSL + `LIVE_HLS_BASE` / `LIVE_WHEP_BASE`. UDP 8189 kapalıysa WebRTC düşer, HLS yedek devreye girmeli.
+**Hoca yayınlıyor, izleyici boş**  
+8888/8889 veya `/mtx-hls` `/mtx-whep` SSL + `LIVE_HLS_BASE` / `LIVE_WHEP_BASE`. UDP 8189 kapalıysa WebRTC düşer, HLS yedek devreye girmeli.
 
 **PayTR “izin verilmeyen IP / hash”**  
 Callback localhost kalmış, veya `paytr_public_ip` yanlış, veya test/canlı anahtar karışmış.

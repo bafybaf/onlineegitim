@@ -19,7 +19,7 @@ BASE_URL=
 LIVE_HOST=onlineilahiyat.com
 ```
 
-3. Domain: `onlineilahiyat.com` ve `www` → `app:80`. Canlı izleme aynı siteden (`/mtx-hls`, `/mtx-whep`) gider; ayrı HLS/WHEP alt alanı gerekmez. OBS: `rtmp://onlineilahiyat.com:1935/live` (VPS’te **1935** açık).
+3. Domain: `onlineilahiyat.com` ve `www` → `app:80`. Canlı yayın tarayıcı kamerasıyladır (WHIP); izleme aynı siteden (`/mtx-hls`, `/mtx-whep`) gider. VPS’te **8189/udp** (WHEP) açık olsun.
 4. Deploy. İlk açılışta şema yüklenir ve yönetici hesabı oluşur. `ADMIN_PASSWORD` yoksa tarayıcıda `/kurulum` açılır.
 
 Yönetim: `https://onlineilahiyat.com/wiys`

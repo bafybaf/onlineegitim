@@ -19,7 +19,7 @@ if ($action === 'start' && $u['role'] === 'ogretmen') {
         json_out(['ok' => false, 'error' => 'group']);
     }
     ensure_live_play_mode_schema();
-    $mode = live_remember_play_mode(post('play_mode'));
+    $mode = live_remember_play_mode('browser');
     $ex = $pdo->prepare("SELECT * FROM live_rooms WHERE group_id = ? AND status = 'live'");
     $ex->execute([$gid]);
     $room = $ex->fetch();
@@ -53,27 +53,6 @@ if ($action === 'start' && $u['role'] === 'ogretmen') {
         redirect(canli_url((int) $room['id']));
     }
     json_out(['ok' => true, 'id' => (int) $room['id'], 'play_mode' => $mode]);
-}
-
-if ($action === 'set_mode' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
-    $id = (int) post('id');
-    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
-    $st->execute([$id]);
-    $room = $st->fetch();
-    if (!$room || !live_user_can_publish($u, $room)) {
-        json_out(['ok' => false], 403);
-    }
-    ensure_live_play_mode_schema();
-    $mode = live_remember_play_mode(post('play_mode'));
-    try {
-        $pdo->prepare('UPDATE live_rooms SET play_mode = ? WHERE id = ?')->execute([$mode, $id]);
-    } catch (Throwable $e) {
-        json_out(['ok' => false, 'error' => 'schema'], 500);
-    }
-    if (post('html')) {
-        redirect(canli_url($id));
-    }
-    json_out(['ok' => true, 'play_mode' => $mode]);
 }
 
 if ($action === 'end') {
@@ -166,12 +145,201 @@ if ($action === 'poll') {
         'health_url' => live_health_url(),
     ];
     if (live_user_can_publish($u, $room)) {
-        $payload['rtmp_url'] = live_rtmp_url();
         $payload['stream_key'] = $key;
         $payload['whip_url'] = live_whip_url($key);
         $payload['whip_url_alt'] = live_whip_url($key, 1);
     }
     json_out($payload);
+}
+
+if ($action === 'board') {
+    $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    $body = [];
+    if ($method !== 'GET' && post('op') === '') {
+        $parsed = json_decode((string) file_get_contents('php://input'), true);
+        $body = is_array($parsed) ? $parsed : [];
+    }
+    $id = (int) (post('id') ?: ($_GET['id'] ?? ($body['id'] ?? 0)));
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room) {
+        json_out(['ok' => false], 404);
+    }
+    if (!live_user_can_access($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    if ($method === 'GET') {
+        $row = live_board_row($pdo, $id);
+        $since = (int) ($_GET['since'] ?? -1);
+        if ($since >= 0 && (int) $row['rev'] <= $since) {
+            json_out(['ok' => true, 'rev' => (int) $row['rev'], 'same' => true]);
+        }
+        json_out(array_merge(['ok' => true], live_board_public($row, $id)));
+    }
+    if (!live_user_can_publish($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    $op = post('op') !== '' ? post('op') : (string) ($body['op'] ?? '');
+    $row = live_board_row($pdo, $id);
+    $strokes = json_decode((string) $row['strokes'], true);
+    if (!is_array($strokes)) {
+        $strokes = [];
+    }
+    $page = max(1, (int) $row['page']);
+    $pageKey = (string) $page;
+    if (!isset($strokes[$pageKey]) || !is_array($strokes[$pageKey])) {
+        $strokes[$pageKey] = [];
+    }
+
+    if ($op === 'pdf') {
+        try {
+            $path = academy_store_upload('file', 'live-board', ['application/pdf' => 'pdf'], 25);
+        } catch (Throwable $e) {
+            json_out(['ok' => false, 'error' => 'pdf'], 400);
+        }
+        if (!$path) {
+            json_out(['ok' => false, 'error' => 'pdf'], 400);
+        }
+        $old = trim((string) $row['pdf_path']);
+        if ($old !== '' && function_exists('academy_unlink_stored')) {
+            academy_unlink_stored($old);
+        }
+        $saved = live_board_save($pdo, $id, [
+            'pdf_path' => $path,
+            'page' => 1,
+            'pages' => 0,
+            'strokes' => '{}',
+        ]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    if ($op === 'stroke') {
+        $stroke = live_board_parse_stroke($body['stroke'] ?? null);
+        if (!$stroke) {
+            json_out(['ok' => false], 400);
+        }
+        if (count($strokes[$pageKey]) >= 500) {
+            array_shift($strokes[$pageKey]);
+        }
+        $strokes[$pageKey][] = $stroke;
+        $saved = live_board_save($pdo, $id, ['strokes' => json_encode($strokes, JSON_UNESCAPED_UNICODE)]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    if ($op === 'undo') {
+        array_pop($strokes[$pageKey]);
+        $saved = live_board_save($pdo, $id, ['strokes' => json_encode($strokes, JSON_UNESCAPED_UNICODE)]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    if ($op === 'clear') {
+        $strokes[$pageKey] = [];
+        $saved = live_board_save($pdo, $id, ['strokes' => json_encode($strokes, JSON_UNESCAPED_UNICODE)]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    if ($op === 'page') {
+        $next = max(1, (int) ($body['page'] ?? $page));
+        $pages = max(0, (int) ($body['pages'] ?? $row['pages']));
+        if ($pages > 0) {
+            $next = min($next, $pages);
+        } else {
+            $next = 1;
+        }
+        $saved = live_board_save($pdo, $id, ['page' => $next, 'pages' => $pages]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    if ($op === 'view') {
+        $saved = live_board_save($pdo, $id, [
+            'zoom' => $body['zoom'] ?? 1,
+            'pan_x' => $body['panX'] ?? 0,
+            'pan_y' => $body['panY'] ?? 0,
+        ]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    if ($op === 'screen') {
+        $saved = live_board_save($pdo, $id, [
+            'screen' => !empty($body['on']) ? 1 : 0,
+        ]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    json_out(['ok' => false], 400);
+}
+
+if ($action === 'record_chunk') {
+    $id = (int) post('id');
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    if (empty($_FILES['chunk']['tmp_name']) || !is_uploaded_file($_FILES['chunk']['tmp_name'])) {
+        json_out(['ok' => false], 400);
+    }
+    $seq = (int) post('seq');
+    $dir = academy_storage('vod');
+    $abs = $dir . '/live-' . $id . '.webm';
+    if ($seq === 0 && is_file($abs)) {
+        @unlink($abs);
+    }
+    $bin = file_get_contents($_FILES['chunk']['tmp_name']);
+    if ($bin === false || $bin === '') {
+        json_out(['ok' => false], 400);
+    }
+    if (file_put_contents($abs, $bin, FILE_APPEND) === false) {
+        json_out(['ok' => false], 500);
+    }
+    json_out(['ok' => true, 'seq' => $seq]);
+}
+
+if ($action === 'record_done') {
+    $id = (int) post('id');
+    $st = $pdo->prepare('SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id = r.teacher_id WHERE r.id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    $tmp = academy_storage('vod') . '/live-' . $id . '.webm';
+    if (!is_file($tmp) || filesize($tmp) < 800) {
+        json_out(['ok' => true, 'empty' => true]);
+    }
+    $like = 'vod/oda-' . $id . '-%';
+    $dup = $pdo->prepare('SELECT id FROM recordings WHERE video_path LIKE ? LIMIT 1');
+    $dup->execute([$like]);
+    if ($dup->fetch()) {
+        json_out(['ok' => true, 'exists' => true]);
+    }
+    $name = 'vod/oda-' . $id . '-' . date('Ymd-His') . '.webm';
+    $dest = academy_storage() . '/' . $name;
+    if (!@rename($tmp, $dest)) {
+        json_out(['ok' => false], 500);
+    }
+    $topic = trim((string) ($room['topic'] ?? ''));
+    $title = trim((string) ($room['title'] ?? 'Ders'));
+    $when = date('d.m.Y H:i');
+    $teacher = trim((string) ($room['teacher_name'] ?? ''));
+    $label = $topic !== '' && $topic !== 'Ders' ? $topic . ' — ' . $title : $title;
+    $label .= ' — ' . $when;
+    if ($teacher !== '') {
+        $label .= ' — ' . $teacher;
+    }
+    $mins = max(1, (int) post('mins'));
+    $started = strtotime((string) ($room['started_at'] ?? ''));
+    if ($started) {
+        $mins = max($mins, (int) ceil((time() - $started) / 60));
+    }
+    $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
+        ->execute([(int) $room['group_id'], (int) $room['teacher_id'], mb_substr($label, 0, 160), min(300, $mins), $name]);
+    if (function_exists('notify_group_students')) {
+        notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
+    }
+    json_out(['ok' => true]);
 }
 
 json_out(['ok' => false], 400);

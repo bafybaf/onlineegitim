@@ -32,7 +32,7 @@ foreach ($st as $g) {
     if ($r && !$videoOnly) {
         echo '<a class="btn-primary text-sm" href="' . e(canli_url((int) $r['id'])) . '">Derse gir</a>';
     }
-    echo '<a class="btn-outline text-sm" href="' . e(url('ogrenci/kayitlar')) . '">Kayıtlar</a>';
+    echo '<a class="btn-outline text-sm" href="' . e(url('ogrenci/kayitlar.php?grup=' . (int) $g['id'])) . '">Kayıtlar</a>';
     echo '<a class="btn-outline text-sm" href="' . e(url('ogrenci/notlar')) . '">Notlar</a>';
     if (!empty($g['whatsapp_url'])) {
         echo '<a class="btn-outline text-sm" href="' . e((string) $g['whatsapp_url']) . '" target="_blank" rel="noreferrer">WhatsApp grubu</a>';

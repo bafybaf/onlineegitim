@@ -1,11 +1,12 @@
 (function () {
   const cfg = window.LIVE_PLAYER || {};
-  if (!cfg.publish || cfg.method !== 'browser') {
+  if (!cfg.publish) {
     return;
   }
   const video = document.getElementById('live-video');
   const btn = document.getElementById('whip-toggle');
   const listenBtn = document.getElementById('whip-listen');
+  const shareBtn = document.getElementById('whip-share');
   const meterEl = document.getElementById('whip-meter');
   const meterFill = meterEl ? meterEl.querySelector('i') : null;
   const overlay = document.getElementById('wait-overlay');
@@ -16,13 +17,28 @@
   }
 
   const whipUrls = [cfg.whipUrl, cfg.whipUrlAlt].filter(Boolean);
+  const whipScreenUrls = [cfg.whipScreenUrl, cfg.whipScreenUrlAlt].filter(Boolean);
+  const screenEl = document.getElementById('board-screen');
   let pc = null;
   let loc = '';
+  let screenPc = null;
+  let screenLoc = '';
   let stream = null;
+  let camStream = null;
+  let displayStream = null;
+  let sharing = false;
   let publishing = false;
+  let starting = false;
   let hearing = false;
   let meterTimer = 0;
   let audioCtx = null;
+  const protoEl = document.getElementById('live-proto');
+
+  function setProto(text) {
+    if (!protoEl) return;
+    protoEl.textContent = text || '';
+    protoEl.hidden = !text;
+  }
 
   function setWait(title, detail, show) {
     if (waitTitle) waitTitle.textContent = title;
@@ -124,13 +140,15 @@
 
   async function stopPublish() {
     publishing = false;
+    starting = false;
     btn.textContent = 'Kamerayı aç';
     setHearing(false);
     if (listenBtn) listenBtn.hidden = true;
     stopMeter();
+    setProto('');
     if (loc) {
       try {
-        await fetch(loc, { method: 'DELETE' });
+        await fetch(loc, { method: 'DELETE', credentials: 'omit' });
       } catch (e) {}
       loc = '';
     }
@@ -138,12 +156,32 @@
       try { pc.close(); } catch (e) {}
       pc = null;
     }
+    if (camStream && camStream !== stream) {
+      camStream.getTracks().forEach((t) => t.stop());
+    }
+    camStream = null;
     if (stream) {
       stream.getTracks().forEach((t) => t.stop());
       stream = null;
     }
     video.srcObject = null;
-    setWait('Kamerayı açın', 'Aşağıdaki düğmeyle tarayıcı kamerasını açın. Öğrenciler sizi izler.', true);
+    setWait('Kamera', '', true);
+  }
+
+  function fetchSdp(url, body, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/sdp',
+        Accept: 'application/sdp'
+      },
+      body: body,
+      mode: 'cors',
+      credentials: 'omit',
+      signal: ctrl.signal
+    }).finally(() => clearTimeout(timer));
   }
 
   async function captureMedia() {
@@ -175,105 +213,231 @@
     return media;
   }
 
+  async function connectWhip() {
+    if (pc) {
+      try { pc.close(); } catch (e) {}
+      pc = null;
+    }
+    loc = '';
+    pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    stream.getVideoTracks().forEach((t) => {
+      pc.addTrack(t, stream);
+    });
+    stream.getAudioTracks().forEach((t) => {
+      t.enabled = true;
+      pc.addTrack(t, stream);
+    });
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitIceGather(pc, 2500);
+    const offerSdp = pc.localDescription && pc.localDescription.sdp ? pc.localDescription.sdp : offer.sdp;
+    let lastErr = '';
+    for (let i = 0; i < whipUrls.length; i++) {
+      const url = whipUrls[i];
+      let res;
+      try {
+        res = await fetchSdp(url, offerSdp, 8000);
+      } catch (e) {
+        lastErr = 'offline';
+        continue;
+      }
+      if (!res.ok) {
+        lastErr = String(res.status);
+        continue;
+      }
+      loc = publicWhipUrl(url, res.headers.get('Location') || '');
+      const sdp = await res.text();
+      if (!sdp || !/v=0/i.test(sdp)) {
+        lastErr = 'empty';
+        continue;
+      }
+      await pc.setRemoteDescription({ type: 'answer', sdp: sdp });
+      return true;
+    }
+    throw new Error(lastErr || 'whip');
+  }
+
   async function startPublish() {
+    if (starting || publishing) return;
     if (!whipUrls.length || typeof RTCPeerConnection === 'undefined') {
-      setWait('Yayın adresi yok', 'OBS + HLS yöntemini deneyin.', true);
+      setWait('Yayın yok', '', true);
       return;
     }
+    starting = true;
     btn.disabled = true;
     try {
-      stream = await captureMedia();
-      if (!stream.getAudioTracks().length) {
-        throw new Error('mic');
+      if (!stream) {
+        stream = await captureMedia();
+        camStream = stream;
+        video.srcObject = stream;
+        setHearing(false);
+        await video.play().catch(() => {});
+        startMeter(stream);
+        if (typeof window.liveRecordOnCam === 'function') {
+          window.liveRecordOnCam(stream);
+        }
       }
-      video.srcObject = stream;
-      setHearing(false);
-      await video.play().catch(() => {});
       if (overlay) overlay.classList.add('is-off');
-      startMeter(stream);
-
-      pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      });
-      stream.getVideoTracks().forEach((t) => {
-        pc.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
-      });
-      stream.getAudioTracks().forEach((t) => {
-        t.enabled = true;
-        pc.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
-      });
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await waitIceGather(pc, 2000);
-      const offerSdp = pc.localDescription && pc.localDescription.sdp ? pc.localDescription.sdp : offer.sdp;
-      if (!/m=audio/i.test(offerSdp || '')) {
-        throw new Error('mic');
-      }
-
-      let lastErr = '';
-      for (let i = 0; i < whipUrls.length; i++) {
-        const url = whipUrls[i];
-        let res;
+      let lastErr = null;
+      for (let n = 0; n < 3; n++) {
         try {
-          res = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/sdp',
-              Accept: 'application/sdp'
-            },
-            body: offerSdp
-          });
-        } catch (e) {
-          lastErr = 'offline';
-          continue;
+          setProto(n ? 'Yeniden bağlanıyor…' : 'Bağlanıyor…');
+          await connectWhip();
+          lastErr = null;
+          break;
+        } catch (err) {
+          lastErr = err;
+          await new Promise((r) => setTimeout(r, 800));
         }
-        if (!res.ok) {
-          lastErr = String(res.status);
-          continue;
-        }
-        loc = publicWhipUrl(url, res.headers.get('Location') || '');
-        const sdp = await res.text();
-        if (!sdp) {
-          lastErr = 'empty';
-          continue;
-        }
-        await pc.setRemoteDescription({ type: 'answer', sdp: sdp });
-        publishing = true;
-        btn.textContent = 'Kamerayı kapat';
-        if (listenBtn) listenBtn.hidden = false;
-        lastErr = '';
-        break;
       }
-      if (!publishing) {
-        throw new Error(lastErr || 'whip');
+      if (lastErr) throw lastErr;
+      publishing = true;
+      btn.textContent = 'Kamerayı kapat';
+      if (listenBtn) listenBtn.hidden = false;
+      setProto('');
+      if (typeof window.liveRecordOnCam === 'function') {
+        window.liveRecordOnCam(stream);
       }
     } catch (e) {
-      const noMic = String(e && e.message) === 'mic';
-      await stopPublish();
-      setWait(
-        noMic ? 'Mikrofon yok' : 'Kamera açılamadı',
-        noMic ? 'Tarayıcı mikrofon iznini verin; aksi halde öğrenciler sizi duyamaz.' : 'İzin verin veya OBS + HLS seçip Uygula deyin.',
-        true
-      );
+      if (pc) {
+        try { pc.close(); } catch (err) {}
+        pc = null;
+      }
+      if (!stream) {
+        setWait('Kamera açılamadı', '', true);
+      } else {
+        if (overlay) overlay.classList.add('is-off');
+        setProto('Yayın bağlanamadı');
+        btn.textContent = 'Kamerayı kapat';
+      }
     } finally {
+      starting = false;
       btn.disabled = false;
     }
   }
 
+  async function connectWhipScreen() {
+    if (screenPc) {
+      try { screenPc.close(); } catch (e) {}
+      screenPc = null;
+    }
+    screenLoc = '';
+    if (!displayStream || !whipScreenUrls.length) return false;
+    screenPc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    displayStream.getVideoTracks().forEach((t) => {
+      screenPc.addTrack(t, displayStream);
+    });
+    const offer = await screenPc.createOffer();
+    await screenPc.setLocalDescription(offer);
+    await waitIceGather(screenPc, 2500);
+    const offerSdp = screenPc.localDescription && screenPc.localDescription.sdp ? screenPc.localDescription.sdp : offer.sdp;
+    for (let i = 0; i < whipScreenUrls.length; i++) {
+      const url = whipScreenUrls[i];
+      let res;
+      try {
+        res = await fetchSdp(url, offerSdp, 8000);
+      } catch (e) {
+        continue;
+      }
+      if (!res.ok) continue;
+      screenLoc = publicWhipUrl(url, res.headers.get('Location') || '');
+      const sdp = await res.text();
+      if (!sdp || !/v=0/i.test(sdp)) continue;
+      await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
+      return true;
+    }
+    try { screenPc.close(); } catch (e) {}
+    screenPc = null;
+    return false;
+  }
+
+  function showBoardScreen(on) {
+    const stage = document.getElementById('board-stage');
+    if (stage) stage.classList.toggle('is-screen', !!on);
+    if (typeof window.liveBoardSetScreen === 'function') {
+      window.liveBoardSetScreen(!!on);
+    }
+  }
+
+  async function stopShare() {
+    if (screenLoc) {
+      try { await fetch(screenLoc, { method: 'DELETE', credentials: 'omit' }); } catch (e) {}
+      screenLoc = '';
+    }
+    if (screenPc) {
+      try { screenPc.close(); } catch (e) {}
+      screenPc = null;
+    }
+    if (displayStream) {
+      displayStream.getTracks().forEach((t) => t.stop());
+      displayStream = null;
+    }
+    sharing = false;
+    if (screenEl) screenEl.srcObject = null;
+    if (shareBtn) shareBtn.textContent = 'Ekran paylaş';
+    showBoardScreen(false);
+  }
+
+  async function startShare() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      setProto('Ekran paylaşımı yok');
+      return;
+    }
+    try {
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 15 } },
+        audio: false
+      });
+    } catch (err) {
+      if (err && err.name === 'NotAllowedError') throw err;
+      displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    }
+    const screenTrack = displayStream.getVideoTracks()[0];
+    if (!screenTrack) {
+      await stopShare();
+      return;
+    }
+    screenTrack.onended = () => { stopShare(); };
+    if (screenEl) {
+      screenEl.srcObject = displayStream;
+      screenEl.play().catch(() => {});
+    }
+    sharing = true;
+    if (shareBtn) shareBtn.textContent = 'Paylaşımı durdur';
+    showBoardScreen(true);
+    if (typeof window.liveRecordOnCam === 'function') {
+      window.liveRecordOnCam(camStream || stream || displayStream);
+    }
+    const ok = await connectWhipScreen();
+    if (!ok) setProto('Ekran bağlanamadı');
+  }
+
   btn.addEventListener('click', () => {
-    if (publishing) {
+    if (publishing || stream) {
       stopPublish();
     } else {
       startPublish();
     }
   });
 
+  if (shareBtn) {
+    shareBtn.addEventListener('click', () => {
+      if (sharing) stopShare();
+      else startShare().catch(() => setProto('Paylaşım iptal'));
+    });
+  }
+
   if (listenBtn) {
     listenBtn.addEventListener('click', () => setHearing(!hearing));
   }
 
   window.addEventListener('pagehide', () => {
-    if (publishing) {
+    if (sharing) stopShare();
+    if (publishing || stream) {
       stopPublish();
     }
   });
