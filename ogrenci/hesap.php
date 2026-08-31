@@ -6,14 +6,14 @@ $ok = '';
 $err = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $phone = post('phone');
-    $city = post('city');
-    update_user_contact((int) $u['id'], $phone, $city);
-    $fresh = refresh_current_user((int) $u['id']);
-    if ($fresh) {
-        $u = $fresh;
+    if (!handle_own_password_post($u, $ok, $err)) {
+        update_user_contact((int) $u['id'], post('phone'), post('city'));
+        $fresh = refresh_current_user((int) $u['id']);
+        if ($fresh) {
+            $u = $fresh;
+        }
+        $ok = 'Bilgileriniz kaydedildi.';
     }
-    $ok = 'Bilgileriniz kaydedildi.';
 }
 
 $enrolls = user_enrollments((int) $u['id']);
@@ -68,8 +68,9 @@ membership_panel_banner($u);
   <label class="text-sm font-bold">E-posta
     <input readonly class="mt-1 w-full rounded-xl border bg-soft px-3 py-2 text-muted" value="<?= e((string) $u['email']) ?>">
   </label>
-  <button class="btn-primary">Kaydet</button>
+  <button class="btn-primary" type="submit">Kaydet</button>
 </form>
+<?php profile_password_form($u); ?>
 
 <section class="card mt-6 overflow-hidden">
   <div class="px-5 py-4">

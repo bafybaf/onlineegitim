@@ -618,6 +618,75 @@ function update_user_contact(int $userId, string $phone, string $city, ?string $
         ->execute([$phone, $city, $userId]);
 }
 
+function change_own_password(array $user, string $current, string $next, string $confirm): void
+{
+    $min = 8;
+    if ($next !== $confirm) {
+        throw new RuntimeException('Yeni şifreler eşleşmiyor.');
+    }
+    if (strlen($next) < $min) {
+        throw new RuntimeException('Yeni şifre en az ' . $min . ' karakter olmalı.');
+    }
+    $hash = (string) ($user['password'] ?? '');
+    $google = !empty($user['google_id']);
+    if ($current === '') {
+        if (!$google) {
+            throw new RuntimeException('Mevcut şifrenizi girin.');
+        }
+    } elseif ($hash === '' || !password_verify($current, $hash)) {
+        throw new RuntimeException('Mevcut şifre hatalı.');
+    }
+    if ($hash !== '' && password_verify($next, $hash)) {
+        throw new RuntimeException('Yeni şifre eskisiyle aynı olamaz.');
+    }
+    db()->prepare('UPDATE users SET password = ? WHERE id = ?')
+        ->execute([password_hash($next, PASSWORD_DEFAULT), (int) $user['id']]);
+}
+
+function handle_own_password_post(array $user, string &$ok, string &$err): bool
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || post('act') !== 'password') {
+        return false;
+    }
+    try {
+        change_own_password($user, post('current_password'), post('new_password'), post('new_password2'));
+        $ok = 'Şifreniz güncellendi.';
+        $err = '';
+    } catch (Throwable $e) {
+        $ok = '';
+        $err = $e->getMessage();
+    }
+    return true;
+}
+
+function profile_password_form(array $user): void
+{
+    $google = !empty($user['google_id']);
+    $min = 8;
+    ?>
+<form method="post" class="card mt-6 grid max-w-xl gap-4 p-6" autocomplete="off">
+  <?= csrf_field() ?>
+  <input type="hidden" name="act" value="password">
+  <p class="font-extrabold">Şifre değiştir</p>
+  <?php if ($google): ?>
+  <p class="text-sm text-muted">Google ile giriş yaptıysanız mevcut şifreyi boş bırakıp yeni bir şifre belirleyebilirsiniz. Sonra e-posta ve şifre ile de girebilirsiniz.</p>
+  <?php else: ?>
+  <p class="text-sm text-muted">Güvenlik için önce mevcut şifrenizi girin. Yeni şifre en az <?= (int) $min ?> karakter olmalı.</p>
+  <?php endif; ?>
+  <label class="text-sm font-bold"><?= $google ? 'Mevcut şifre (varsa)' : 'Mevcut şifre' ?>
+    <input type="password" name="current_password" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="current-password" <?= $google ? '' : 'required' ?>>
+  </label>
+  <label class="text-sm font-bold">Yeni şifre
+    <input type="password" name="new_password" required minlength="<?= (int) $min ?>" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="new-password">
+  </label>
+  <label class="text-sm font-bold">Yeni şifre (tekrar)
+    <input type="password" name="new_password2" required minlength="<?= (int) $min ?>" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="new-password">
+  </label>
+  <button class="btn-primary" type="submit">Şifreyi güncelle</button>
+</form>
+    <?php
+}
+
 function refresh_current_user(int $userId): ?array
 {
     $st = db()->prepare('SELECT * FROM users WHERE id = ?');

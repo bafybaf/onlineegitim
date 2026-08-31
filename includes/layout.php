@@ -254,6 +254,9 @@ function panel_nav(string $role, string $page): array
                 ['id' => 'sorular', 'href' => 'ogretmen/sorular', 'label' => 'Sorular', 'icon' => 'mail', 'badge' => function_exists('question_teacher_pending_count') ? question_teacher_pending_count((int) (current_user()['id'] ?? 0)) : 0],
                 ['id' => 'mesajlar', 'href' => 'ogretmen/mesajlar', 'label' => 'Mesajlar', 'icon' => 'mail'],
             ]],
+            ['label' => 'Hesap', 'items' => [
+                ['id' => 'hesap', 'href' => 'ogretmen/hesap', 'label' => 'Hesabım', 'icon' => 'user'],
+            ]],
         ];
     }
     if ($role === 'musteri') {
@@ -295,6 +298,7 @@ function panel_nav(string $role, string $page): array
             ['id' => 'seo', 'href' => 'admin/seo', 'label' => 'SEO', 'icon' => 'search'],
             ['id' => 'smtp', 'href' => 'admin/smtp', 'label' => 'SMTP', 'icon' => 'mail'],
             ['id' => 'google', 'href' => 'admin/google', 'label' => 'Google', 'icon' => 'user'],
+            ['id' => 'hesap', 'href' => 'admin/hesap', 'label' => 'Hesabım', 'icon' => 'user'],
         ]],
     ];
 }
