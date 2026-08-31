@@ -17,6 +17,7 @@
   let busy = false;
   let ended = false;
   let lastHint = '';
+  let lessonPaused = false;
 
   function showWait(on) {
     if (overlay) overlay.classList.toggle('is-off', !on);
@@ -38,7 +39,9 @@
   }
   function onPlaying() {
     playing = true;
-    showWait(false);
+    if (!lessonPaused) {
+      showWait(false);
+    }
   }
   function onStall() {
     playing = false;
@@ -320,7 +323,7 @@
   }
 
   async function tryWhepOrHls() {
-    if (ended || playing || busy) return;
+    if (ended || playing || busy || lessonPaused) return;
     if (playMode === 'webrtc' && pc && playing) return;
     if (playMode === 'hls' && hls && playing) return;
     if (playMode === 'webrtc' && !playing) {
@@ -351,8 +354,12 @@
         stopHls();
         playMode = 'none';
       }
-      const hint = waitHint(mtx === 'down' ? 'down' : 'wait');
-      setWait(hint[0], hint[1]);
+      if (whepResult === 404) {
+        setWait('Hoca bağlanıyor', 'Kamera açılınca görüntü gelir.');
+      } else {
+        const hint = waitHint(mtx === 'down' ? 'down' : 'wait');
+        setWait(hint[0], hint[1]);
+      }
       playMode = 'none';
     } catch (e) {
       setWait('Yayın bekleniyor', '');
@@ -365,6 +372,7 @@
   window.livePlayerMarkEnded = function () {
     ended = true;
     playing = false;
+    lessonPaused = false;
     stopWhep();
     stopHls();
     if (typeof window.liveScreenWatch === 'function') {
@@ -372,6 +380,17 @@
     }
     setWait('Ders bitti', '');
     setProto('');
+  };
+
+  window.livePlayerSetPaused = function (on) {
+    lessonPaused = !!on && !ended;
+    if (lessonPaused) {
+      setWait('Mola', 'Ders kısa süre sonra devam edecek.');
+      return;
+    }
+    if (!ended && playing) {
+      showWait(false);
+    }
   };
 
   if (cfg.publish) {

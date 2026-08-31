@@ -67,6 +67,10 @@ if ($action === 'end') {
         json_out(['ok' => false], 403);
     }
     $pdo->prepare("UPDATE live_rooms SET status='ended', ended_at=NOW(), broadcasting=0 WHERE id=?")->execute([$id]);
+    try {
+        $pdo->prepare('UPDATE live_rooms SET paused = 0, pause_ends_at = NULL WHERE id = ?')->execute([$id]);
+    } catch (Throwable $e) {
+    }
     $saved = false;
     if (function_exists('vod_commit_live_room')) {
         try {
@@ -84,6 +88,49 @@ if ($action === 'end') {
         redirect(post('goto'));
     }
     json_out(['ok' => true, 'saved' => $saved]);
+}
+
+if ($action === 'pause') {
+    $id = (int) post('id');
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    if (($room['status'] ?? '') !== 'live') {
+        json_out(['ok' => false, 'error' => 'ended']);
+    }
+    ensure_live_pause_schema();
+    $mins = (int) post('mins');
+    if ($mins < 1) {
+        $mins = 5;
+    }
+    $mins = min(20, $mins);
+    $pdo->prepare('UPDATE live_rooms SET paused = 1, pause_ends_at = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?')
+        ->execute([$mins, $id]);
+    $pdo->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')
+        ->execute([$id, $u['id'], 'Sistem', $mins . ' dakikalık mola başladı.']);
+    $st->execute([$id]);
+    $room = $st->fetch() ?: $room;
+    json_out(['ok' => true, 'room' => live_public_room($room)]);
+}
+
+if ($action === 'resume') {
+    $id = (int) post('id');
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    ensure_live_pause_schema();
+    $pdo->prepare('UPDATE live_rooms SET paused = 0, pause_ends_at = NULL WHERE id = ?')->execute([$id]);
+    $pdo->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')
+        ->execute([$id, $u['id'], 'Sistem', 'Ders devam ediyor.']);
+    $st->execute([$id]);
+    $room = $st->fetch() ?: $room;
+    json_out(['ok' => true, 'room' => live_public_room($room)]);
 }
 
 if ($action === 'chat') {

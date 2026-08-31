@@ -32,7 +32,31 @@
   let hearing = false;
   let meterTimer = 0;
   let audioCtx = null;
+  let sendPaused = false;
   const protoEl = document.getElementById('live-proto');
+
+  function applySendPause() {
+    [pc, screenPc].forEach((conn) => {
+      if (!conn) {
+        return;
+      }
+      try {
+        conn.getSenders().forEach((snd) => {
+          if (snd.track) {
+            snd.track.enabled = !sendPaused;
+          }
+        });
+      } catch (e) {}
+    });
+    [stream, camStream, displayStream].forEach((media) => {
+      if (!media) {
+        return;
+      }
+      media.getAudioTracks().forEach((t) => {
+        t.enabled = !sendPaused;
+      });
+    });
+  }
 
   function setProto(text) {
     if (!protoEl) return;
@@ -47,6 +71,30 @@
       waitDetail.hidden = !detail;
     }
     if (overlay) overlay.classList.toggle('is-off', !show);
+  }
+
+  function waitPcReady(conn, ms) {
+    if (!conn) return Promise.resolve(false);
+    if (conn.connectionState === 'connected') return Promise.resolve(true);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        resolve(!!ok);
+      };
+      const t = setTimeout(() => finish(conn.connectionState === 'connected'), ms);
+      conn.addEventListener('connectionstatechange', () => {
+        if (conn.connectionState === 'connected') {
+          clearTimeout(t);
+          finish(true);
+        }
+        if (conn.connectionState === 'failed' || conn.connectionState === 'closed') {
+          clearTimeout(t);
+          finish(false);
+        }
+      });
+    });
   }
 
   function waitIceGather(conn, ms) {
@@ -254,6 +302,11 @@
         continue;
       }
       await pc.setRemoteDescription({ type: 'answer', sdp: sdp });
+      const iceOk = await waitPcReady(pc, 10000);
+      if (!iceOk) {
+        lastErr = 'ice';
+        continue;
+      }
       return true;
     }
     throw new Error(lastErr || 'whip');
@@ -279,7 +332,7 @@
           window.liveRecordOnCam(stream);
         }
       }
-      if (overlay) overlay.classList.add('is-off');
+      setWait('Yayına bağlanılıyor…', 'Öğrenciler bağlanınca görüntü açılır.', true);
       let lastErr = null;
       for (let n = 0; n < 3; n++) {
         try {
@@ -296,7 +349,9 @@
       publishing = true;
       btn.textContent = 'Kamerayı kapat';
       if (listenBtn) listenBtn.hidden = false;
-      setProto('');
+      if (overlay) overlay.classList.add('is-off');
+      setProto(sendPaused ? 'Mola' : 'Yayındasınız');
+      applySendPause();
       if (typeof window.liveRecordOnCam === 'function') {
         window.liveRecordOnCam(stream);
       }
@@ -305,10 +360,11 @@
         try { pc.close(); } catch (err) {}
         pc = null;
       }
+      publishing = false;
       if (!stream) {
         setWait('Kamera açılamadı', '', true);
       } else {
-        if (overlay) overlay.classList.add('is-off');
+        setWait('Yayın bağlanamadı', 'Öğrenciler sizi göremez. Kamerayı kapatıp tekrar açın.', true);
         setProto('Yayın bağlanamadı');
         btn.textContent = 'Kamerayı kapat';
       }
@@ -348,6 +404,7 @@
       const sdp = await res.text();
       if (!sdp || !/v=0/i.test(sdp)) continue;
       await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
+      applySendPause();
       return true;
     }
     try { screenPc.close(); } catch (e) {}
@@ -435,10 +492,24 @@
     listenBtn.addEventListener('click', () => setHearing(!hearing));
   }
 
+  setInterval(() => {
+    if (stream && !publishing && !starting) {
+      startPublish().catch(() => {});
+    }
+  }, 5000);
+
   window.addEventListener('pagehide', () => {
     if (sharing) stopShare();
     if (publishing || stream) {
       stopPublish();
     }
   });
+
+  window.livePublishSetPaused = function (on) {
+    sendPaused = !!on;
+    applySendPause();
+    if (publishing) {
+      setProto(sendPaused ? 'Mola' : 'Yayındasınız');
+    }
+  };
 })();

@@ -69,6 +69,7 @@ $whipScreenUrl = $canPublish ? live_whip_url($screenKey) : '';
 $whipScreenUrlAlt = $canPublish ? live_whip_url($screenKey, 1) : '';
 $healthUrl = live_health_url();
 $doRecord = $canPublish && ($room['status'] ?? '') === 'live';
+$pauseInfo = live_room_pause_state($room);
 $waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
 $presentN = 0;
 foreach ($students as $s) {
@@ -105,9 +106,17 @@ foreach ($students as $s) {
         echo ($topic !== '' && $topic !== 'Ders') ? ' — ' . e($topic) : '';
       ?></h1>
     </div>
-    <div class="flex items-center gap-3 text-sm">
+    <div class="flex flex-wrap items-center justify-end gap-2 text-sm">
       <span><?= e($room['teacher_name']) ?></span>
       <?php if ($canEnd && $room['status'] === 'live'): ?>
+        <div class="live-pause-ctrl">
+          <select id="live-pause-mins" aria-label="Mola süresi">
+            <option value="3">3 dk</option>
+            <option value="5" selected>5 dk</option>
+            <option value="10">10 dk</option>
+          </select>
+          <button type="button" id="live-pause-btn" class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Mola</button>
+        </div>
         <button type="button" id="live-rec-start" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Kaydı başlat</button>
         <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Dersi bitir</button></form>
       <?php endif; ?>
@@ -148,6 +157,12 @@ foreach ($students as $s) {
           <b id="live-rec-num">10</b>
           <p>Kayıt başlıyor</p>
         </div>
+        <div id="live-pause-overlay" class="live-pause-overlay<?= !empty($pauseInfo['paused']) ? ' is-on' : '' ?>">
+          <p class="live-pause-kicker">Mola</p>
+          <b id="live-pause-clock"><?= !empty($pauseInfo['paused']) ? sprintf('%d:%02d', intdiv((int) $pauseInfo['pause_left'], 60), ((int) $pauseInfo['pause_left']) % 60) : '5:00' ?></b>
+          <p>Ders kısa süre sonra devam edecek</p>
+        </div>
+      </div>
     </section>
     <div class="live-side">
       <div class="live-stage">
@@ -219,6 +234,13 @@ window.LIVE_RECORD = {
   url: <?= json_encode(url('api/live.php')) ?>,
   started: <?= json_encode((string) ($room['started_at'] ?? '')) ?>
 };
+window.LIVE_PAUSE = {
+  roomId: <?= $id ?>,
+  url: <?= json_encode(url('api/live.php')) ?>,
+  canCtrl: <?= ($canEnd && ($room['status'] ?? '') === 'live') ? 'true' : 'false' ?>,
+  paused: <?= !empty($pauseInfo['paused']) ? 'true' : 'false' ?>,
+  pauseLeft: <?= (int) ($pauseInfo['pause_left'] ?? 0) ?>
+};
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -240,6 +262,9 @@ setInterval(async () => {
   const log = document.getElementById('chat-log');
   log.innerHTML = (j.chat||[]).map(c => `<p><b>${esc(c.who_label)}:</b> ${esc(c.body)}</p>`).join('');
   log.scrollTop = log.scrollHeight;
+  if (j.room && typeof window.livePauseApply === 'function') {
+    window.livePauseApply(j.room);
+  }
   if (j.room && j.room.status === 'ended') {
     if (typeof window.livePlayerMarkEnded === 'function') window.livePlayerMarkEnded();
   }
@@ -251,5 +276,6 @@ setInterval(async () => {
 <script src="<?= e(url('assets/js/live-publisher.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-publisher.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-record.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-record.js') ?>"></script>
 <?php endif; ?>
+<script src="<?= e(url('assets/js/live-pause.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-pause.js') ?>"></script>
 </body>
 </html>

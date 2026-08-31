@@ -36,6 +36,7 @@
   let raf = 0;
   let audioClone = null;
   let pendingMedia = null;
+  let recPaused = false;
 
   function mime() {
     const types = [
@@ -87,7 +88,7 @@
   }
 
   function paint() {
-    if (finishing || done || !armed) {
+    if (finishing || done || !armed || recPaused) {
       raf = 0;
       return;
     }
@@ -194,6 +195,9 @@
     } catch (e) {
       recorder = null;
       return;
+    }
+    if (recPaused) {
+      try { recorder.pause(); } catch (e) {}
     }
     if (!startedMs) startedMs = Date.now();
   }
@@ -328,6 +332,22 @@
   }
 
   window.liveRecordFinish = finish;
+  window.liveRecordSetPaused = function (on) {
+    recPaused = !!on;
+    if (recorder) {
+      try {
+        if (recPaused && recorder.state === 'recording') {
+          recorder.pause();
+        }
+        if (!recPaused && recorder.state === 'paused') {
+          recorder.resume();
+        }
+      } catch (e) {}
+    }
+    if (!recPaused && armed && !raf && !finishing && !done) {
+      paint();
+    }
+  };
   window.liveRecordOnCam = function (media) {
     pendingMedia = media;
     if (armed) start(media);

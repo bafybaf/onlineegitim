@@ -85,7 +85,7 @@ function live_stream_paths(string $streamKey): array
         return [];
     }
     $enc = rawurlencode($key);
-    return ['live/' . $enc, $enc];
+    return [$enc, 'live/' . $enc];
 }
 
 function live_rtmp_url(): string
@@ -168,6 +168,57 @@ function live_room_play_mode(array $room): string
 function live_start_chat_message(string $mode = 'browser'): string
 {
     return 'Oda açıldı.';
+}
+
+function ensure_live_pause_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $cols = [];
+        foreach (db()->query('SHOW COLUMNS FROM live_rooms')->fetchAll() as $row) {
+            $cols[(string) ($row['Field'] ?? '')] = true;
+        }
+        if (!isset($cols['paused'])) {
+            db()->exec('ALTER TABLE live_rooms ADD COLUMN paused TINYINT(1) NOT NULL DEFAULT 0 AFTER broadcasting');
+        }
+        if (!isset($cols['pause_ends_at'])) {
+            db()->exec('ALTER TABLE live_rooms ADD COLUMN pause_ends_at DATETIME NULL AFTER paused');
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function live_room_pause_state(array &$room): array
+{
+    ensure_live_pause_schema();
+    $id = (int) ($room['id'] ?? 0);
+    $paused = !empty($room['paused']);
+    $until = strtotime((string) ($room['pause_ends_at'] ?? ''));
+    $left = ($paused && $until) ? max(0, $until - time()) : 0;
+    if ($paused && $until && $left <= 0 && $id > 0) {
+        try {
+            $up = db()->prepare('UPDATE live_rooms SET paused = 0, pause_ends_at = NULL WHERE id = ? AND paused = 1');
+            $up->execute([$id]);
+            if ($up->rowCount() > 0) {
+                db()->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')
+                    ->execute([$id, null, 'Sistem', 'Ders devam ediyor.']);
+            }
+        } catch (Throwable $e) {
+        }
+        $room['paused'] = 0;
+        $room['pause_ends_at'] = null;
+        $paused = false;
+        $left = 0;
+    }
+    return [
+        'paused' => $paused ? 1 : 0,
+        'pause_left' => $left,
+    ];
 }
 
 function ensure_live_board_schema(): void
@@ -398,6 +449,7 @@ function live_user_can_publish(array $u, array $room): bool
 
 function live_public_room(array $room): array
 {
+    $pause = live_room_pause_state($room);
     return [
         'id' => (int) $room['id'],
         'title' => (string) $room['title'],
@@ -406,6 +458,8 @@ function live_public_room(array $room): array
         'teacher_id' => (int) $room['teacher_id'],
         'group_id' => (int) $room['group_id'],
         'broadcasting' => (int) ($room['broadcasting'] ?? 0),
+        'paused' => (int) $pause['paused'],
+        'pause_left' => (int) $pause['pause_left'],
         'started_at' => (string) ($room['started_at'] ?? ''),
         'play_mode' => live_room_play_mode($room),
     ];

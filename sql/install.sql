@@ -195,6 +195,8 @@ CREATE TABLE live_rooms (
   stream_key VARCHAR(80) NULL,
   play_mode VARCHAR(20) NOT NULL DEFAULT 'browser',
   broadcasting TINYINT(1) NOT NULL DEFAULT 0,
+  paused TINYINT(1) NOT NULL DEFAULT 0,
+  pause_ends_at DATETIME NULL,
   started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   ended_at DATETIME DEFAULT NULL,
   UNIQUE KEY uq_live_stream_key (stream_key),

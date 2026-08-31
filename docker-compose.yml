@@ -63,12 +63,14 @@ services:
       MTX_HLSSEGMENTDURATION: "1s"
       MTX_HLSALLOWORIGINS: "*"
       MTX_WEBRTCALLOWORIGINS: "*"
-      MTX_WEBRTCADDITIONALHOSTS: ${LIVE_HOST:-onlineilahiyat.com}
-      MTX_WEBRTCTRACKGATHERTIMEOUT: 5s
+      MTX_WEBRTCADDITIONALHOSTS: ${LIVE_WEBRTC_HOSTS:-76.13.14.253,onlineilahiyat.com,www.onlineilahiyat.com}
+      MTX_WEBRTCLOCALTCPADDRESS: ":8189"
+      MTX_WEBRTCTRACKGATHERTIMEOUT: 8s
     ports:
       - "8888:8888"
       - "8889:8889"
       - "8189:8189/udp"
+      - "8189:8189/tcp"
     expose:
       - "8888"
       - "8889"
