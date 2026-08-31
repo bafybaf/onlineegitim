@@ -56,7 +56,6 @@ public_head('Mağaza kaydı | Online İlahiyat');
   <div>
     <p class="badge">Kitap mağazası</p>
     <h1 class="font-display mt-4 text-4xl md:text-5xl">Mağaza hesabı</h1>
-    <p class="mt-3 text-muted">Hesap ücretsizdir. Kitapları sepetten kart ile ödersiniz. Canlı ders bu hesapla girilemez.</p>
     <img src="<?= e(url('assets/img/hero-kitap.jpg')) ?>" alt="" class="mt-8 h-72 w-full rounded-[22px] object-cover" />
   </div>
   <?php if (!$shopForm): ?>

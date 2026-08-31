@@ -5,12 +5,12 @@ $posts = db()->query('SELECT * FROM posts WHERE published=1 ORDER BY ' . catalog
 public_head('Duyurular | Online İlahiyat', 'Online İlahiyat duyuru ve yazıları.');
 ?>
 <header class="bg-soft py-14">
-  <div class="mx-auto max-w-5xl px-4 lg:px-8">
+  <div class="mx-auto max-w-7xl px-4 lg:px-8">
     <h1 class="font-display text-4xl md:text-6xl">Duyurular</h1>
     <p class="mt-3 text-muted">Dönem, kayıt ve ders duyuruları.</p>
   </div>
 </header>
-<main class="mx-auto max-w-5xl px-4 py-12 lg:px-8">
+<main class="mx-auto max-w-7xl px-4 py-12 lg:px-8">
   <?php if (!$posts): ?><p class="text-muted">Henüz duyuru yok.</p><?php endif; ?>
   <div class="grid gap-4">
     <?php foreach ($posts as $p): ?>

@@ -18,7 +18,8 @@ if ($items) {
     }
 }
 $save = max(0, $list - $sub);
-$ship = $sub >= 500 ? 0 : ($rows ? 49 : 0);
+$allDigital = $rows && count(array_filter($rows, static fn(array $b): bool => empty($b['is_digital']))) === 0;
+$ship = ($sub >= 500 || $allDigital) ? 0 : ($rows ? 49 : 0);
 $autoCamp = $rows ? campaign_resolve_for_cart($rows, $sub, $ship, '') : ['discount' => 0, 'ship' => $ship, 'campaign' => null, 'code' => null, 'label' => ''];
 $couponHint = campaign_first_code_hint();
 $campDisc = (int) ($autoCamp['discount'] ?? 0);
@@ -132,19 +133,13 @@ public_head('Sepet | Online İlahiyat');
           <p class="flex justify-between text-accent"><span><?= e((string) $autoCamp['label']) ?></span><b>−<?= money((int) $autoCamp['discount']) ?></b></p>
         <?php endif; ?>
         <p class="flex justify-between"><span class="text-muted">Kargo</span><b><?= $ship ? money($ship) : 'Ücretsiz' ?></b></p>
-        <label class="text-xs font-extrabold uppercase text-muted">Teslimat
-          <select id="ship-mode" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm font-bold">
-            <option value="kargo">Basılı · kargo</option>
-            <option value="dijital">Dijital PDF</option>
-            <option value="ikisi">Basılı + dijital</option>
-          </select>
-        </label>
+        <p class="flex justify-between border-t pt-3 text-base"><span class="font-extrabold">Toplam</span><b class="font-display text-2xl"><?= money($total) ?></b></p>
         <input id="coupon" class="rounded-xl border px-3 py-2" placeholder="Kupon (<?= e($couponHint) ?>)">
         <?php if ($couponHint !== ''): ?>
           <p class="text-xs text-muted">Kupon kodu ödeme anında uygulanır. Kod girmezseniz sepetteki otomatik kampanya kalır.</p>
         <?php endif; ?>
         <?php if (!$shopUser): ?>
-          <a href="<?= e(url('giris-magaza.php?next=sepet')) ?>" class="btn-primary text-center">Mağaza girişi yapıp satın al</a>
+          <a href="<?= e(url('giris-magaza.php?next=sepet')) ?>" class="btn-primary text-center">Giriş yapıp satın al · <?= money($total) ?></a>
         <?php elseif (!$shopReady): ?>
           <p class="rounded-xl bg-soft px-3 py-2 text-sm font-bold">Sepet mağaza hesabıyla ödenir. Eğitim oturumunuz açık; <a class="text-navy" href="<?= e(url('giris-magaza.php?next=sepet')) ?>">mağaza girişini</a> kullanın.</p>
         <?php else: ?>
@@ -168,7 +163,7 @@ public_head('Sepet | Online İlahiyat');
     syncNewAddr();
     document.getElementById('checkout')?.addEventListener('click', async () => {
       const pick = document.querySelector('input[name="addr_pick"]:checked');
-      const body = new URLSearchParams({ action: 'checkout', ship_mode: document.getElementById('ship-mode').value, coupon: document.getElementById('coupon').value });
+      const body = new URLSearchParams({ action: 'checkout', coupon: document.getElementById('coupon').value });
       if (!pick || pick.value === 'new') {
         body.set('address_id', '0');
         body.set('addr_title', document.getElementById('addr_title')?.value || '');

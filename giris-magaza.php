@@ -22,7 +22,6 @@ public_head('Mağaza girişi | Online İlahiyat');
 <main class="mx-auto max-w-md px-4 py-16">
   <p class="text-center text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Kitap mağazası</p>
   <h1 class="font-display mt-2 text-center text-4xl">Mağaza girişi</h1>
-  <p class="mt-2 text-center text-sm text-muted">Yalnızca kitap siparişi ve hesabım için. Canlı ders bu hesapla açılmaz.</p>
   <?php if ($u && !is_shop_role($u['role'])): ?>
     <p class="mt-4 rounded-xl bg-soft px-3 py-2 text-center text-sm font-bold">Açık eğitim oturumunuz var. Mağaza için ayrı üyelikle giriş yapın.</p>
   <?php endif; ?>

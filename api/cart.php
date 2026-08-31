@@ -60,8 +60,15 @@ if ($action === 'add') {
         json_out(['ok' => false, 'error' => 'empty']);
     }
     $coupon = strtoupper(post('coupon'));
-    $mode = post('ship_mode') ?: 'kargo';
-    $ship = ($sub >= 500 || $mode === 'dijital') ? 0 : 49;
+    $hasPhysical = false;
+    foreach ($basket as $line) {
+        if (empty($line['is_digital'])) {
+            $hasPhysical = true;
+            break;
+        }
+    }
+    $mode = $hasPhysical ? 'kargo' : 'dijital';
+    $ship = ($sub >= 500 || !$hasPhysical) ? 0 : 49;
     $applied = campaign_resolve_for_cart($lines, $sub, $ship, $coupon);
     $sub = max(0, $sub - (int) $applied['discount']);
     $ship = (int) $applied['ship'];
