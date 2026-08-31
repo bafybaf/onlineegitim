@@ -67,13 +67,23 @@ if ($action === 'end') {
         json_out(['ok' => false], 403);
     }
     $pdo->prepare("UPDATE live_rooms SET status='ended', ended_at=NOW(), broadcasting=0 WHERE id=?")->execute([$id]);
+    $saved = false;
     if (function_exists('vod_commit_live_room')) {
-        vod_commit_live_room($pdo, $room, (int) post('mins'));
+        try {
+            $saved = vod_commit_live_room($pdo, $room, (int) post('mins'));
+        } catch (Throwable $e) {
+            $saved = false;
+        }
     }
     if (post('goto')) {
+        if ($saved) {
+            flash_ok('Ders kaydı kaydedildi. Aşağıdan izleyebilirsiniz.');
+        } else {
+            flash_error('Ders kapandı. Kayıt görünmüyorsa odada “Kaydı başlat”a basılıp 10 saniye beklenmiş olmalı.');
+        }
         redirect(post('goto'));
     }
-    json_out(['ok' => true]);
+    json_out(['ok' => true, 'saved' => $saved]);
 }
 
 if ($action === 'chat') {

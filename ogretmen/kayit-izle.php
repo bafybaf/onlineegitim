@@ -60,6 +60,13 @@ $err = flash_error();
       if (!box || !video) return;
       video.setAttribute('src', box.getAttribute('data-src') || '');
       video.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      video.addEventListener('error', function () {
+        if (box.querySelector('.vod-err')) return;
+        var p = document.createElement('p');
+        p.className = 'vod-err mt-3 font-bold text-accent';
+        p.textContent = 'Video şu an açılamadı. Sayfayı yenileyin.';
+        box.appendChild(p);
+      });
     })();
     </script>
   <?php endif; ?>

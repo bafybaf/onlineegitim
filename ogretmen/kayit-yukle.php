@@ -2,7 +2,13 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogretmen');
-$err = '';
+if (function_exists('vod_recover_teacher_pending')) {
+    try {
+        vod_recover_teacher_pending(db(), (int) $u['id']);
+    } catch (Throwable $e) {
+    }
+}
+$err = flash_error();
 $ok = flash_ok();
 $groups = teacher_groups((int) $u['id']);
 if (post('delete_id')) {

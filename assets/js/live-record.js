@@ -1,6 +1,6 @@
 (function () {
   const cfg = window.LIVE_RECORD || {};
-  if (!cfg.on || !cfg.roomId) return;
+  if (!cfg.roomId) return;
 
   const W = 1920;
   const H = 1080;
@@ -19,7 +19,9 @@
   const stage = document.getElementById('board-stage');
   const screenVid = document.getElementById('board-screen');
   const api = cfg.url || '';
-  const startedMs = Date.parse(cfg.started) || Date.now();
+  const startBtn = document.getElementById('live-rec-start');
+  const countBox = document.getElementById('live-rec-count');
+  const countNum = document.getElementById('live-rec-num');
 
   let recorder = null;
   let recStream = null;
@@ -27,8 +29,13 @@
   let queue = Promise.resolve();
   let finishing = false;
   let done = false;
+  let armed = false;
+  let counting = false;
+  let countTimer = 0;
+  let startedMs = 0;
   let raf = 0;
   let audioClone = null;
+  let pendingMedia = null;
 
   function mime() {
     const types = [
@@ -80,7 +87,7 @@
   }
 
   function paint() {
-    if (finishing || done) {
+    if (finishing || done || !armed) {
       raf = 0;
       return;
     }
@@ -158,7 +165,7 @@
   }
 
   function start(media) {
-    if (!window.MediaRecorder || recorder || done) return;
+    if (!armed || !window.MediaRecorder || recorder || done) return;
     cloneMic(media);
     recStream = canvas.captureStream(15);
     if (audioClone) {
@@ -186,7 +193,9 @@
       recorder.start(4000);
     } catch (e) {
       recorder = null;
+      return;
     }
+    if (!startedMs) startedMs = Date.now();
   }
 
   function upload(blob) {
@@ -203,7 +212,65 @@
   }
 
   function minsNow() {
-    return Math.max(1, Math.ceil((Date.now() - startedMs) / 60000));
+    const from = startedMs || Date.now();
+    return Math.max(1, Math.ceil((Date.now() - from) / 60000));
+  }
+
+  function hideCount() {
+    if (countBox) countBox.classList.remove('is-on');
+  }
+
+  function showCount(n) {
+    if (countNum) countNum.textContent = String(n);
+    if (countBox) countBox.classList.add('is-on');
+  }
+
+  function cancelCount() {
+    counting = false;
+    clearInterval(countTimer);
+    countTimer = 0;
+    hideCount();
+    if (startBtn && !armed && !done) {
+      startBtn.disabled = false;
+      startBtn.textContent = 'Kaydı başlat';
+    }
+  }
+
+  function beginRecord() {
+    hideCount();
+    counting = false;
+    armed = true;
+    if (!startedMs) startedMs = Date.now();
+    if (startBtn) {
+      startBtn.disabled = true;
+      startBtn.textContent = '● Kayıt alınıyor';
+      startBtn.classList.add('is-hot');
+    }
+    if (!raf) paint();
+    start(pendingMedia || (video && video.srcObject));
+  }
+
+  function beginCountdown() {
+    if (armed || counting || done || finishing) return;
+    counting = true;
+    let n = 10;
+    if (startBtn) {
+      startBtn.disabled = true;
+      startBtn.textContent = n + '…';
+    }
+    showCount(n);
+    clearInterval(countTimer);
+    countTimer = setInterval(() => {
+      n -= 1;
+      if (n <= 0) {
+        clearInterval(countTimer);
+        countTimer = 0;
+        beginRecord();
+        return;
+      }
+      if (startBtn) startBtn.textContent = n + '…';
+      showCount(n);
+    }, 1000);
   }
 
   function waitAtMost(p, ms) {
@@ -233,6 +300,7 @@
 
   async function finish() {
     if (finishing || done) return;
+    cancelCount();
     finishing = true;
     cancelAnimationFrame(raf);
     raf = 0;
@@ -243,27 +311,40 @@
         recorder.onstop = once;
         try { recorder.requestData(); } catch (e) {}
         try { recorder.stop(); } catch (e) { once(); }
-        setTimeout(once, 1500);
+        setTimeout(once, 2500);
       });
     }
-    await waitAtMost(queue, 6000);
-    await waitAtMost(postDone(), 8000);
+    if (recorder) {
+      await waitAtMost(queue, 12000);
+      await waitAtMost(postDone(), 10000);
+    }
     done = true;
+    armed = false;
     cancelAnimationFrame(raf);
+    if (startBtn) {
+      startBtn.disabled = true;
+      startBtn.textContent = recorder ? 'Kayıt bitti' : 'Kaydı başlat';
+    }
   }
 
   window.liveRecordFinish = finish;
   window.liveRecordOnCam = function (media) {
-    start(media);
+    pendingMedia = media;
+    if (armed) start(media);
   };
 
-  paint();
-  if (video && video.srcObject instanceof MediaStream && (video.videoWidth || video.srcObject.getVideoTracks().length)) {
-    start(video.srcObject);
+  if (startBtn) {
+    startBtn.addEventListener('click', beginCountdown);
   }
   if (video) {
-    video.addEventListener('playing', () => start(video.srcObject));
-    video.addEventListener('loadeddata', () => start(video.srcObject));
+    video.addEventListener('playing', () => {
+      pendingMedia = video.srcObject;
+      if (armed) start(video.srcObject);
+    });
+    video.addEventListener('loadeddata', () => {
+      pendingMedia = video.srcObject;
+      if (armed) start(video.srcObject);
+    });
   }
 
   document.querySelectorAll('form').forEach((f) => {
@@ -296,7 +377,8 @@
   const leave = document.getElementById('live-leave');
   if (leave) {
     leave.addEventListener('click', (ev) => {
-      if (done) return;
+      if (done && !recorder) return;
+      if (!armed && !counting) return;
       ev.preventDefault();
       const href = leave.getAttribute('href');
       finish().finally(() => { location.href = href; });
@@ -304,8 +386,8 @@
   }
 
   window.addEventListener('pagehide', () => {
-    if (done || finishing) return;
-    if (recorder && recorder.state === 'recording') {
+    if (done || finishing || !recorder) return;
+    if (recorder.state === 'recording') {
       try { recorder.requestData(); } catch (e) {}
     }
     postDone();

@@ -423,6 +423,18 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
 .live-board-stage.is-screen #board-screen { display: block; }
 .live-board-stage.is-screen #board-bg { opacity: 0; }
 .live-board-stage #board-draw { z-index: 2; }
+.live-rec-count {
+  position: absolute; inset: 0; z-index: 8;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(8, 12, 24, .58); color: #fff; pointer-events: none; text-align: center;
+}
+.live-rec-count.is-on { display: flex; }
+.live-rec-count b {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(4.5rem, 14vw, 9rem); line-height: 1; font-weight: 800;
+}
+.live-rec-count p { margin-top: .6rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 13px; color: #fecaca; }
+#live-rec-start.is-hot { background: #e8232a; }
 #board-draw { cursor: crosshair; touch-action: none; }
 .live-wait {
   position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;

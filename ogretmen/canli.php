@@ -17,7 +17,7 @@ panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
       <select name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2"><?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= e($g['name']) ?></option><?php endforeach; ?></select>
     </label>
     <label class="mt-3 block text-sm font-bold">Konu<input name="topic" class="mt-1 w-full rounded-xl border px-3 py-2" value="Yeni ders"></label>
-    <label class="mt-3 flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="record" value="1" checked> Kaydı başlat</label>
+    <input type="hidden" name="record" value="1">
     <label class="mt-2 flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="yoklama" value="1" checked> Yoklamayı aç</label>
     <button class="btn-primary mt-5">Odayı aç (diğerleri devam eder)</button>
   </form>
@@ -29,7 +29,7 @@ panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
         <p class="text-sm text-muted"><?= e($r['teacher_name']) ?><?= (int) $r['teacher_id'] === (int) $u['id'] ? ' · sizin odanız' : '' ?></p>
         <?php if ((int) $r['teacher_id'] === (int) $u['id']): ?>
           <div class="mt-3 flex gap-2"><a class="btn-primary text-sm" href="<?= e(canli_url((int) $r['id'])) ?>">Gir</a>
-          <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="ogretmen/canli.php"><button class="btn-outline text-sm">Bitir</button></form></div>
+          <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="ogretmen/kayit-yukle.php"><button class="btn-outline text-sm">Bitir</button></form></div>
         <?php endif; ?>
       </div>
     <?php endforeach; ?>

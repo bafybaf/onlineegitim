@@ -33,6 +33,7 @@ if ($u['role'] === 'ogrenci') {
 } else {
     $back = 'admin/canli.php';
 }
+$endGo = $u['role'] === 'ogretmen' ? 'ogretmen/kayit-yukle.php' : $back;
 if ($u['role'] === 'ogrenci') {
     $ls = db()->prepare("SELECT r.id, r.title, u.name teacher FROM live_rooms r JOIN users u ON u.id=r.teacher_id JOIN enrollments e ON e.group_id=r.group_id AND e.student_id=? AND (e.status='aktif' OR e.status IS NULL) AND (e.expires_at IS NULL OR e.expires_at > NOW()) WHERE r.status='live' ORDER BY r.id");
     $ls->execute([(int) $u['id']]);
@@ -67,7 +68,7 @@ $whepScreenUrlAlt = live_whep_url($screenKey, 1);
 $whipScreenUrl = $canPublish ? live_whip_url($screenKey) : '';
 $whipScreenUrlAlt = $canPublish ? live_whip_url($screenKey, 1) : '';
 $healthUrl = live_health_url();
-$doRecord = $canPublish && (int) ($room['record'] ?? 1) === 1 && ($room['status'] ?? '') === 'live';
+$doRecord = $canPublish && ($room['status'] ?? '') === 'live';
 $waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
 $presentN = 0;
 foreach ($students as $s) {
@@ -107,7 +108,8 @@ foreach ($students as $s) {
     <div class="flex items-center gap-3 text-sm">
       <span><?= e($room['teacher_name']) ?></span>
       <?php if ($canEnd && $room['status'] === 'live'): ?>
-        <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($back) ?>"><button class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Dersi bitir</button></form>
+        <button type="button" id="live-rec-start" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Kaydı başlat</button>
+        <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Dersi bitir</button></form>
       <?php endif; ?>
       <a href="<?= e(url($back)) ?>" id="live-leave" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Ayrıl</a>
     </div>
@@ -142,7 +144,10 @@ foreach ($students as $s) {
         <video id="board-screen" playsinline autoplay muted></video>
         <canvas id="board-bg"></canvas>
         <canvas id="board-draw"></canvas>
-      </div>
+        <div id="live-rec-count" class="live-rec-count">
+          <b id="live-rec-num">10</b>
+          <p>Kayıt başlıyor</p>
+        </div>
     </section>
     <div class="live-side">
       <div class="live-stage">
