@@ -83,7 +83,7 @@ panel_head('admin', 'uyelikler', ($isNew ? 'Yeni paket' : 'Paket') . ' | Admin',
 <section class="card p-5">
   <p class="stat-label">Üyelik</p>
   <h3 class="font-display mt-1 text-xl"><?= $isNew ? 'Yeni paket' : 'Paketi düzenle' ?></h3>
-  <p class="mt-1 text-sm text-muted">Ders kayıt formunda görünür. Grup seçerseniz program otomatik bağlanır. Hediye kitap ödeme onayında Kitaplarım’a düşer.</p>
+  <p class="mt-1 text-sm text-muted">Ders kayıt formunda görünür. Grup seçerseniz program otomatik bağlanır. Fiyat 0 ise “Ücretsiz” yazılır ve kart çekilmez. Hediye kitap ödeme onayında Kitaplarım’a düşer.</p>
   <form method="post" class="mt-4 grid gap-3 md:grid-cols-2">
     <?= csrf_field() ?>
     <label class="text-sm font-bold md:col-span-2">Paket adı
@@ -109,7 +109,7 @@ panel_head('admin', 'uyelikler', ($isNew ? 'Yeni paket' : 'Paket') . ' | Admin',
       <input required type="number" min="1" name="duration_days" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) ($pkg['duration_days'] ?: 365) ?>">
     </label>
     <label class="text-sm font-bold">Fiyat (₺)
-      <input required type="number" min="1" name="price" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) ($pkg['price'] ?: '') ?>">
+      <input required type="number" min="0" name="price" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) ($pkg['price'] ?? 0) ?>">
     </label>
     <label class="text-sm font-bold">Erişim
       <select name="access_type" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">

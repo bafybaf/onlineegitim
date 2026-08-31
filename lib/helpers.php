@@ -37,6 +37,11 @@ function money(int|float $n): string
     return number_format((int) $n, 0, ',', '.') . '₺';
 }
 
+function money_or_free(int|float $n): string
+{
+    return (int) $n <= 0 ? 'Ücretsiz' : money($n);
+}
+
 function json_out(array $data, int $code = 200): void
 {
     http_response_code($code);

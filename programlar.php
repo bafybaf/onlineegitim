@@ -18,7 +18,7 @@ public_head('Programlar | Online İlahiyat');
         <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy"><?= e($p['level']) ?></p>
         <h2 class="font-display mt-2 text-2xl"><?= e($p['title']) ?></h2>
         <p class="mt-2 text-sm text-muted"><?= e($p['hours']) ?> · <?= e($p['tag']) ?></p>
-        <p class="mt-4"><span class="price-old mr-2"><?= money($p['price_old']) ?></span><span class="price-now"><?= money($p['price_now']) ?> / yıl</span></p>
+        <p class="mt-4"><?= program_price_html($p) ?></p>
       </a>
     </article>
     <?php endforeach; ?>

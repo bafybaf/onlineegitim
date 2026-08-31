@@ -67,6 +67,9 @@ if ($action === 'end') {
         json_out(['ok' => false], 403);
     }
     $pdo->prepare("UPDATE live_rooms SET status='ended', ended_at=NOW(), broadcasting=0 WHERE id=?")->execute([$id]);
+    if (function_exists('vod_commit_live_room')) {
+        vod_commit_live_room($pdo, $room, (int) post('mins'));
+    }
     if (post('goto')) {
         redirect(post('goto'));
     }
@@ -194,7 +197,7 @@ if ($action === 'board') {
 
     if ($op === 'pdf') {
         try {
-            $path = academy_store_upload('file', 'live-board', ['application/pdf' => 'pdf'], 25);
+            $path = academy_store_upload('file', 'live-board', ['application/pdf' => 'pdf'], 40);
         } catch (Throwable $e) {
             json_out(['ok' => false, 'error' => 'pdf'], 400);
         }
@@ -325,44 +328,8 @@ if ($action === 'record_done') {
     if (!$room || !live_user_can_publish($u, $room)) {
         json_out(['ok' => false], 403);
     }
-    $tmp = academy_storage('vod') . '/live-' . $id . '.webm';
-    if (!is_file($tmp) || filesize($tmp) < 800) {
-        json_out(['ok' => true, 'empty' => true]);
-    }
-    $like = 'vod/oda-' . $id . '-%';
-    $dup = $pdo->prepare('SELECT id FROM recordings WHERE video_path LIKE ? LIMIT 1');
-    $dup->execute([$like]);
-    if ($dup->fetch()) {
-        json_out(['ok' => true, 'exists' => true]);
-    }
-    $name = 'vod/oda-' . $id . '-' . date('Ymd-His') . '.webm';
-    $dest = academy_storage() . '/' . $name;
-    if (!@rename($tmp, $dest)) {
-        json_out(['ok' => false], 500);
-    }
-    $topic = trim((string) ($room['topic'] ?? ''));
-    $title = trim((string) ($room['title'] ?? 'Ders'));
-    $when = date('d.m.Y H:i');
-    $teacher = trim((string) ($room['teacher_name'] ?? ''));
-    $label = $topic !== '' && $topic !== 'Ders' ? $topic . ' — ' . $title : $title;
-    $label .= ' — ' . $when;
-    if ($teacher !== '') {
-        $label .= ' — ' . $teacher;
-    }
-    $mins = max(1, (int) post('mins'));
-    $started = strtotime((string) ($room['started_at'] ?? ''));
-    if ($started) {
-        $mins = max($mins, (int) ceil((time() - $started) / 60));
-    }
-    if (function_exists('vod_ensure_playable')) {
-        vod_ensure_playable($dest, min(300, $mins) * 60 * 1000.0);
-    }
-    $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
-        ->execute([(int) $room['group_id'], (int) $room['teacher_id'], mb_substr($label, 0, 160), min(300, $mins), $name]);
-    if (function_exists('notify_group_students')) {
-        notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
-    }
-    json_out(['ok' => true]);
+    $ok = vod_commit_live_room($pdo, $room, (int) post('mins'));
+    json_out(['ok' => true, 'saved' => $ok]);
 }
 
 json_out(['ok' => false], 400);

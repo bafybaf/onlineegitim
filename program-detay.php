@@ -27,8 +27,10 @@ $ilgi = catalog_interest_label((string) $p['slug']);
 $kayitHref = ($u && $u['role'] === 'ogrenci')
     ? (page_url('uyelik-ders') . '?ilgi=' . rawurlencode($ilgi))
     : (page_url('kayit-ders') . '?ilgi=' . rawurlencode($ilgi));
-$eduUser = $u && (is_edu_role($u['role']) || is_admin_role($u['role']));
-$panelHref = $eduUser ? url(panel_home($u['role'])) : '';
+$isFree = (int) $p['price_now'] <= 0;
+$kayitLabel = $isFree ? 'Ücretsiz kaydol' : 'Canlı ders üyeliği al';
+$askName = (string) ($u['name'] ?? '');
+$askEmail = (string) ($u['email'] ?? '');
 public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
 ?>
 <header class="bg-soft">
@@ -37,11 +39,10 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
     <p class="badge"><?= e($p['level']) ?></p>
     <h1 class="font-display mt-4 text-4xl leading-tight md:text-6xl"><?= e($p['title']) ?></h1>
     <p class="mt-4 text-sm font-bold text-navy"><?= e($p['hours']) ?> · <?= e($p['tag']) ?></p>
-    <p class="mt-4"><span class="price-old mr-2 text-lg"><?= money((int) $p['price_old']) ?></span><span class="price-now text-3xl md:text-4xl"><?= money((int) $p['price_now']) ?> / yıl</span></p>
+    <p class="mt-4"><?= program_price_html($p, 'price-now text-3xl md:text-4xl') ?></p>
     <div class="mt-7 flex flex-wrap gap-3">
-      <a href="<?= e($kayitHref) ?>" class="btn-primary">Canlı ders üyeliği al</a>
-      <a href="<?= e(page_url('iletisim')) ?>" class="btn-outline">İletişim</a>
-      <?php if ($panelHref): ?><a href="<?= e($panelHref) ?>" class="btn-outline">Panelim</a><?php endif; ?>
+      <a href="<?= e($kayitHref) ?>" class="btn-primary"><?= e($kayitLabel) ?></a>
+      <button type="button" class="btn-outline" data-open-ask>Soru sor</button>
     </div>
   </div>
 </header>
@@ -56,6 +57,7 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
             <p><?= e($para) ?></p>
           <?php endforeach; ?>
         </div>
+        <?= program_body_gallery_html($p) ?>
       </section>
 
       <section>
@@ -87,31 +89,37 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
             </tbody>
           </table>
         <?php else: ?>
-          <p class="mt-4 text-sm text-muted">Bu programda henüz açık grup yok. <a class="font-extrabold text-navy" href="<?= e(page_url('iletisim')) ?>">İletişimden yazın</a>; kayıt sonrası grup açılınca panelden haberdar edilirsiniz.</p>
+          <p class="mt-4 text-sm text-muted">Bu programda henüz açık grup yok. <button type="button" class="font-extrabold text-navy" data-open-ask>Soru sorun</button>; kayıt sonrası grup açılınca panelden haberdar edilirsiniz.</p>
         <?php endif; ?>
       </section>
 
       <?php render_installment_table((int) $p['price_now']); ?>
+      <?php if (!$isFree): ?>
       <p class="text-sm text-muted">Taksit tablosu bilgilendirme içindir. Ödeme bu sayfada alınmaz; <a class="font-extrabold text-navy" href="<?= e($kayitHref) ?>">üyelik satın al</a> sayfasında güvenli kart ödemesiyle tamamlanır.</p>
+      <?php endif; ?>
     </div>
 
     <aside class="grid gap-4 lg:sticky lg:top-24">
       <div class="card overflow-hidden">
         <div class="bg-navy3 px-6 py-5 text-white">
-          <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-white/60">Yıllık ücret</p>
+          <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-white/60"><?= $isFree ? 'Ücret' : 'Yıllık ücret' ?></p>
+          <?php if (!$isFree && (int) $p['price_old'] > 0): ?>
           <p class="mt-1"><span class="price-old mr-2 text-white/50"><?= money((int) $p['price_old']) ?></span></p>
-          <p class="font-display mt-1 text-3xl"><?= money((int) $p['price_now']) ?></p>
+          <?php endif; ?>
+          <p class="font-display mt-1 text-3xl"><?= e(money_or_free((int) $p['price_now'])) ?></p>
           <p class="mt-1 text-sm text-white/70"><?= e($p['tag']) ?></p>
         </div>
         <div class="grid gap-3 p-6">
-          <a href="<?= e($kayitHref) ?>" class="btn-primary text-center">Canlı ders üyeliği al</a>
-          <a href="<?= e(page_url('iletisim')) ?>" class="btn-outline text-center">İletişim</a>
-          <?php if ($panelHref): ?>
-            <a href="<?= e($panelHref) ?>" class="btn-outline text-center">Panelim</a>
-          <?php else: ?>
+          <a href="<?= e($kayitHref) ?>" class="btn-primary text-center"><?= e($kayitLabel) ?></a>
+          <button type="button" class="btn-outline" data-open-ask>Soru sor</button>
+          <?php if (!$u): ?>
             <a href="<?= e(page_url('giris-ders')) ?>" class="text-center text-sm font-extrabold text-navy">Hesabınız varsa ders girişi</a>
           <?php endif; ?>
+          <?php if ($isFree): ?>
+          <p class="text-xs text-muted">Bu program ücretsizdir. Kayıt formundan üyelik alınır, kart çekilmez.</p>
+          <?php else: ?>
           <p class="text-xs text-muted">Kart bu sayfada çekilmez. Üyelik ücreti kayıt / üyelik satın al formunda ödenir.</p>
+          <?php endif; ?>
         </div>
       </div>
       <?php if ($related): ?>
@@ -129,4 +137,22 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
     </aside>
   </div>
 </main>
+<div id="ask-modal" class="modal">
+  <div class="card w-full max-w-md p-6">
+    <h3 class="font-display text-2xl">Soru sor</h3>
+    <p class="mt-2 text-sm text-muted"><?= e((string) $p['title']) ?> hakkında sorunuzu yazın; yanıt yönetime ve ilgili hocaya düşer.</p>
+    <form class="mt-4 grid gap-3" method="post" action="<?= e(url('api/program-soru.php')) ?>" data-ask-form>
+      <?= csrf_field() ?>
+      <?= security_honeypot_field() ?>
+      <input type="hidden" name="program_id" value="<?= (int) $p['id'] ?>">
+      <input required name="name" class="rounded-xl border border-[#e5e5e7] px-3 py-2" placeholder="Ad soyad" autocomplete="name" value="<?= e($askName) ?>">
+      <input required type="email" name="email" class="rounded-xl border border-[#e5e5e7] px-3 py-2" placeholder="E-posta" autocomplete="email" value="<?= e($askEmail) ?>">
+      <textarea required name="body" minlength="8" maxlength="2000" rows="5" class="rounded-xl border border-[#e5e5e7] px-3 py-2" placeholder="Sorunuz"></textarea>
+      <p class="hidden text-sm font-bold text-green-700" data-ask-ok>Sorunuz iletildi.</p>
+      <p class="hidden text-sm font-bold text-accent" data-ask-err></p>
+      <button class="btn-primary" type="submit">Gönder</button>
+      <button type="button" data-close-ask class="btn-outline">Vazgeç</button>
+    </form>
+  </div>
+</div>
 <?php public_foot();

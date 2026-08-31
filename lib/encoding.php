@@ -119,7 +119,7 @@ function repair_utf8_data(): void
         ['homework', 'id', ['title', 'due_label']],
         ['leads', 'id', ['name', 'interest']],
         ['messages', 'id', ['body']],
-        ['student_questions', 'id', ['body', 'answer']],
+        ['student_questions', 'id', ['body', 'answer', 'guest_name']],
         ['recordings', 'id', ['title']],
         ['tests', 'id', ['title', 'description']],
     ];

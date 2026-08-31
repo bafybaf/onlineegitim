@@ -191,8 +191,24 @@ function catalog_book_copy(): array
     ];
 }
 
+function program_price_html(array $p, string $nowClass = 'price-now'): string
+{
+    $now = (int) ($p['price_now'] ?? 0);
+    $old = (int) ($p['price_old'] ?? 0);
+    $html = '';
+    if ($old > 0 && $now > 0 && $old > $now) {
+        $html .= '<span class="price-old mr-2">' . e(money($old)) . '</span>';
+    }
+    $label = $now <= 0 ? 'Ücretsiz' : (money($now) . ' / yıl');
+    $html .= '<span class="' . e($nowClass) . '">' . e($label) . '</span>';
+    return $html;
+}
+
 function render_installment_table(int $price): void
 {
+    if ($price < 1) {
+        return;
+    }
     $rows = installment_rows($price);
     ?>
     <div class="card overflow-hidden">

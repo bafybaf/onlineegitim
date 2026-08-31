@@ -244,6 +244,7 @@ function admin_delete_program(int $id): void
     db_try_exec('UPDATE payments SET program_id = NULL WHERE program_id = ?', [$id]);
     if (function_exists('media_delete_owner')) {
         media_delete_owner('program', $id);
+        media_delete_owner('program_body', $id);
     }
     db()->prepare('DELETE FROM programs WHERE id = ?')->execute([$id]);
 }

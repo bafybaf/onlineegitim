@@ -285,6 +285,7 @@ function panel_nav(string $role, string $page): array
             ['id' => 'canli', 'href' => 'admin/canli', 'label' => 'Canlı', 'icon' => 'live', 'badge' => $liveN],
             ['id' => 'takvim', 'href' => 'admin/takvim', 'label' => 'Takvim', 'icon' => 'calendar'],
             ['id' => 'yazilar', 'href' => 'admin/yazilar', 'label' => 'Duyurular', 'icon' => 'mail'],
+            ['id' => 'sorular', 'href' => 'admin/sorular', 'label' => 'Sorular', 'icon' => 'mail', 'badge' => function_exists('question_admin_pending_count') ? question_admin_pending_count() : 0],
         ]],
         ['label' => 'Mağaza', 'items' => [
             ['id' => 'eticaret', 'href' => 'admin/eticaret', 'label' => 'E-ticaret özeti', 'icon' => 'bag'],

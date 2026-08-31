@@ -14,7 +14,7 @@ function admin_save_package(int $id, array $in): int
     if ($name === '' || mb_strlen($name) > 120) {
         throw new RuntimeException('Paket adı girin.');
     }
-    $price = max(1, (int) ($in['price'] ?? 0));
+    $price = max(0, (int) ($in['price'] ?? 0));
     $days = max(1, (int) ($in['duration_days'] ?? 0));
     $active = !empty($in['active']) ? 1 : 0;
     $access = (($in['access_type'] ?? '') === 'sadece_video') ? 'sadece_video' : 'canli_video';
@@ -103,7 +103,7 @@ function ensure_ders_packages_from_catalog(): void
     try {
         db()->exec(
             "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active)
-             SELECT 'ders', g.program_id, g.id, CONCAT(g.name, ' — yıllık'), 365, GREATEST(1, COALESCE(pr.price_now, 1)), 0, 1
+             SELECT 'ders', g.program_id, g.id, CONCAT(g.name, ' — yıllık'), 365, GREATEST(0, COALESCE(pr.price_now, 0)), 0, 1
              FROM class_groups g
              JOIN programs pr ON pr.id = g.program_id
              WHERE NOT EXISTS (
@@ -112,7 +112,7 @@ function ensure_ders_packages_from_catalog(): void
         );
         db()->exec(
             "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active)
-             SELECT 'ders', pr.id, NULL, CONCAT(pr.title, ' — yıllık'), 365, GREATEST(1, COALESCE(pr.price_now, 1)), 0, 1
+             SELECT 'ders', pr.id, NULL, CONCAT(pr.title, ' — yıllık'), 365, GREATEST(0, COALESCE(pr.price_now, 0)), 0, 1
              FROM programs pr
              WHERE NOT EXISTS (
                SELECT 1 FROM packages x WHERE x.kind = 'ders' AND x.program_id = pr.id

@@ -245,11 +245,11 @@ function live_board_public(array $row, int $roomId): array
         'rev' => (int) ($row['rev'] ?? 0),
         'page' => max(1, (int) ($row['page'] ?? 1)),
         'pages' => max(0, (int) ($row['pages'] ?? 0)),
-        'pdf' => $pdf !== '' ? url('api/dosya.php') . '?tur=tahta&id=' . $roomId . '&v=' . (int) ($row['rev'] ?? 0) : '',
+        'pdf' => $pdf !== '' ? url('api/dosya.php') . '?tur=tahta&id=' . $roomId . '&v=' . rawurlencode(basename($pdf)) : '',
         'strokes' => $strokes,
-        'zoom' => max(1, min(6, (float) ($row['zoom'] ?? 1))),
-        'panX' => max(-3, min(3, (float) ($row['pan_x'] ?? 0))),
-        'panY' => max(-3, min(3, (float) ($row['pan_y'] ?? 0))),
+        'zoom' => max(0.08, min(40, (float) ($row['zoom'] ?? 1))),
+        'panX' => max(-200, min(200, (float) ($row['pan_x'] ?? 0))),
+        'panY' => max(-200, min(200, (float) ($row['pan_y'] ?? 0))),
         'screen' => !empty($row['screen']) ? 1 : 0,
     ];
 }
@@ -261,9 +261,9 @@ function live_board_save(PDO $pdo, int $roomId, array $fields): array
     $page = array_key_exists('page', $fields) ? max(1, (int) $fields['page']) : max(1, (int) $row['page']);
     $pages = array_key_exists('pages', $fields) ? max(0, (int) $fields['pages']) : max(0, (int) $row['pages']);
     $strokes = array_key_exists('strokes', $fields) ? (string) $fields['strokes'] : (string) $row['strokes'];
-    $zoom = array_key_exists('zoom', $fields) ? max(1, min(6, (float) $fields['zoom'])) : max(1, min(6, (float) ($row['zoom'] ?? 1)));
-    $panX = array_key_exists('pan_x', $fields) ? max(-3, min(3, (float) $fields['pan_x'])) : max(-3, min(3, (float) ($row['pan_x'] ?? 0)));
-    $panY = array_key_exists('pan_y', $fields) ? max(-3, min(3, (float) $fields['pan_y'])) : max(-3, min(3, (float) ($row['pan_y'] ?? 0)));
+    $zoom = array_key_exists('zoom', $fields) ? max(0.08, min(40, (float) $fields['zoom'])) : max(0.08, min(40, (float) ($row['zoom'] ?? 1)));
+    $panX = array_key_exists('pan_x', $fields) ? max(-200, min(200, (float) $fields['pan_x'])) : max(-200, min(200, (float) ($row['pan_x'] ?? 0)));
+    $panY = array_key_exists('pan_y', $fields) ? max(-200, min(200, (float) $fields['pan_y'])) : max(-200, min(200, (float) ($row['pan_y'] ?? 0)));
     $screen = array_key_exists('screen', $fields) ? ((int) $fields['screen'] ? 1 : 0) : ((int) ($row['screen'] ?? 0) ? 1 : 0);
     $rev = (int) ($row['rev'] ?? 0) + 1;
     try {

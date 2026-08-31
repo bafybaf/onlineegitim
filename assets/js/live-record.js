@@ -55,6 +55,16 @@
     return { x: x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh };
   }
 
+  function destCover(sw, sh, x, y, w, h) {
+    if (sw < 2 || sh < 2) {
+      return { x: x, y: y, w: w, h: h };
+    }
+    const s = Math.max(w / sw, h / sh);
+    const dw = sw * s;
+    const dh = sh * s;
+    return { x: x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh };
+  }
+
   function drawContain(src, x, y, w, h) {
     if (!src) return false;
     const vw = src.videoWidth || src.width || 0;
@@ -70,26 +80,35 @@
   }
 
   function paint() {
+    if (finishing || done) {
+      raf = 0;
+      return;
+    }
     const boardW = W - sideW;
     ctx.fillStyle = '#0b1020';
     ctx.fillRect(0, 0, W, H);
     const sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
     const sw = (bg && bg.width) ? bg.width : boardW;
     const sh = (bg && bg.height) ? bg.height : H;
-    const box = destRect(sw, sh, 0, 0, boardW, H);
+    const box = destCover(sw, sh, 0, 0, boardW, H);
     if (sharing) {
       ctx.fillStyle = '#0b1020';
       ctx.fillRect(0, 0, boardW, H);
       drawContain(screenVid, 0, 0, boardW, H);
     } else {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, boardW, H);
+      ctx.clip();
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, boardW, H);
       if (bg && bg.width) {
         try { ctx.drawImage(bg, box.x, box.y, box.w, box.h); } catch (e) {}
       }
-    }
-    if (draw && draw.width) {
-      try { ctx.drawImage(draw, box.x, box.y, box.w, box.h); } catch (e) {}
+      if (draw && draw.width) {
+        try { ctx.drawImage(draw, box.x, box.y, box.w, box.h); } catch (e) {}
+      }
+      ctx.restore();
     }
     ctx.fillStyle = '#000';
     ctx.fillRect(boardW, 0, sideW, camH);
@@ -187,25 +206,48 @@
     return Math.max(1, Math.ceil((Date.now() - startedMs) / 60000));
   }
 
+  function waitAtMost(p, ms) {
+    return Promise.race([
+      Promise.resolve(p).catch(() => null),
+      new Promise((resolve) => setTimeout(resolve, ms))
+    ]);
+  }
+
+  function postDone() {
+    const body = 'action=record_done&id=' + encodeURIComponent(cfg.roomId) + '&mins=' + minsNow();
+    try {
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
+        if (navigator.sendBeacon(api, blob)) {
+          return Promise.resolve();
+        }
+      }
+    } catch (e) {}
+    return fetch(api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      keepalive: true
+    }).catch(() => null);
+  }
+
   async function finish() {
     if (finishing || done) return;
     finishing = true;
+    cancelAnimationFrame(raf);
+    raf = 0;
     if (recorder && recorder.state !== 'inactive') {
       await new Promise((resolve) => {
-        recorder.onstop = resolve;
+        let settled = false;
+        const once = () => { if (!settled) { settled = true; resolve(); } };
+        recorder.onstop = once;
         try { recorder.requestData(); } catch (e) {}
-        try { recorder.stop(); } catch (e) { resolve(); }
-        setTimeout(resolve, 2500);
+        try { recorder.stop(); } catch (e) { once(); }
+        setTimeout(once, 1500);
       });
     }
-    await queue;
-    try {
-      await fetch(api, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=record_done&id=' + encodeURIComponent(cfg.roomId) + '&mins=' + minsNow()
-      });
-    } catch (e) {}
+    await waitAtMost(queue, 6000);
+    await waitAtMost(postDone(), 8000);
     done = true;
     cancelAnimationFrame(raf);
   }
@@ -230,8 +272,22 @@
     f.addEventListener('submit', (ev) => {
       if (f.dataset.recOk === '1') return;
       ev.preventDefault();
+      const btn = f.querySelector('button');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Kaydediliyor…';
+      }
       finish().finally(() => {
         f.dataset.recOk = '1';
+        const mins = f.querySelector('input[name="mins"]');
+        if (mins) mins.value = String(minsNow());
+        else {
+          const h = document.createElement('input');
+          h.type = 'hidden';
+          h.name = 'mins';
+          h.value = String(minsNow());
+          f.appendChild(h);
+        }
         f.submit();
       });
     });
@@ -248,8 +304,10 @@
   }
 
   window.addEventListener('pagehide', () => {
-    if (!done && recorder && recorder.state === 'recording') {
+    if (done || finishing) return;
+    if (recorder && recorder.state === 'recording') {
       try { recorder.requestData(); } catch (e) {}
     }
+    postDone();
   });
 })();

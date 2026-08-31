@@ -85,6 +85,10 @@ function payment_checkout_url(array $payment): string
     if (($payment['status'] ?? '') === 'odendi') {
         return odeme_sonuc_url('ok', $oid);
     }
+    if ((int) ($payment['total'] ?? 0) < 1) {
+        $paid = payment_settle_now($payment);
+        return odeme_sonuc_url('ok', (string) ($paid['merchant_oid'] ?? $oid));
+    }
     if (iyzico_configured()) {
         return odeme_url($oid);
     }

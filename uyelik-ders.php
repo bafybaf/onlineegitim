@@ -64,7 +64,7 @@ public_head('Canlı ders üyeliği | Online İlahiyat');
           <input type="radio" name="package_id" value="<?= (int) $pkg['id'] ?>" <?= $sel === (int) $pkg['id'] ? 'checked' : '' ?> class="mt-1">
           <span>
             <span class="block font-extrabold"><?= e($pkg['name']) ?></span>
-            <span class="text-sm text-muted"><?= money((int) $pkg['price']) ?> · <?= (int) $pkg['duration_days'] ?> gün<?= !empty($pkg['group_name']) ? ' · ' . e($pkg['group_name']) : (!empty($pkg['program_title']) ? ' · ' . e($pkg['program_title']) : '') ?> · <?= e(package_access_label($pkg)) ?></span>
+            <span class="text-sm text-muted"><?= e(money_or_free((int) $pkg['price'])) ?> · <?= (int) $pkg['duration_days'] ?> gün<?= !empty($pkg['group_name']) ? ' · ' . e($pkg['group_name']) : (!empty($pkg['program_title']) ? ' · ' . e($pkg['program_title']) : '') ?> · <?= e(package_access_label($pkg)) ?></span>
           </span>
         </label>
       <?php endforeach; ?>

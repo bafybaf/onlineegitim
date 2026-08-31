@@ -47,8 +47,10 @@ panel_head('admin', 'programlar', 'Programlar | Admin', $u);
               </a>
             </td>
             <td>
+              <?php if ((int) $p['price_old'] > 0 && (int) $p['price_now'] > 0): ?>
               <span class="price-old mr-1"><?= money((int) $p['price_old']) ?></span>
-              <span class="font-extrabold"><?= money((int) $p['price_now']) ?></span>
+              <?php endif; ?>
+              <span class="font-extrabold"><?= e(money_or_free((int) $p['price_now'])) ?></span>
             </td>
             <td><?= (int) $p['grup_n'] ?></td>
             <td class="whitespace-nowrap">

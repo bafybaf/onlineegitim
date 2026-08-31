@@ -136,6 +136,86 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     return $ok;
 }
 
+function vod_commit_live_room(PDO $pdo, array $room, int $mins = 0): bool
+{
+    $id = (int) ($room['id'] ?? 0);
+    if ($id < 1) {
+        return false;
+    }
+    $lockPath = academy_storage('vod') . '/live-' . $id . '.commit.lock';
+    $lock = @fopen($lockPath, 'c');
+    if ($lock === false) {
+        return false;
+    }
+    if (!flock($lock, LOCK_EX)) {
+        fclose($lock);
+        return false;
+    }
+    try {
+        return vod_commit_live_room_locked($pdo, $room, $mins, $id);
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+        @unlink($lockPath);
+    }
+}
+
+function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id): bool
+{
+    $like = 'vod/oda-' . $id . '-%';
+    $dup = $pdo->prepare('SELECT id FROM recordings WHERE video_path LIKE ? LIMIT 1');
+    $dup->execute([$like]);
+    if ($dup->fetch()) {
+        return true;
+    }
+    $tmp = academy_storage('vod') . '/live-' . $id . '.webm';
+    $name = '';
+    $dest = '';
+    if (is_file($tmp) && filesize($tmp) >= 800) {
+        $name = 'vod/oda-' . $id . '-' . date('Ymd-His') . '.webm';
+        $dest = academy_storage() . '/' . $name;
+        if (!@rename($tmp, $dest) && !@copy($tmp, $dest)) {
+            return false;
+        }
+        if (is_file($tmp) && realpath($tmp) !== realpath($dest)) {
+            @unlink($tmp);
+        }
+    } else {
+        $found = glob(academy_storage() . '/vod/oda-' . $id . '-*.webm') ?: [];
+        rsort($found);
+        if (!$found || !is_file($found[0]) || filesize($found[0]) < 800) {
+            return false;
+        }
+        $dest = $found[0];
+        $name = 'vod/' . basename($dest);
+    }
+    $topic = trim((string) ($room['topic'] ?? ''));
+    $title = trim((string) ($room['title'] ?? 'Ders'));
+    $when = date('d.m.Y H:i');
+    $teacher = trim((string) ($room['teacher_name'] ?? ''));
+    if ($teacher === '' && !empty($room['teacher_id'])) {
+        $tn = $pdo->prepare('SELECT name FROM users WHERE id = ?');
+        $tn->execute([(int) $room['teacher_id']]);
+        $teacher = trim((string) ($tn->fetchColumn() ?: ''));
+    }
+    $label = $topic !== '' && $topic !== 'Ders' ? $topic . ' — ' . $title : $title;
+    $label .= ' — ' . $when;
+    if ($teacher !== '') {
+        $label .= ' — ' . $teacher;
+    }
+    $mins = max(1, $mins);
+    $started = strtotime((string) ($room['started_at'] ?? ''));
+    if ($started) {
+        $mins = max($mins, (int) ceil((time() - $started) / 60));
+    }
+    $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
+        ->execute([(int) $room['group_id'], (int) $room['teacher_id'], mb_substr($label, 0, 160), min(300, $mins), $name]);
+    if (function_exists('notify_group_students')) {
+        notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
+    }
+    return true;
+}
+
 function vod_remux_webm(string $abs): bool
 {
     $ff = vod_ffmpeg_bin();

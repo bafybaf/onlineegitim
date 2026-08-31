@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tag = post('tag');
         $description = post('description');
         $priceOld = max(0, (int) post('price_old'));
-        $priceNow = max(1, (int) post('price_now'));
+        $priceNow = max(0, (int) post('price_now'));
         if ($title === '' || $description === '') {
             $err = 'Başlık ve açıklama zorunludur.';
         } else {
@@ -54,12 +54,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     )->execute([$slug, $title, $level, $hours, $tag, $description, $priceOld, $priceNow, null]);
                     $id = (int) db()->lastInsertId();
                     media_attach_uploads('program', $id, 'images', $slug);
+                    media_attach_uploads('program_body', $id, 'body_images', $slug);
                     flash_ok('Program oluşturuldu.');
                 } else {
+                    $prevNow = (int) ($p['price_now'] ?? 0);
                     db()->prepare(
                         'UPDATE programs SET title=?, level=?, hours=?, tag=?, description=?, price_old=?, price_now=? WHERE id=?'
                     )->execute([$title, $level, $hours, $tag, $description, $priceOld, $priceNow, $id]);
+                    if ($prevNow !== $priceNow) {
+                        db()->prepare("UPDATE packages SET price = ? WHERE kind = 'ders' AND program_id = ? AND price = ?")
+                            ->execute([$priceNow, $id, $prevNow]);
+                    }
                     media_attach_uploads('program', $id, 'images', $slug);
+                    media_attach_uploads('program_body', $id, 'body_images', $slug);
                     flash_ok('Program kaydedildi.');
                 }
                 redirect('admin/program.php?id=' . $id);
@@ -106,15 +113,19 @@ panel_head('admin', 'programlar', ($isNew ? 'Yeni program' : 'Program düzenle')
         <input name="price_old" type="number" min="0" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= (int) $p['price_old'] ?>">
       </label>
       <label class="text-sm font-bold">Güncel fiyat
-        <input name="price_now" type="number" min="1" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= (int) $p['price_now'] ?>">
+        <input name="price_now" type="number" min="0" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= (int) $p['price_now'] ?>">
       </label>
     </div>
+    <p class="text-xs text-muted">Güncel fiyat 0 ise sitede “Ücretsiz” yazılır.</p>
     <label class="text-sm font-bold">Açıklama
       <textarea name="description" rows="6" class="mt-1 w-full rounded-xl border px-3 py-2"><?= e((string) $p['description']) ?></textarea>
     </label>
-    <label class="text-sm font-bold">Görseller</label>
+    <label class="text-sm font-bold">Açıklama görselleri</label>
+    <?= media_dropzone_html('program_body', $isNew ? 0 : $id, 'body_images') ?>
+    <p class="text-xs text-muted">Program hakkında bölümünde metnin altında görünür. Birden fazla yükleyebilirsiniz.</p>
+    <label class="text-sm font-bold">Kapak görselleri</label>
     <?= media_dropzone_html('program', $isNew ? 0 : $id) ?>
-    <p class="text-xs text-muted">JPG, PNG veya WEBP. Birden fazla yükleyin; sürükleyerek slayt sırasını değiştirin.</p>
+    <p class="text-xs text-muted">JPG, PNG veya WEBP. Üstteki slayt için birden fazla yükleyin; sürükleyerek sırayı değiştirin.</p>
     <button class="btn-primary"><?= $isNew ? 'Oluştur' : 'Kaydet' ?></button>
   </form>
   <aside class="grid gap-4">

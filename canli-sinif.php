@@ -135,9 +135,7 @@ foreach ($students as $s) {
         <span id="board-zoom">100%</span>
         <button type="button" class="live-board-tool" data-act="zoomin">+</button>
         <button type="button" class="live-board-tool" data-act="zoomreset">1:1</button>
-        <button type="button" class="live-board-tool" data-act="prev">‹</button>
-        <span id="board-page">1</span>
-        <button type="button" class="live-board-tool" data-act="next">›</button>
+        <span id="board-page"></span>
       </div>
       <?php endif; ?>
       <div class="live-board-stage" id="board-stage">

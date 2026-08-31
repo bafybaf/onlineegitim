@@ -109,7 +109,11 @@ if ($isVideo && function_exists('vod_send_file')) {
 }
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . (string) filesize($abs));
-header('Cache-Control: private, no-store');
+if ($ext === 'pdf' && $tur === 'tahta') {
+    header('Cache-Control: private, max-age=3600');
+} else {
+    header('Cache-Control: private, no-store');
+}
 if ($isVideo) {
     header('Content-Disposition: inline');
     header('X-Content-Type-Options: nosniff');

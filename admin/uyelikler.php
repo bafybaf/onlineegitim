@@ -45,7 +45,7 @@ panel_head('admin', 'uyelikler', 'Üyelik paketleri | Admin', $u);
             <?php endif; ?>
           </td>
           <td><?= (int) $r['duration_days'] ?> gün</td>
-          <td><?= money((int) $r['price']) ?></td>
+          <td><?= e(money_or_free((int) $r['price'])) ?></td>
           <td><?= e(package_access_label($r)) ?></td>
           <td><?= (int) $r['active'] ? 'Aktif' : 'Pasif' ?></td>
           <td class="whitespace-nowrap">

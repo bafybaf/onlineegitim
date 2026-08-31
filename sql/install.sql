@@ -340,15 +340,20 @@ CREATE TABLE messages (
 
 CREATE TABLE student_questions (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  student_id INT UNSIGNED NOT NULL,
-  teacher_id INT UNSIGNED NOT NULL,
+  student_id INT UNSIGNED NULL,
+  teacher_id INT UNSIGNED NULL,
   group_id INT UNSIGNED NULL,
+  program_id INT UNSIGNED NULL,
+  guest_name VARCHAR(120) NULL,
+  guest_email VARCHAR(160) NULL,
+  source VARCHAR(20) NOT NULL DEFAULT 'panel',
   body TEXT NOT NULL,
   answer TEXT NULL,
   answered_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_q_teacher (teacher_id, answered_at, id),
-  KEY idx_q_student (student_id, id)
+  KEY idx_q_student (student_id, id),
+  KEY idx_q_program (program_id, answered_at, id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE recordings (

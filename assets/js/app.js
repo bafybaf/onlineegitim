@@ -79,4 +79,40 @@
   drawer?.addEventListener("click", (e) => { if (e.target === drawer) drawer.classList.remove("is-open"); });
   document.querySelectorAll("[data-open-call]").forEach((b) => b.addEventListener("click", () => document.getElementById("call-modal")?.classList.add("is-open")));
   document.querySelectorAll("[data-close-call]").forEach((b) => b.addEventListener("click", () => document.getElementById("call-modal")?.classList.remove("is-open")));
+
+  const askModal = document.getElementById("ask-modal");
+  const openAsk = () => askModal?.classList.add("is-open");
+  const closeAsk = () => askModal?.classList.remove("is-open");
+  document.querySelectorAll("[data-open-ask]").forEach((b) => b.addEventListener("click", openAsk));
+  document.querySelectorAll("[data-close-ask]").forEach((b) => b.addEventListener("click", closeAsk));
+  askModal?.addEventListener("click", (e) => { if (e.target === askModal) closeAsk(); });
+  document.querySelectorAll("[data-ask-form]").forEach((form) => {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const ok = form.querySelector("[data-ask-ok]");
+      const err = form.querySelector("[data-ask-err]");
+      if (ok) ok.classList.add("hidden");
+      if (err) { err.classList.add("hidden"); err.textContent = ""; }
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      try {
+        const r = await fetch(form.action, { method: "POST", body: new FormData(form) });
+        const j = await r.json();
+        if (j.ok) {
+          if (ok) ok.classList.remove("hidden");
+          const ta = form.querySelector("textarea[name=body]");
+          if (ta) ta.value = "";
+        } else if (err) {
+          err.textContent = j.error || "Gönderilemedi.";
+          err.classList.remove("hidden");
+        }
+      } catch (_) {
+        if (err) {
+          err.textContent = "Gönderilemedi.";
+          err.classList.remove("hidden");
+        }
+      }
+      if (btn) btn.disabled = false;
+    });
+  });
 })();

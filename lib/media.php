@@ -249,12 +249,12 @@ function urun_admin_url(int $id): string
 
 function media_owner_types(): array
 {
-    return ['book' => 'books', 'program' => 'programs'];
+    return ['book' => 'books', 'program' => 'programs', 'program_body' => 'programs'];
 }
 
 function media_subdir(string $type): string
 {
-    return $type === 'program' ? 'programs' : 'books';
+    return str_starts_with($type, 'program') ? 'programs' : 'books';
 }
 
 function media_uploaded_files(string $field): array
@@ -526,6 +526,20 @@ function program_gallery_html(array $p, string $kind = 'card', string $href = ''
         return '<div class="' . e($wrap) . '">' . program_image_html($p, '', $kind === 'detail' ? 'card' : $kind) . '</div>';
     }
     return gallery_slider_html($srcs, (string) ($p['title'] ?? ''), $wrap, 'prog-cover', $href);
+}
+
+function program_body_gallery_html(array $p): string
+{
+    $srcs = media_public_urls('program_body', (int) ($p['id'] ?? 0));
+    if (!$srcs) {
+        return '';
+    }
+    $html = '<div class="prog-body-pics">';
+    foreach ($srcs as $src) {
+        $html .= '<img src="' . e($src) . '" alt="' . e((string) ($p['title'] ?? '')) . '">';
+    }
+    $html .= '</div>';
+    return $html;
 }
 
 function media_dropzone_html(string $type, int $ownerId, string $field = 'images'): string

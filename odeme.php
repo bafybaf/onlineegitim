@@ -32,7 +32,7 @@ if (($payment['status'] ?? '') === 'odendi') {
     redirect(odeme_sonuc_url('ok', $oid));
 }
 
-if (!iyzico_configured()) {
+if ((int) ($payment['total'] ?? 0) < 1 || !iyzico_configured()) {
     $payment = payment_settle_now($payment);
     redirect(odeme_sonuc_url('ok', $oid));
 }
