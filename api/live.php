@@ -102,15 +102,9 @@ if ($action === 'pause') {
         json_out(['ok' => false, 'error' => 'ended']);
     }
     ensure_live_pause_schema();
-    $mins = (int) post('mins');
-    if ($mins < 1) {
-        $mins = 5;
-    }
-    $mins = min(20, $mins);
-    $pdo->prepare('UPDATE live_rooms SET paused = 1, pause_ends_at = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id = ?')
-        ->execute([$mins, $id]);
+    $pdo->prepare('UPDATE live_rooms SET paused = 1, pause_ends_at = NULL WHERE id = ?')->execute([$id]);
     $pdo->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')
-        ->execute([$id, $u['id'], 'Sistem', $mins . ' dakikalık mola başladı.']);
+        ->execute([$id, $u['id'], 'Sistem', 'Mola başladı.']);
     $st->execute([$id]);
     $room = $st->fetch() ?: $room;
     json_out(['ok' => true, 'room' => live_public_room($room)]);

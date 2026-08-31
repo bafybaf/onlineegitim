@@ -385,7 +385,7 @@
   window.livePlayerSetPaused = function (on) {
     lessonPaused = !!on && !ended;
     if (lessonPaused) {
-      setWait('Mola', 'Ders kısa süre sonra devam edecek.');
+      setWait('Mola', '');
       return;
     }
     if (!ended && playing) {

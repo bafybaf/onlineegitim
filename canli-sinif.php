@@ -109,14 +109,7 @@ foreach ($students as $s) {
     <div class="flex flex-wrap items-center justify-end gap-2 text-sm">
       <span><?= e($room['teacher_name']) ?></span>
       <?php if ($canEnd && $room['status'] === 'live'): ?>
-        <div class="live-pause-ctrl">
-          <select id="live-pause-mins" aria-label="Mola süresi">
-            <option value="3">3 dk</option>
-            <option value="5" selected>5 dk</option>
-            <option value="10">10 dk</option>
-          </select>
-          <button type="button" id="live-pause-btn" class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Mola</button>
-        </div>
+        <button type="button" id="live-pause-btn" class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Mola</button>
         <button type="button" id="live-rec-start" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Kaydı başlat</button>
         <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Dersi bitir</button></form>
       <?php endif; ?>
@@ -158,9 +151,9 @@ foreach ($students as $s) {
           <p>Kayıt başlıyor</p>
         </div>
         <div id="live-pause-overlay" class="live-pause-overlay<?= !empty($pauseInfo['paused']) ? ' is-on' : '' ?>">
-          <p class="live-pause-kicker">Mola</p>
-          <b id="live-pause-clock"><?= !empty($pauseInfo['paused']) ? sprintf('%d:%02d', intdiv((int) $pauseInfo['pause_left'], 60), ((int) $pauseInfo['pause_left']) % 60) : '5:00' ?></b>
-          <p>Ders kısa süre sonra devam edecek</p>
+          <p class="live-pause-kicker">Kısa ara</p>
+          <b>Mola</b>
+          <p>Öğretmen kısa bir ara verdi. Ders birazdan devam edecek.</p>
         </div>
       </div>
     </section>
@@ -238,8 +231,7 @@ window.LIVE_PAUSE = {
   roomId: <?= $id ?>,
   url: <?= json_encode(url('api/live.php')) ?>,
   canCtrl: <?= ($canEnd && ($room['status'] ?? '') === 'live') ? 'true' : 'false' ?>,
-  paused: <?= !empty($pauseInfo['paused']) ? 'true' : 'false' ?>,
-  pauseLeft: <?= (int) ($pauseInfo['pause_left'] ?? 0) ?>
+  paused: <?= !empty($pauseInfo['paused']) ? 'true' : 'false' ?>
 };
 
 function esc(s) {

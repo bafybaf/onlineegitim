@@ -52,7 +52,7 @@
       if (!media) {
         return;
       }
-      media.getAudioTracks().forEach((t) => {
+      media.getTracks().forEach((t) => {
         t.enabled = !sendPaused;
       });
     });

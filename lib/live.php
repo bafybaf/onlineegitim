@@ -196,28 +196,9 @@ function ensure_live_pause_schema(): void
 function live_room_pause_state(array &$room): array
 {
     ensure_live_pause_schema();
-    $id = (int) ($room['id'] ?? 0);
     $paused = !empty($room['paused']);
-    $until = strtotime((string) ($room['pause_ends_at'] ?? ''));
-    $left = ($paused && $until) ? max(0, $until - time()) : 0;
-    if ($paused && $until && $left <= 0 && $id > 0) {
-        try {
-            $up = db()->prepare('UPDATE live_rooms SET paused = 0, pause_ends_at = NULL WHERE id = ? AND paused = 1');
-            $up->execute([$id]);
-            if ($up->rowCount() > 0) {
-                db()->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')
-                    ->execute([$id, null, 'Sistem', 'Ders devam ediyor.']);
-            }
-        } catch (Throwable $e) {
-        }
-        $room['paused'] = 0;
-        $room['pause_ends_at'] = null;
-        $paused = false;
-        $left = 0;
-    }
     return [
         'paused' => $paused ? 1 : 0,
-        'pause_left' => $left,
     ];
 }
 
@@ -459,7 +440,6 @@ function live_public_room(array $room): array
         'group_id' => (int) $room['group_id'],
         'broadcasting' => (int) ($room['broadcasting'] ?? 0),
         'paused' => (int) $pause['paused'],
-        'pause_left' => (int) $pause['pause_left'],
         'started_at' => (string) ($room['started_at'] ?? ''),
         'play_mode' => live_room_play_mode($room),
     ];
