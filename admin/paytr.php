@@ -4,7 +4,21 @@ require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
 $saved = false;
 $err = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$iyzicoSaved = false;
+$iyzicoErr = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('form_kind') === 'iyzico') {
+    $api = trim(post('iyzico_api_key'));
+    $secret = trim(post('iyzico_secret_key'));
+    if ($api === '' || $secret === '') {
+        $iyzicoErr = 'iyzico API key ve secret key zorunludur.';
+    } else {
+        setting_set('iyzico_api_key', $api);
+        setting_set('iyzico_secret_key', $secret);
+        setting_set('iyzico_sandbox', isset($_POST['iyzico_sandbox']) ? '1' : '0');
+        setting_set('iyzico_enabled', isset($_POST['iyzico_enabled']) ? '1' : '0');
+        $iyzicoSaved = true;
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = preg_replace('/\D+/', '', post('paytr_merchant_id'));
     $key = trim(post('paytr_merchant_key'));
     $salt = trim(post('paytr_merchant_salt'));
@@ -37,6 +51,7 @@ panel_head('admin', 'paytr', 'PayTR ayarları | Admin', $u);
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
   <form method="post" class="card grid gap-4 p-6">
+    <input type="hidden" name="form_kind" value="paytr">
     <p class="text-sm text-muted">Mağaza Paneli → Destek &amp; Kurulum → Entegrasyon Bilgileri. Kitap siparişi ile mağaza ve ders üyelikleri bu hesap üzerinden alınır.</p>
     <label class="text-sm font-bold">Mağaza no (merchant_id)
       <input name="paytr_merchant_id" required class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e(setting('paytr_merchant_id')) ?>" autocomplete="off">
@@ -81,4 +96,21 @@ panel_head('admin', 'paytr', 'PayTR ayarları | Admin', $u);
     </div>
   </aside>
 </div>
+<?php if ($iyzicoSaved): ?><p class="mt-6 font-bold text-green-700">iyzico ayarları kaydedildi.</p><?php endif; ?>
+<?php if ($iyzicoErr): ?><p class="mt-6 font-bold text-accent"><?= e($iyzicoErr) ?></p><?php endif; ?>
+<form method="post" class="card mt-6 grid gap-4 p-6">
+  <input type="hidden" name="form_kind" value="iyzico">
+  <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">iyzico</p>
+  <p class="text-sm text-muted">PayTR’ye ek kart tahsilatı. Anahtarlar <a class="font-extrabold text-navy" href="https://merchant.iyzipay.com/" target="_blank" rel="noreferrer">iyzico üye işyeri</a> panelinden alınır. Açıkken sepet ve ders üyeliği iyzico ödeme formuna gider.</p>
+  <label class="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="iyzico_enabled" value="1" <?= setting_bool('iyzico_enabled') ? 'checked' : '' ?>> iyzico ödemesini kullan</label>
+  <label class="text-sm font-bold">API key
+    <input type="password" name="iyzico_api_key" required class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e(setting('iyzico_api_key')) ?>" autocomplete="off">
+  </label>
+  <label class="text-sm font-bold">Secret key
+    <input type="password" name="iyzico_secret_key" required class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e(setting('iyzico_secret_key')) ?>" autocomplete="off">
+  </label>
+  <label class="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="iyzico_sandbox" value="1" <?= setting_bool('iyzico_sandbox', true) ? 'checked' : '' ?>> Sandbox (test) ortamı</label>
+  <p class="text-xs text-muted">Callback: <b><?= e(app_public_url('api/iyzico-callback.php')) ?></b> · Canlı sitede <b>site_url</b> doğru olsun. Test kartları: <a class="text-navy" href="https://github.com/iyzico/iyzipay-php" target="_blank" rel="noreferrer">iyzipay-php</a></p>
+  <button class="btn-primary">iyzico’yu kaydet</button>
+</form>
 <?php panel_foot();

@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $payment = membership_start_checkout($u, $pkg);
-            redirect(odeme_sonuc_url('ok', (string) $payment['merchant_oid']));
+            redirect(payment_checkout_url($payment));
         } catch (Throwable $e) {
             $err = $e->getMessage();
         }

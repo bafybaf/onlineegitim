@@ -120,6 +120,7 @@ panel_head('ogretmen', 'ogrenciler', 'Öğrencilerim | Öğretmen Paneli', $u);
           <p class="mt-2 text-xs text-muted"><?= e($attTxt) ?></p>
           <div class="mt-3 flex flex-wrap gap-2">
             <a class="btn-primary text-sm" href="<?= e(teacher_ogrenci_url((int) $s['id'])) ?>">Kartı aç</a>
+            <a class="btn-outline text-sm" href="<?= e(url('ogretmen/sorular.php?durum=hepsi')) ?>">Sorular</a>
             <a class="btn-outline text-sm" href="<?= e(url('ogretmen/mesajlar.php?ogrenci=' . (int) $s['id'])) ?>">Mesaj</a>
           </div>
         </article>

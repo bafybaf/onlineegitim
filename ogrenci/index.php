@@ -47,7 +47,7 @@ membership_panel_banner($u);
   </div>
 </section>
 
-<div class="dash-stats">
+<div class="dash-stats is-4">
   <div class="stat">
     <p class="stat-label">Program</p>
     <p class="stat-value"><?= count($groups) ?></p>
@@ -63,6 +63,12 @@ membership_panel_banner($u);
     <p class="stat-value"><?= $hwN ?></p>
     <p class="stat-hint"><?= $hwN ? 'Açık ödeviniz var' : 'Bekleyen ödev yok' ?></p>
     <a class="mt-2 inline-block text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/odevler')) ?>">Ödevlere git →</a>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Soru</p>
+    <p class="stat-value"><?= function_exists('question_open_count') ? question_open_count((int) $u['id']) : 0 ?></p>
+    <p class="stat-hint">Hocanıza sorun</p>
+    <a class="mt-2 inline-block text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/soru-sor')) ?>">Soru sor →</a>
   </div>
 </div>
 

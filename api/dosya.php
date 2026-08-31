@@ -24,6 +24,15 @@ if ($tur === 'video') {
     }
     $rel = (string) $row['video_path'];
     $downloadName = academy_slug((string) $row['title']);
+    $tok = (string) ($_GET['t'] ?? '');
+    if (!function_exists('vod_play_token_ok') || !vod_play_token_ok($tok, $id, (int) $u['id'])) {
+        http_response_code(403);
+        exit('Bağlantı geçersiz.');
+    }
+    if (function_exists('vod_is_direct_navigation') && vod_is_direct_navigation()) {
+        http_response_code(403);
+        exit('Bu video yalnızca oynatıcıda açılır.');
+    }
 } elseif ($tur === 'not') {
     $st = db()->prepare('SELECT * FROM lesson_notes WHERE id = ?');
     $st->execute([$id]);
@@ -90,6 +99,14 @@ $mime = match ($ext) {
 };
 $inline = in_array($ext, ['mp4', 'webm', 'mov', 'pdf', 'jpg', 'jpeg', 'png', 'webp'], true);
 $isVideo = in_array($ext, ['mp4', 'webm', 'mov'], true);
+if ($isVideo && $tur === 'video' && function_exists('vod_ensure_playable')) {
+    $hintMs = max(0, (int) ($row['mins'] ?? 0)) * 60 * 1000.0;
+    vod_ensure_playable($abs, $hintMs);
+    $abs = function_exists('academy_file_readable') ? (academy_file_readable($rel) ?: $abs) : $abs;
+}
+if ($isVideo && function_exists('vod_send_file')) {
+    vod_send_file($abs, $mime);
+}
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . (string) filesize($abs));
 header('Cache-Control: private, no-store');

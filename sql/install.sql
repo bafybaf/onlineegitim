@@ -338,6 +338,19 @@ CREATE TABLE messages (
   CONSTRAINT fk_m_fr FOREIGN KEY (from_user_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE student_questions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_id INT UNSIGNED NOT NULL,
+  teacher_id INT UNSIGNED NOT NULL,
+  group_id INT UNSIGNED NULL,
+  body TEXT NOT NULL,
+  answer TEXT NULL,
+  answered_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_q_teacher (teacher_id, answered_at, id),
+  KEY idx_q_student (student_id, id)
+) ENGINE=InnoDB;
+
 CREATE TABLE recordings (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   group_id INT UNSIGNED NOT NULL,
@@ -451,6 +464,8 @@ CREATE TABLE payments (
   basket_json TEXT NOT NULL,
   address_id INT UNSIGNED NULL,
   address_json TEXT NULL,
+  provider VARCHAR(20) NULL,
+  gateway_token VARCHAR(128) NULL,
   fail_reason VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   paid_at DATETIME NULL,
@@ -473,6 +488,10 @@ INSERT IGNORE INTO settings (k, v) VALUES
 ('paytr_iframe_v2', '1'),
 ('paytr_ssl_verify', '1'),
 ('paytr_public_ip', '76.13.14.253'),
+('iyzico_enabled', '0'),
+('iyzico_api_key', ''),
+('iyzico_secret_key', ''),
+('iyzico_sandbox', '1'),
 ('site_url', 'https://onlineilahiyat.com'),
 ('seo_site_title', 'Online İlahiyat'),
 ('seo_title_suffix', ' | Online İlahiyat'),

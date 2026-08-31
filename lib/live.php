@@ -245,7 +245,7 @@ function live_board_public(array $row, int $roomId): array
         'rev' => (int) ($row['rev'] ?? 0),
         'page' => max(1, (int) ($row['page'] ?? 1)),
         'pages' => max(0, (int) ($row['pages'] ?? 0)),
-        'pdf' => $pdf !== '' ? url('api/dosya.php') . '?tur=tahta&id=' . $roomId : '',
+        'pdf' => $pdf !== '' ? url('api/dosya.php') . '?tur=tahta&id=' . $roomId . '&v=' . (int) ($row['rev'] ?? 0) : '',
         'strokes' => $strokes,
         'zoom' => max(1, min(6, (float) ($row['zoom'] ?? 1))),
         'panX' => max(-3, min(3, (float) ($row['pan_x'] ?? 0))),

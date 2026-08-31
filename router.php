@@ -122,6 +122,12 @@ if (preg_match('#^ogrenci/kayit/(\d+)$#', $path, $m)) {
     exit;
 }
 
+if (preg_match('#^ogretmen/kayit/(\d+)$#', $path, $m)) {
+    $_GET['id'] = $m[1];
+    require __DIR__ . '/ogretmen/kayit-izle.php';
+    exit;
+}
+
 if (preg_match('#^hoca/([A-Za-z0-9\-_]+)$#', $path, $m)) {
     $_GET['slug'] = rawurldecode($m[1]);
     require __DIR__ . '/hoca.php';

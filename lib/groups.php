@@ -546,6 +546,7 @@ function group_delete(int $id): void
             $pdo->prepare('DELETE FROM lesson_notes WHERE group_id = ?')->execute([$id]);
         }
         db_try_exec('DELETE FROM certificates WHERE group_id = ?', [$id]);
+        db_try_exec('UPDATE student_questions SET group_id = NULL WHERE group_id = ?', [$id]);
         $pdo->prepare('DELETE FROM class_groups WHERE id = ?')->execute([$id]);
         $pdo->commit();
     } catch (Throwable $e) {

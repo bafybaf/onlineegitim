@@ -40,6 +40,9 @@ $autoload = dirname(__DIR__) . '/vendor/autoload.php';
 if (is_file($autoload)) {
     require_once $autoload;
 }
+if (is_file(__DIR__ . '/iyzico.php')) {
+    require_once __DIR__ . '/iyzico.php';
+}
 require_once __DIR__ . '/seo_urls.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/catalog.php';
@@ -55,6 +58,12 @@ if (is_file(__DIR__ . '/groups.php')) {
 }
 if (is_file(__DIR__ . '/academy.php')) {
     require_once __DIR__ . '/academy.php';
+}
+if (is_file(__DIR__ . '/vod.php')) {
+    require_once __DIR__ . '/vod.php';
+}
+if (is_file(__DIR__ . '/questions.php')) {
+    require_once __DIR__ . '/questions.php';
 }
 seo_hydrate_route();
 maybe_redirect_legacy_url();
@@ -77,6 +86,9 @@ if (function_exists('ensure_shop_catalog_schema')) {
 }
 if (function_exists('ensure_academy_schema')) {
     ensure_academy_schema();
+}
+if (function_exists('ensure_questions_schema')) {
+    ensure_questions_schema();
 }
 if (function_exists('academy_tick_reminders')) {
     academy_tick_reminders();

@@ -88,6 +88,9 @@ function pretty_path(string $path): string
     if ($file === 'ogrenci/kayit-izle.php' && !empty($params['id'])) {
         return 'ogrenci/kayit/' . (int) $params['id'];
     }
+    if ($file === 'ogretmen/kayit-izle.php' && !empty($params['id'])) {
+        return 'ogretmen/kayit/' . (int) $params['id'];
+    }
     if ($file === 'hoca.php' && !empty($params['slug'])) {
         return 'hoca/' . rawurlencode((string) $params['slug']);
     }

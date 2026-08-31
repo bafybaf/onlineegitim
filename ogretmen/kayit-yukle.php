@@ -51,7 +51,7 @@ $st = db()->prepare(
 );
 $st->execute([(int) $u['id']]);
 $rows = $st->fetchAll();
-panel_head('ogretmen', 'kayitlar', 'Kayıt yükle | Öğretmen Paneli', $u);
+panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
@@ -73,17 +73,25 @@ panel_head('ogretmen', 'kayitlar', 'Kayıt yükle | Öğretmen Paneli', $u);
   <label class="text-sm font-bold">veya harici adres
     <input name="video_url" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="https://...">
   </label>
-  <p class="md:col-span-2 text-xs text-muted">Dosyalar public klasöre konulmaz; yalnızca kayıtlı öğrenciler izler. En fazla 200 MB.</p>
+  <p class="md:col-span-2 text-xs text-muted">Dosyalar public klasöre konulmaz. Siz ve kayıtlı öğrenciler izleyebilir. En fazla 200 MB.</p>
   <button class="btn-primary md:col-span-2">Yükle</button>
 </form>
-<?php foreach ($rows as $r): ?>
+<?php foreach ($rows as $r):
+    $ready = !empty($r['video_path']) || !empty($r['video_url']);
+    $watch = url('ogretmen/kayit-izle.php?id=' . (int) $r['id']);
+    ?>
   <article class="card mb-3 flex flex-wrap items-start justify-between gap-3 p-5">
     <div>
     <p class="font-extrabold"><?= e($r['title']) ?></p>
     <p class="text-sm text-muted"><?= e($r['gname']) ?> · <?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</p>
-    <p class="mt-1 text-xs text-muted"><?= !empty($r['video_path']) || !empty($r['video_url']) ? 'Video hazır' : 'Video yok' ?></p>
+    <p class="mt-1 text-xs text-muted"><?= $ready ? 'Video hazır' : 'Video yok' ?></p>
     </div>
-    <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
+    <div class="flex flex-wrap items-center gap-2">
+      <?php if ($ready): ?>
+        <a class="btn-primary text-sm" href="<?= e($watch) ?>">İzle</a>
+      <?php endif; ?>
+      <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
+    </div>
   </article>
 <?php endforeach; ?>
 <?php if (!$rows): ?><p class="text-muted">Henüz kayıt yok.</p><?php endif; ?>

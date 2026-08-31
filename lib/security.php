@@ -105,7 +105,7 @@ function security_skip_csrf(): bool
 {
     $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
     $uri = str_replace('\\', '/', (string) ($_SERVER['REQUEST_URI'] ?? ''));
-    foreach (['paytr-callback', 'google-callback'] as $needle) {
+    foreach (['paytr-callback', 'iyzico-callback', 'google-callback'] as $needle) {
         if (str_contains($script, $needle) || str_contains($uri, $needle)) {
             return true;
         }

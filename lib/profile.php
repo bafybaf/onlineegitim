@@ -328,6 +328,7 @@ function admin_delete_user(int $id, int $actorId): string
     db_try_exec('DELETE FROM enrollments WHERE student_id = ?', [$id]);
     db_try_exec('DELETE FROM notifications WHERE user_id = ?', [$id]);
     db_try_exec('DELETE FROM messages WHERE thread_user_id = ? OR from_user_id = ?', [$id, $id]);
+    db_try_exec('DELETE FROM student_questions WHERE student_id = ? OR teacher_id = ?', [$id, $id]);
     db_try_exec('DELETE FROM homework_subs WHERE student_id = ?', [$id]);
     db_try_exec('DELETE FROM attendance WHERE student_id = ?', [$id]);
     db_try_exec('DELETE FROM test_attempts WHERE student_id = ?', [$id]);

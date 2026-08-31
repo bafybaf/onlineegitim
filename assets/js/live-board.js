@@ -247,10 +247,25 @@
       }
     }
     const nextPdf = j.pdf || '';
+    const pdfOff = document.getElementById('board-pdf-off');
+    const pdfText = document.getElementById('board-pdf-text');
+    if (pdfOff) pdfOff.hidden = !nextPdf;
+    if (pdfText) pdfText.textContent = nextPdf ? 'PDF değiştir' : 'PDF';
     if (nextPdf !== pdfUrl) {
       pdfUrl = nextPdf;
       pdfDoc = null;
-      if (pdfUrl && window.pdfjsLib) {
+      pageBmp = null;
+      pageBmpKey = '';
+      pageGen += 1;
+      zoom = 1;
+      panX = 0;
+      panY = 0;
+      if (zoomEl) zoomEl.textContent = '100%';
+      if (!pdfUrl) {
+        paintAll();
+        return;
+      }
+      if (window.pdfjsLib) {
         window.pdfjsLib.getDocument({ url: pdfUrl, withCredentials: true }).promise.then((doc) => {
           pdfDoc = doc;
           if (!pages) pages = doc.numPages;
@@ -315,6 +330,7 @@
         if (act === 'zoomin') { setZoom(zoom + 0.25); scheduleView(); }
         if (act === 'zoomout') { setZoom(zoom - 0.25); scheduleView(); }
         if (act === 'zoomreset') { setZoom(1); scheduleView(); }
+        if (act === 'pdf_off') send({ op: 'pdf_off' });
       });
     });
     if (sizeEl) {

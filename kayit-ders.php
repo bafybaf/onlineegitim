@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             notify_admin('Yeni kayıt · ' . $name, $html, $name . "\n" . $email . "\n" . $phone, $email);
             login_user($nu);
             $payment = membership_start_checkout($nu, $pkg);
-            redirect(odeme_sonuc_url('ok', (string) $payment['merchant_oid']));
+            redirect(payment_checkout_url($payment));
         } catch (Throwable $e) {
             $err = $e->getMessage();
         }

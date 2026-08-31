@@ -19,8 +19,13 @@ if (!$r) {
 $backGid = (int) ($_GET['grup'] ?? $r['group_id'] ?? 0);
 $back = $backGid > 0 ? 'ogrenci/kayitlar.php?grup=' . $backGid : 'ogrenci/kayitlar';
 $src = '';
-if (!empty($r['video_path'])) {
-    $src = url('api/dosya.php?tur=video&id=' . (int) $r['id']);
+$vodJs = '';
+if (function_exists('vod_player_src')) {
+    [$vodJs, $src] = vod_player_src($r, (int) $u['id']);
+} elseif (!empty($r['video_path']) && function_exists('vod_play_url')) {
+    $vodJs = vod_play_url((int) $r['id'], (int) $u['id']);
+} elseif (!empty($r['video_path'])) {
+    $vodJs = url('api/dosya.php?tur=video&id=' . (int) $r['id']);
 } elseif (!empty($r['video_url'])) {
     $src = (string) $r['video_url'];
 }
@@ -31,12 +36,23 @@ panel_head('ogrenci', 'kayitlar', (string) $r['title'] . ' | Kayıt', $u);
   <p class="text-xs font-extrabold uppercase text-navy"><?= e($r['gname']) ?> · <?= e($r['tname']) ?></p>
   <h2 class="font-display mt-1 text-3xl"><?= e($r['title']) ?></h2>
   <p class="mt-1 text-sm text-muted"><?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</p>
-  <?php if ($src === ''): ?>
+  <?php if ($vodJs === '' && $src === ''): ?>
     <p class="mt-6 text-muted">Bu kayıt için henüz video yüklenmedi.</p>
-  <?php elseif (!empty($r['video_url']) && empty($r['video_path']) && !preg_match('/\.(mp4|webm|mov)(\?|$)/i', $src)): ?>
+  <?php elseif ($vodJs === '' && !empty($r['video_url']) && empty($r['video_path']) && !preg_match('/\.(mp4|webm|mov)(\?|$)/i', $src)): ?>
     <p class="mt-6"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
   <?php else: ?>
-    <video class="mt-6 w-full rounded-2xl bg-black aspect-video object-contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" src="<?= e($src) ?>" oncontextmenu="return false"></video>
+    <div id="vod-box" class="mt-6" data-src="<?= e($vodJs !== '' ? $vodJs : $src) ?>" data-mins="<?= (int) $r['mins'] ?>">
+      <video id="vod-player" class="w-full rounded-2xl bg-black aspect-video object-contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>
+    </div>
+    <script>
+    (function () {
+      var box = document.getElementById('vod-box');
+      var video = document.getElementById('vod-player');
+      if (!box || !video) return;
+      video.setAttribute('src', box.getAttribute('data-src') || '');
+      video.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    })();
+    </script>
   <?php endif; ?>
 </article>
 <?php panel_foot();

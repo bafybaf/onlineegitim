@@ -78,14 +78,14 @@ if ($action === 'add') {
         json_out(['ok' => false, 'error' => 'address', 'message' => (string) ($addr['message'] ?? '')], 422);
     }
     $snap = $addr['snap'];
-    $payment = payment_settle_now(payment_create((int) $u['id'], 'kitap', $total, $basket, [
+    $payment = payment_create((int) $u['id'], 'kitap', $total, $basket, [
         'ship_mode' => $mode,
         'coupon' => $coupon ?: null,
         'address_id' => (int) ($snap['id'] ?? 0),
         'address' => $snap,
-    ]));
+    ]);
     $_SESSION['cart'] = [];
-    json_out(['ok' => true, 'pay_url' => odeme_sonuc_url('ok', (string) $payment['merchant_oid']), 'count' => 0]);
+    json_out(['ok' => true, 'pay_url' => payment_checkout_url($payment), 'count' => 0]);
 }
 
 json_out(['ok' => true, 'count' => cart_count()]);

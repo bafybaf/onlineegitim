@@ -129,7 +129,8 @@ foreach ($students as $s) {
         <input type="range" id="board-size" min="2" max="18" value="4" aria-label="Kalınlık">
         <button type="button" class="live-board-tool" data-act="undo">Geri</button>
         <button type="button" class="live-board-tool" data-act="clear">Temizle</button>
-        <label class="live-board-tool live-board-file">PDF<input type="file" id="board-pdf" accept="application/pdf" hidden></label>
+        <label class="live-board-tool live-board-file" id="board-pdf-label"><span id="board-pdf-text">PDF</span><input type="file" id="board-pdf" accept="application/pdf" hidden></label>
+        <button type="button" class="live-board-tool" data-act="pdf_off" id="board-pdf-off" hidden>PDF kapat</button>
         <button type="button" class="live-board-tool" data-act="zoomout">−</button>
         <span id="board-zoom">100%</span>
         <button type="button" class="live-board-tool" data-act="zoomin">+</button>

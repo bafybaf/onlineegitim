@@ -28,7 +28,34 @@ if (!can_pay_kind($u, (string) $payment['kind'])) {
     exit;
 }
 
-if ($payment['status'] !== 'odendi') {
-    $payment = payment_settle_now($payment);
+if (($payment['status'] ?? '') === 'odendi') {
+    redirect(odeme_sonuc_url('ok', $oid));
 }
-redirect(odeme_sonuc_url('ok', $oid));
+
+if (!iyzico_configured()) {
+    $payment = payment_settle_now($payment);
+    redirect(odeme_sonuc_url('ok', $oid));
+}
+
+$init = iyzico_init_checkout($payment, $u);
+if (empty($init['ok'])) {
+    public_head('Ödeme | Online İlahiyat');
+    echo '<main class="mx-auto max-w-xl px-4 py-16"><div class="card p-8"><h1 class="font-display text-3xl">Ödeme açılamadı</h1><p class="mt-3 text-muted">' . e((string) ($init['error'] ?? '')) . '</p><a class="btn-primary mt-6" href="' . e(payment_retry_href($payment)) . '">Tekrar dene</a></div></main>';
+    public_foot();
+    exit;
+}
+
+public_head('Güvenli ödeme | Online İlahiyat');
+?>
+<main class="mx-auto max-w-3xl px-4 py-10 lg:px-8">
+  <div class="card overflow-hidden p-6">
+    <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">iyzico</p>
+    <h1 class="font-display mt-1 text-3xl">Kart ile öde</h1>
+    <p class="mt-2 text-sm text-muted"><?= e(money((int) $payment['total'])) ?> · sipariş <?= e($oid) ?></p>
+    <div class="mt-6 min-h-[420px]">
+      <?= $init['html'] ?>
+    </div>
+  </div>
+</main>
+<?php
+public_foot();

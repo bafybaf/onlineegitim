@@ -209,6 +209,26 @@ if ($action === 'board') {
             'pdf_path' => $path,
             'page' => 1,
             'pages' => 0,
+            'zoom' => 1,
+            'pan_x' => 0,
+            'pan_y' => 0,
+            'strokes' => '{}',
+        ]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
+    if ($op === 'pdf_off') {
+        $old = trim((string) $row['pdf_path']);
+        if ($old !== '' && function_exists('academy_unlink_stored')) {
+            academy_unlink_stored($old);
+        }
+        $saved = live_board_save($pdo, $id, [
+            'pdf_path' => '',
+            'page' => 1,
+            'pages' => 0,
+            'zoom' => 1,
+            'pan_x' => 0,
+            'pan_y' => 0,
             'strokes' => '{}',
         ]);
         json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
@@ -333,6 +353,9 @@ if ($action === 'record_done') {
     $started = strtotime((string) ($room['started_at'] ?? ''));
     if ($started) {
         $mins = max($mins, (int) ceil((time() - $started) / 60));
+    }
+    if (function_exists('vod_ensure_playable')) {
+        vod_ensure_playable($dest, min(300, $mins) * 60 * 1000.0);
     }
     $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
         ->execute([(int) $room['group_id'], (int) $room['teacher_id'], mb_substr($label, 0, 160), min(300, $mins), $name]);

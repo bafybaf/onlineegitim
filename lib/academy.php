@@ -285,7 +285,12 @@ function academy_delete_recording(int $recId, int $teacherId): void
     if (!$row) {
         throw new RuntimeException('Kayıt bulunamadı.');
     }
-    academy_unlink_stored($row['video_path'] ?? null);
+    $rel = (string) ($row['video_path'] ?? '');
+    $abs = $rel !== '' && function_exists('academy_file_readable') ? academy_file_readable($rel) : null;
+    academy_unlink_stored($rel);
+    if ($abs) {
+        @unlink($abs . '.ok');
+    }
     db()->prepare('DELETE FROM recordings WHERE id = ? AND teacher_id = ?')->execute([$recId, $teacherId]);
 }
 

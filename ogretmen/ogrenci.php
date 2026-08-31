@@ -69,7 +69,8 @@ panel_head('ogretmen', 'ogrenciler', (string) $person['name'] . ' | Öğrenciler
     <p class="mt-1 text-sm text-muted"><?= e((string) $person['email']) ?><?= !empty($person['phone']) ? ' · ' . e((string) $person['phone']) : '' ?></p>
     <p class="mt-1 text-sm text-muted"><?= e((string) ($person['city'] ?: 'Şehir yok')) ?></p>
     <div class="mt-4 flex flex-wrap gap-2">
-      <a class="btn-primary text-sm" href="<?= e(url('ogretmen/mesajlar.php?ogrenci=' . $id)) ?>">Mesaj yaz</a>
+      <a class="btn-primary text-sm" href="<?= e(url('ogretmen/sorular.php?durum=hepsi')) ?>">Sorular</a>
+      <a class="btn-outline text-sm" href="<?= e(url('ogretmen/mesajlar.php?ogrenci=' . $id)) ?>">Mesaj yaz</a>
     </div>
   </div>
 </section>

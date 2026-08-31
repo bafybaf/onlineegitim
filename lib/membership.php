@@ -264,7 +264,7 @@ function membership_start_checkout(array $user, array $package, ?int $groupId = 
         && (int) ($pending['group_id'] ?? 0) === $gid
         && (int) $pending['total'] === (int) $package['price']
     ) {
-        return payment_settle_now($pending);
+        return $pending;
     }
     $basket = [[
         'name' => (string) $package['name'],
@@ -278,7 +278,7 @@ function membership_start_checkout(array $user, array $package, ?int $groupId = 
         'group_id' => $gid,
         'package_id' => (int) $package['id'],
     ]);
-    return payment_settle_now($payment);
+    return $payment;
 }
 
 function payment_kind_label(string $kind): string

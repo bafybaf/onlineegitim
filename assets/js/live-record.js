@@ -4,8 +4,8 @@
 
   const W = 1920;
   const H = 1080;
-  const sideW = 520;
-  const camH = 292;
+  const sideW = 400;
+  const camH = Math.round(sideW * 9 / 16);
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -45,16 +45,24 @@
     return 'video/webm';
   }
 
+  function destRect(sw, sh, x, y, w, h) {
+    if (sw < 2 || sh < 2) {
+      return { x: x, y: y, w: w, h: h };
+    }
+    const s = Math.min(w / sw, h / sh);
+    const dw = sw * s;
+    const dh = sh * s;
+    return { x: x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh };
+  }
+
   function drawContain(src, x, y, w, h) {
     if (!src) return false;
     const vw = src.videoWidth || src.width || 0;
     const vh = src.videoHeight || src.height || 0;
     if (vw < 2 || vh < 2) return false;
-    const s = Math.min(w / vw, h / vh);
-    const dw = vw * s;
-    const dh = vh * s;
+    const box = destRect(vw, vh, x, y, w, h);
     try {
-      ctx.drawImage(src, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+      ctx.drawImage(src, box.x, box.y, box.w, box.h);
       return true;
     } catch (e) {
       return false;
@@ -66,6 +74,9 @@
     ctx.fillStyle = '#0b1020';
     ctx.fillRect(0, 0, W, H);
     const sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
+    const sw = (bg && bg.width) ? bg.width : boardW;
+    const sh = (bg && bg.height) ? bg.height : H;
+    const box = destRect(sw, sh, 0, 0, boardW, H);
     if (sharing) {
       ctx.fillStyle = '#0b1020';
       ctx.fillRect(0, 0, boardW, H);
@@ -74,11 +85,11 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, boardW, H);
       if (bg && bg.width) {
-        ctx.drawImage(bg, 0, 0, boardW, H);
+        try { ctx.drawImage(bg, box.x, box.y, box.w, box.h); } catch (e) {}
       }
     }
     if (draw && draw.width) {
-      ctx.drawImage(draw, 0, 0, boardW, H);
+      try { ctx.drawImage(draw, box.x, box.y, box.w, box.h); } catch (e) {}
     }
     ctx.fillStyle = '#000';
     ctx.fillRect(boardW, 0, sideW, camH);

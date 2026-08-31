@@ -3,6 +3,7 @@
   "description": "Online İlahiyat PHP uygulaması",
   "require": {
     "php": ">=8.1",
+    "iyzico/iyzipay-php": "^2.0",
     "phpmailer/phpmailer": "^6.9"
   },
   "config": {

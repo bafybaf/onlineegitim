@@ -222,6 +222,7 @@ function panel_nav(string $role, string $page): array
                 ['id' => 'odevler', 'href' => 'ogrenci/odevler', 'label' => 'Ödevler', 'icon' => 'task'],
                 ['id' => 'notlar', 'href' => 'ogrenci/notlar', 'label' => 'Ders notları', 'icon' => 'layers'],
                 ['id' => 'testler', 'href' => 'ogrenci/testler', 'label' => 'Testler', 'icon' => 'check'],
+                ['id' => 'soru', 'href' => 'ogrenci/soru-sor', 'label' => 'Soru sor', 'icon' => 'mail'],
                 ['id' => 'sertifika', 'href' => 'ogrenci/sertifikalar', 'label' => 'Sertifikalar', 'icon' => 'check'],
             ]],
             ['label' => 'Hesap', 'items' => [
@@ -245,11 +246,12 @@ function panel_nav(string $role, string $page): array
             ['label' => 'Çalışma', 'items' => [
                 ['id' => 'odevler', 'href' => 'ogretmen/odevler', 'label' => 'Ödevler', 'icon' => 'task'],
                 ['id' => 'notlar', 'href' => 'ogretmen/notlar', 'label' => 'Ders notları', 'icon' => 'layers'],
-                ['id' => 'kayitlar', 'href' => 'ogretmen/kayit-yukle', 'label' => 'Kayıt yükle', 'icon' => 'play'],
+                ['id' => 'kayitlar', 'href' => 'ogretmen/kayit-yukle', 'label' => 'Ders kayıtları', 'icon' => 'play'],
                 ['id' => 'testler', 'href' => 'ogretmen/testler', 'label' => 'Testler', 'icon' => 'check'],
             ]],
             ['label' => 'Sınıf', 'items' => [
                 ['id' => 'ogrenciler', 'href' => 'ogretmen/ogrenciler', 'label' => 'Öğrenciler', 'icon' => 'user'],
+                ['id' => 'sorular', 'href' => 'ogretmen/sorular', 'label' => 'Sorular', 'icon' => 'mail', 'badge' => function_exists('question_teacher_pending_count') ? question_teacher_pending_count((int) (current_user()['id'] ?? 0)) : 0],
                 ['id' => 'mesajlar', 'href' => 'ogretmen/mesajlar', 'label' => 'Mesajlar', 'icon' => 'mail'],
             ]],
         ];
