@@ -223,6 +223,7 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
 .live-strip {
   display: flex; gap: 6px; overflow: auto; padding: 3px 8px;
   background: #10182d; border-bottom: 1px solid #1d2744; font-size: 11px;
+  flex-shrink: 0;
 }
 .live-strip a { white-space: nowrap; border-radius: 999px; padding: 2px 8px; background: #1d2744; color: #fff; }
 .live-strip a.is-here { background: #e8232a; }
@@ -390,11 +391,26 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
 .ship-track-step.is-done { background: #e8f5e9; color: #12705a; }
 .ship-track-step.is-on { background: #1a3fad; color: #fff; }
 
-.live-shell { height: 100vh; background: #0b1020; color: #fff; display: grid; grid-template-rows: auto auto 1fr; }
+html:has(.live-shell),
+body:has(.live-shell) {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #0b1020;
+}
+.live-shell {
+  height: 100vh;
+  height: 100dvh;
+  background: #0b1020;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .live-shell header {
   min-height: 0; height: 32px; padding: 0 8px;
   display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
-  overflow: hidden;
+  overflow: hidden; flex-shrink: 0;
 }
 .live-top-title {
   font-size: 13px; font-weight: 800; line-height: 1; min-width: 0;
@@ -404,8 +420,8 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
   display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; flex-shrink: 0;
 }
 .live-top-actions form { margin: 0; }
-.live-main { display: grid; grid-template-columns: 1fr 320px; min-height: 0; }
-.live-side { display: grid; grid-template-rows: auto 1fr; min-height: 0; border-left: 1px solid #1d2744; }
+.live-main { display: grid; grid-template-columns: 1fr 320px; flex: 1; min-height: 0; }
+.live-side { display: grid; grid-template-rows: auto 1fr; min-height: 0; height: 100%; border-left: 1px solid #1d2744; }
 .live-stage { position: relative; background: #0b1020; padding: 12px 12px 8px; min-height: 0; }
 .live-stage-oval {
   position: relative; aspect-ratio: 16 / 9; min-height: 140px;
@@ -422,7 +438,7 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
 }
 .live-shell.is-board-full .live-board-stage #live-cam-pip.is-drag { cursor: grabbing; }
 .live-shell.is-board-full .live-stage-oval .live-unmute-btn { right: 12px; bottom: 12px; padding: 8px 10px; font-size: 12px; }
-.live-board { display: flex; flex-direction: column; min-height: 0; background: #ececef; color: #111827; }
+.live-board { display: flex; flex-direction: column; min-height: 0; height: 100%; background: transparent; color: #111827; }
 .live-board-bar {
   display: flex; flex-wrap: nowrap; gap: 3px; align-items: center;
   padding: 0 6px; background: #0e1528; color: #fff;
@@ -449,7 +465,7 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
 .live-board-bar #board-page, .live-board-bar #board-zoom { font-size: 11px; font-weight: 800; min-width: 2.6em; text-align: center; }
 .live-board-stage {
   position: relative; flex: 1; min-height: 0; background: #fff; touch-action: none;
-  margin: 0; border-radius: 20px 20px 0 0; overflow: hidden;
+  margin: 0; border-radius: 0; overflow: hidden;
 }
 .live-board-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .live-board-stage #board-screen {
@@ -518,7 +534,7 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
 .live-mic-meter i {
   display: block; height: 100%; width: 0; background: #34d399; border-radius: 999px;
 }
-.chat { background: #10182d; display: flex; flex-direction: column; min-height: 0; }
+.chat { background: #10182d; display: flex; flex-direction: column; min-height: 0; height: 100%; margin: 0; border-radius: 0; }
 .chat-log { flex: 1; overflow: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.65rem; }
 .ctrl { display: flex; justify-content: center; gap: 0.6rem; align-items: center; background: #0e1528; border-top: 1px solid #1d2744; }
 

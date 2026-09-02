@@ -94,11 +94,13 @@ foreach ($students as $s) {
 </head>
 <body class="bg-black">
 <div class="live-shell">
+  <?php if ($lives): ?>
   <div class="live-strip">
     <?php foreach ($lives as $l): ?>
       <a class="<?= (int) $l['id'] === $id ? 'is-here' : '' ?>" href="<?= e(canli_url((int) $l['id'])) ?>">● <?= e($l['title']) ?> · <?= e(explode(' ', $l['teacher'])[count(explode(' ', $l['teacher'])) - 1]) ?></a>
     <?php endforeach; ?>
   </div>
+  <?php endif; ?>
   <?php if (!$canPublish): ?>
   <header class="flex items-center justify-between gap-2 px-3 text-white">
     <h1 class="live-top-title font-display"><?= e($room['title']) ?><?php
