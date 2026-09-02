@@ -93,7 +93,7 @@ foreach ($students as $s) {
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body class="bg-black">
-<div class="live-shell<?= $canPublish ? ' live-shell--obs' : '' ?>">
+<div class="live-shell">
   <div class="live-strip">
     <?php foreach ($lives as $l): ?>
       <a class="<?= (int) $l['id'] === $id ? 'is-here' : '' ?>" href="<?= e(canli_url((int) $l['id'])) ?>">● <?= e($l['title']) ?> · <?= e(explode(' ', $l['teacher'])[count(explode(' ', $l['teacher'])) - 1]) ?></a>
@@ -141,6 +141,11 @@ foreach ($students as $s) {
         <button type="button" class="live-board-tool" data-act="zoomreset">1:1</button>
         <button type="button" class="live-board-tool" id="board-full">Tam ekran</button>
         <span id="board-page"></span>
+        <span class="live-board-sep"></span>
+        <button type="button" id="whip-toggle" class="live-cam-btn">Kamerayı aç</button>
+        <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranı beyaz tahtada gösterin; kamera açık kalır">Ekran paylaş</button>
+        <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Önizlemede ses kapalı</button>
+        <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
       </div>
       <?php endif; ?>
       <div class="live-board-stage" id="board-stage">
@@ -188,15 +193,6 @@ foreach ($students as $s) {
       </aside>
     </div>
   </div>
-  <?php if ($canPublish): ?>
-  <section class="live-obs text-white">
-    <div class="live-obs-cam">
-      <button type="button" id="whip-toggle" class="live-cam-btn">Kamerayı aç</button>
-      <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Önizlemede ses kapalı</button>
-      <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
-    </div>
-  </section>
-  <?php endif; ?>
 </div>
 <script>
 const base = <?= json_encode(url('')) ?>;

@@ -466,6 +466,9 @@
     sharing = true;
     if (shareBtn) shareBtn.textContent = 'Paylaşımı durdur';
     showBoardScreen(true);
+    if (!publishing && !stream) {
+      startPublish().catch(() => {});
+    }
     if (typeof window.liveRecordOnCam === 'function') {
       window.liveRecordOnCam(camStream || stream || displayStream);
     }
@@ -482,7 +485,10 @@
   });
 
   if (shareBtn) {
-    shareBtn.hidden = true;
+    shareBtn.addEventListener('click', () => {
+      if (sharing) stopShare();
+      else startShare().catch(() => setProto('Paylaşım iptal'));
+    });
   }
 
   if (listenBtn) {

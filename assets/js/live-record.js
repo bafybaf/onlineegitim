@@ -52,6 +52,21 @@
     return 'video/webm';
   }
 
+  function roundRectPath(x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(x, y, w, h, r);
+      return;
+    }
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
   function destRect(sw, sh, x, y, w, h) {
     if (sw < 2 || sh < 2) {
       return { x: x, y: y, w: w, h: h };
@@ -70,6 +85,16 @@
     const dw = sw * s;
     const dh = sh * s;
     return { x: x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh };
+  }
+
+  function destCoverLeft(sw, sh, x, y, w, h) {
+    if (sw < 2 || sh < 2) {
+      return { x: x, y: y, w: w, h: h };
+    }
+    const s = Math.max(w / sw, h / sh);
+    const dw = sw * s;
+    const dh = sh * s;
+    return { x: x, y: y + (h - dh) / 2, w: dw, h: dh };
   }
 
   function drawContain(src, x, y, w, h) {
@@ -106,19 +131,33 @@
       return;
     }
     const full = !!document.body.classList.contains('is-board-full');
-    const boardW = full ? W : (W - sideW);
+    const sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
+    const sw = (bg && bg.width) ? bg.width : W;
+    const sh = (bg && bg.height) ? bg.height : H;
+    const srcA = sw / Math.max(1, sh);
+    const minSide = full ? 0 : 300;
+    let boardW = Math.round(H * srcA);
+    if (boardW > W - minSide) {
+      boardW = W - minSide;
+    }
+    if (boardW < 640) {
+      boardW = full ? W : (W - sideW);
+    }
     ctx.fillStyle = '#0b1020';
     ctx.fillRect(0, 0, W, H);
-    const sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
-    const sw = (bg && bg.width) ? bg.width : boardW;
-    const sh = (bg && bg.height) ? bg.height : H;
-    const box = destRect(sw, sh, 0, 0, boardW, H);
+    const box = destCoverLeft(sw, sh, 0, 0, boardW, H);
+    ctx.save();
+    roundRectPath(0, 0, boardW, H, 20);
+    ctx.clip();
     if (sharing) {
       ctx.fillStyle = '#0b1020';
       ctx.fillRect(0, 0, boardW, H);
-      drawContain(screenVid, 0, 0, boardW, H);
+      const vw = screenVid.videoWidth || boardW;
+      const vh = screenVid.videoHeight || H;
+      const sb = destCoverLeft(vw, vh, 0, 0, boardW, H);
+      try { ctx.drawImage(screenVid, sb.x, sb.y, sb.w, sb.h); } catch (e) {}
     } else {
-      ctx.fillStyle = '#e7e5e4';
+      ctx.fillStyle = '#ececef';
       ctx.fillRect(0, 0, boardW, H);
       if (bg && bg.width) {
         try { ctx.drawImage(bg, box.x, box.y, box.w, box.h); } catch (e) {}
@@ -127,7 +166,9 @@
         try { ctx.drawImage(draw, box.x, box.y, box.w, box.h); } catch (e) {}
       }
     }
+    ctx.restore();
     const pip = document.getElementById('live-cam-pip');
+    const sideNow = W - boardW;
     let ox;
     let oy;
     let ovalW;
@@ -144,17 +185,16 @@
       ovalH = (pr.height / rh) * H;
     } else {
       const camPad = 20;
-      ovalW = sideW - camPad * 2;
+      ovalW = Math.max(160, sideNow - camPad * 2);
       ovalH = Math.round(ovalW * 9 / 16);
       ox = boardW + camPad;
       oy = camPad;
       camBlock = oy + ovalH + camPad;
       ctx.fillStyle = '#10182d';
-      ctx.fillRect(boardW, 0, sideW, H);
+      ctx.fillRect(boardW, 0, sideNow, H);
     }
     ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(ox + ovalW / 2, oy + ovalH / 2, ovalW / 2, ovalH / 2, 0, 0, Math.PI * 2);
+    roundRectPath(ox, oy, ovalW, ovalH, 20);
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.clip();
