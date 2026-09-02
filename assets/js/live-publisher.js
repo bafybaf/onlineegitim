@@ -387,6 +387,10 @@
     displayStream.getVideoTracks().forEach((t) => {
       screenPc.addTrack(t, displayStream);
     });
+    displayStream.getAudioTracks().forEach((t) => {
+      t.enabled = true;
+      screenPc.addTrack(t, displayStream);
+    });
     const offer = await screenPc.createOffer();
     await screenPc.setLocalDescription(offer);
     await waitIceGather(screenPc, 2500);
@@ -447,11 +451,24 @@
     try {
       displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 15 } },
-        audio: false
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        },
+        systemAudio: 'include'
       });
     } catch (err) {
       if (err && err.name === 'NotAllowedError') throw err;
-      displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      try {
+        displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+          systemAudio: 'include'
+        });
+      } catch (e2) {
+        displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      }
     }
     const screenTrack = displayStream.getVideoTracks()[0];
     if (!screenTrack) {
@@ -469,8 +486,11 @@
     if (!publishing && !stream) {
       startPublish().catch(() => {});
     }
-    if (typeof window.liveRecordOnCam === 'function') {
-      window.liveRecordOnCam(camStream || stream || displayStream);
+    if (typeof window.liveRecordOnCam === 'function' && (camStream || stream)) {
+      window.liveRecordOnCam(camStream || stream);
+    }
+    if (typeof window.liveRecordOnShare === 'function') {
+      window.liveRecordOnShare(displayStream);
     }
     const ok = await connectWhipScreen();
     if (!ok) setProto('Ekran bağlanamadı');

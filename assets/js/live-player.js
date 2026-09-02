@@ -71,6 +71,12 @@
       video.removeAttribute('muted');
       video.volume = 1;
       video.play().catch(() => {});
+      const screen = document.getElementById('board-screen');
+      if (screen) {
+        screen.muted = false;
+        screen.volume = 1;
+        screen.play().catch(() => {});
+      }
       unmuteBtn.hidden = true;
     });
   }
@@ -434,10 +440,18 @@
     });
     pc = conn;
     conn.addTransceiver('video', { direction: 'recvonly' });
+    conn.addTransceiver('audio', { direction: 'recvonly' });
     conn.ontrack = (ev) => {
       if (conn !== pc || !want) return;
-      el.srcObject = ev.streams[0] || new MediaStream([ev.track]);
-      el.muted = true;
+      const cur = el.srcObject instanceof MediaStream ? el.srcObject : new MediaStream();
+      if (ev.streams && ev.streams[0]) {
+        el.srcObject = ev.streams[0];
+      } else {
+        cur.addTrack(ev.track);
+        el.srcObject = cur;
+      }
+      const cam = document.getElementById('live-video');
+      el.muted = !!(cam && cam.muted);
       el.play().catch(() => {});
     };
     const offer = await conn.createOffer();

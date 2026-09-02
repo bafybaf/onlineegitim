@@ -36,6 +36,9 @@
   let audioClone = null;
   let pendingMedia = null;
   let recPaused = false;
+  let mixCtx = null;
+  let mixDest = null;
+  let mixHooked = {};
 
   function mime() {
     const types = [
@@ -258,25 +261,50 @@
     return null;
   }
 
-  function cloneMic(media) {
-    const src = mediaFrom(media);
-    if (!src) return null;
-    const mic = src.getAudioTracks().find((t) => t.readyState === 'live');
-    if (!mic) return null;
-    if (audioClone && audioClone.readyState === 'live') return audioClone;
-    try {
-      audioClone = mic.clone();
-      audioClone.enabled = true;
-      return audioClone;
-    } catch (e) {
-      audioClone = mic;
+  function ensureMixer() {
+    if (mixDest && audioClone && audioClone.readyState === 'live') {
       return audioClone;
     }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!mixCtx) {
+      mixCtx = new AC();
+    }
+    if (mixCtx.state === 'suspended') {
+      mixCtx.resume().catch(() => {});
+    }
+    if (!mixDest) {
+      mixDest = mixCtx.createMediaStreamDestination();
+    }
+    audioClone = mixDest.stream.getAudioTracks()[0] || null;
+    if (audioClone) audioClone.enabled = true;
+    return audioClone;
+  }
+
+  function hookAudio(media) {
+    if (!media || !mixCtx || !mixDest) return;
+    media.getAudioTracks().forEach((t) => {
+      if (!t || t.readyState !== 'live' || mixHooked[t.id]) return;
+      mixHooked[t.id] = true;
+      try {
+        const src = mixCtx.createMediaStreamSource(new MediaStream([t]));
+        src.connect(mixDest);
+      } catch (e) {
+        delete mixHooked[t.id];
+      }
+    });
+  }
+
+  function refreshMix(media) {
+    if (!ensureMixer()) return;
+    hookAudio(mediaFrom(media));
+    hookAudio(video && video.srcObject);
+    hookAudio(screenVid && screenVid.srcObject);
   }
 
   function start(media) {
     if (!armed || !window.MediaRecorder || recorder || done) return;
-    cloneMic(media);
+    refreshMix(media);
     recStream = canvas.captureStream(15);
     if (audioClone) {
       recStream.addTrack(audioClone);
@@ -460,7 +488,14 @@
   };
   window.liveRecordOnCam = function (media) {
     pendingMedia = media;
+    if (armed && recorder) {
+      refreshMix(media);
+      return;
+    }
     if (armed) start(media);
+  };
+  window.liveRecordOnShare = function (media) {
+    if (armed) refreshMix(media);
   };
 
   if (startBtn) {
