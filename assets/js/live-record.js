@@ -3,8 +3,8 @@
   if (!cfg.roomId) return;
 
   const W = 1920;
-  const H = 1080;
   const sideW = 500;
+  let H = 810;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -101,6 +101,69 @@
     }
   }
 
+  function sourceAspect() {
+    if (stage) {
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      if (w > 2 && h > 2) return w / h;
+    }
+    if (bg && bg.width > 2 && bg.height > 2) {
+      return bg.width / bg.height;
+    }
+    return 16 / 9;
+  }
+
+  function lockCanvasSize() {
+    const boardW = W - sideW;
+    let next = Math.round(boardW / sourceAspect());
+    if (next % 2) next += 1;
+    H = Math.max(480, next);
+    canvas.width = W;
+    canvas.height = H;
+  }
+
+  function blitFit(src, x, y, w, h) {
+    if (!src) return false;
+    const sw = src.videoWidth || src.width || 0;
+    const sh = src.videoHeight || src.height || 0;
+    if (sw < 2 || sh < 2) return false;
+    const box = destRect(sw, sh, x, y, w, h);
+    try {
+      ctx.drawImage(src, box.x, box.y, box.w, box.h);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function blitFill(src, x, y, w, h) {
+    if (!src) return false;
+    const sw = src.videoWidth || src.width || 0;
+    const sh = src.videoHeight || src.height || 0;
+    if (sw < 2 || sh < 2) return false;
+    try {
+      ctx.drawImage(src, x, y, w, h);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function paintStage(x, y, w, h, sharing) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    if (sharing) {
+      ctx.fillStyle = '#0b1020';
+      ctx.fillRect(x, y, w, h);
+      blitFit(screenVid, x, y, w, h);
+    } else {
+      ctx.fillStyle = '#e7e5e4';
+      ctx.fillRect(x, y, w, h);
+      blitFit(bg, x, y, w, h);
+    }
+    blitFill(draw, x, y, w, h);
+  }
+
   function drawCover(src, x, y, w, h) {
     if (!src) return false;
     const vw = src.videoWidth || src.width || 0;
@@ -132,23 +195,7 @@
     ctx.beginPath();
     ctx.rect(boardX, boardY, boardW, boardH);
     ctx.clip();
-    if (sharing) {
-      ctx.fillStyle = '#0b1020';
-      ctx.fillRect(boardX, boardY, boardW, boardH);
-      const vw = screenVid.videoWidth || boardW;
-      const vh = screenVid.videoHeight || boardH;
-      const sb = destCover(vw, vh, boardX, boardY, boardW, boardH);
-      try { ctx.drawImage(screenVid, sb.x, sb.y, sb.w, sb.h); } catch (e) {}
-    } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(boardX, boardY, boardW, boardH);
-      if (bg && bg.width) {
-        try { ctx.drawImage(bg, boardX, boardY, boardW, boardH); } catch (e) {}
-      }
-      if (draw && draw.width) {
-        try { ctx.drawImage(draw, boardX, boardY, boardW, boardH); } catch (e) {}
-      }
-    }
+    paintStage(boardX, boardY, boardW, boardH, sharing);
     ctx.restore();
     const pip = document.getElementById('live-cam-pip');
     const sideNow = W - boardW;
@@ -312,6 +359,7 @@
       startBtn.textContent = '● Kayıt';
       startBtn.classList.add('is-hot');
     }
+    lockCanvasSize();
     if (!raf) paint();
     start(pendingMedia || (video && video.srcObject));
   }

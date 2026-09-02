@@ -42,7 +42,7 @@ panel_head('ogrenci', 'kayitlar', (string) $r['title'] . ' | Kayıt', $u);
     <p class="mt-6"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
   <?php else: ?>
     <div id="vod-box" class="mt-6" data-src="<?= e($vodJs !== '' ? $vodJs : $src) ?>" data-mins="<?= (int) $r['mins'] ?>">
-      <video id="vod-player" class="w-full rounded-2xl bg-black aspect-video object-contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>
+      <video id="vod-player" class="w-full rounded-2xl bg-black h-auto object-contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>
     </div>
     <script>
     (function () {
