@@ -51,7 +51,7 @@
     }
     document.body.classList.toggle('is-board-full', full);
     if (btn) {
-      btn.textContent = full ? 'Tahtayı küçült' : 'Tam ekran';
+      btn.textContent = full ? 'Küçült' : 'Tam';
       btn.classList.toggle('is-on', full);
     }
     placePip();

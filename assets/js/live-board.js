@@ -379,7 +379,7 @@
     const pdfOff = document.getElementById('board-pdf-off');
     const pdfText = document.getElementById('board-pdf-text');
     if (pdfOff) pdfOff.hidden = !nextPdf && !uploadLock;
-    if (pdfText && !uploadLock) pdfText.textContent = nextPdf ? 'PDF değiştir' : 'PDF';
+    if (pdfText && !uploadLock) pdfText.textContent = nextPdf ? 'PDF' : 'PDF';
     if (uploadLock && publish) {
       paintAll();
       return;
@@ -493,7 +493,7 @@
             }
             if (j && j.ok) {
               pdfUrl = j.pdf || pdfUrl;
-              if (pdfText) pdfText.textContent = 'PDF değiştir';
+              if (pdfText) pdfText.textContent = 'PDF';
               applyState(j);
             } else if (pdfText) {
               pdfText.textContent = 'PDF';

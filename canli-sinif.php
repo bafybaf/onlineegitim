@@ -99,27 +99,22 @@ foreach ($students as $s) {
       <a class="<?= (int) $l['id'] === $id ? 'is-here' : '' ?>" href="<?= e(canli_url((int) $l['id'])) ?>">● <?= e($l['title']) ?> · <?= e(explode(' ', $l['teacher'])[count(explode(' ', $l['teacher'])) - 1]) ?></a>
     <?php endforeach; ?>
   </div>
-  <header class="flex items-center justify-between gap-3 px-4 text-white">
-    <div>
-      <h1 class="font-display text-lg"><?= e($room['title']) ?><?php
-        $topic = trim((string) ($room['topic'] ?? ''));
-        echo ($topic !== '' && $topic !== 'Ders') ? ' — ' . e($topic) : '';
-      ?></h1>
-    </div>
-    <div class="flex flex-wrap items-center justify-end gap-2 text-sm">
-      <span><?= e($room['teacher_name']) ?></span>
-      <?php if ($canEnd && $room['status'] === 'live'): ?>
-        <button type="button" id="live-pause-btn" class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Mola</button>
-        <button type="button" id="live-rec-start" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Kaydı başlat</button>
-        <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="rounded-lg bg-white/10 px-3 py-1.5 font-extrabold">Dersi bitir</button></form>
-      <?php endif; ?>
-      <a href="<?= e(url($back)) ?>" id="live-leave" class="rounded-lg bg-accent px-3 py-1.5 font-extrabold">Ayrıl</a>
+  <?php if (!$canPublish): ?>
+  <header class="flex items-center justify-between gap-2 px-3 text-white">
+    <h1 class="live-top-title font-display"><?= e($room['title']) ?><?php
+      $topic = trim((string) ($room['topic'] ?? ''));
+      echo ($topic !== '' && $topic !== 'Ders') ? ' — ' . e($topic) : '';
+    ?></h1>
+    <div class="live-top-actions">
+      <a href="<?= e(url($back)) ?>" id="live-leave" class="live-cam-btn">Ayrıl</a>
     </div>
   </header>
+  <?php endif; ?>
   <div class="live-main text-white">
     <section class="live-board" id="live-board">
       <?php if ($canPublish): ?>
       <div class="live-board-bar">
+        <h1 class="live-top-title"><?= e($room['title']) ?></h1>
         <button type="button" class="live-board-tool is-on" data-tool="pen">Kalem</button>
         <button type="button" class="live-board-tool" data-tool="erase">Silgi</button>
         <button type="button" class="live-board-tool" data-tool="pan">Kaydır</button>
@@ -134,18 +129,25 @@ foreach ($students as $s) {
         <button type="button" class="live-board-tool" data-act="undo">Geri</button>
         <button type="button" class="live-board-tool" data-act="clear">Temizle</button>
         <label class="live-board-tool live-board-file" id="board-pdf-label"><span id="board-pdf-text">PDF</span><input type="file" id="board-pdf" accept="application/pdf" hidden></label>
-        <button type="button" class="live-board-tool" data-act="pdf_off" id="board-pdf-off" hidden>PDF kapat</button>
+        <button type="button" class="live-board-tool" data-act="pdf_off" id="board-pdf-off" hidden>Kapat</button>
         <button type="button" class="live-board-tool" data-act="zoomout">−</button>
         <span id="board-zoom">100%</span>
         <button type="button" class="live-board-tool" data-act="zoomin">+</button>
         <button type="button" class="live-board-tool" data-act="zoomreset">1:1</button>
-        <button type="button" class="live-board-tool" id="board-full">Tam ekran</button>
+        <button type="button" class="live-board-tool" id="board-full">Tam</button>
         <span id="board-page"></span>
         <span class="live-board-sep"></span>
-        <button type="button" id="whip-toggle" class="live-cam-btn">Kamerayı aç</button>
-        <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranı beyaz tahtada gösterin; kamera açık kalır">Ekran paylaş</button>
-        <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Önizlemede ses kapalı</button>
+        <button type="button" id="whip-toggle" class="live-cam-btn">Kamera</button>
+        <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranı beyaz tahtada gösterin; kamera açık kalır">Ekran</button>
+        <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Ses</button>
         <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
+        <?php if ($canEnd && $room['status'] === 'live'): ?>
+        <span class="live-board-sep"></span>
+        <button type="button" id="live-pause-btn" class="live-board-tool">Mola</button>
+        <button type="button" id="live-rec-start" class="live-cam-btn">Kayıt</button>
+        <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="live-board-tool">Bitir</button></form>
+        <?php endif; ?>
+        <a href="<?= e(url($back)) ?>" id="live-leave" class="live-cam-btn">Ayrıl</a>
       </div>
       <?php endif; ?>
       <div class="live-board-stage" id="board-stage">

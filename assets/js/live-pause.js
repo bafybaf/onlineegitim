@@ -26,7 +26,7 @@
     }
     document.body.classList.toggle('is-live-paused', paused);
     if (btn) {
-      btn.textContent = paused ? 'Dersi sürdür' : 'Mola';
+      btn.textContent = paused ? 'Sürdür' : 'Mola';
       btn.classList.toggle('is-paused', paused);
     }
   }

@@ -182,14 +182,14 @@
     else video.muted = true;
     if (listenBtn) {
       listenBtn.hidden = !publishing;
-      listenBtn.textContent = hearing ? 'Önizlemede ses açık' : 'Önizlemede ses kapalı';
+      listenBtn.textContent = hearing ? 'Ses açık' : 'Ses';
     }
   }
 
   async function stopPublish() {
     publishing = false;
     starting = false;
-    btn.textContent = 'Kamerayı aç';
+    btn.textContent = 'Kamera';
     setHearing(false);
     if (listenBtn) listenBtn.hidden = true;
     stopMeter();
@@ -347,7 +347,7 @@
       }
       if (lastErr) throw lastErr;
       publishing = true;
-      btn.textContent = 'Kamerayı kapat';
+      btn.textContent = 'Kapat';
       if (listenBtn) listenBtn.hidden = false;
       if (overlay) overlay.classList.add('is-off');
       setProto(sendPaused ? 'Mola' : 'Yayındasınız');
@@ -366,7 +366,7 @@
       } else {
         setWait('Yayın bağlanamadı', 'Öğrenciler sizi göremez. Kamerayı kapatıp tekrar açın.', true);
         setProto('Yayın bağlanamadı');
-        btn.textContent = 'Kamerayı kapat';
+        btn.textContent = 'Kapat';
       }
     } finally {
       starting = false;
@@ -435,7 +435,7 @@
     }
     sharing = false;
     if (screenEl) screenEl.srcObject = null;
-    if (shareBtn) shareBtn.textContent = 'Ekran paylaş';
+    if (shareBtn) shareBtn.textContent = 'Ekran';
     showBoardScreen(false);
   }
 
@@ -464,7 +464,7 @@
       screenEl.play().catch(() => {});
     }
     sharing = true;
-    if (shareBtn) shareBtn.textContent = 'Paylaşımı durdur';
+    if (shareBtn) shareBtn.textContent = 'Durdur';
     showBoardScreen(true);
     if (!publishing && !stream) {
       startPublish().catch(() => {});

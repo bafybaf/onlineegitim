@@ -97,6 +97,16 @@
     return { x: x, y: y + (h - dh) / 2, w: dw, h: dh };
   }
 
+  function destFitLeft(sw, sh, x, y, w, h) {
+    if (sw < 2 || sh < 2) {
+      return { x: x, y: y, w: w, h: h };
+    }
+    const s = Math.min(w / sw, h / sh);
+    const dw = sw * s;
+    const dh = sh * s;
+    return { x: x, y: y + (h - dh) / 2, w: dw, h: dh };
+  }
+
   function drawContain(src, x, y, w, h) {
     if (!src) return false;
     const vw = src.videoWidth || src.width || 0;
@@ -135,35 +145,37 @@
     const sw = (bg && bg.width) ? bg.width : W;
     const sh = (bg && bg.height) ? bg.height : H;
     const srcA = sw / Math.max(1, sh);
-    const minSide = full ? 0 : 300;
-    let boardW = Math.round(H * srcA);
+    const minSide = full ? 0 : 280;
+    let boardH = H;
+    let boardW = Math.round(boardH * srcA);
     if (boardW > W - minSide) {
       boardW = W - minSide;
+      boardH = Math.round(boardW / srcA);
     }
-    if (boardW < 640) {
-      boardW = full ? W : (W - sideW);
-    }
+    if (boardW < 1) boardW = W;
+    if (boardH < 1) boardH = H;
+    const boardX = 0;
+    const boardY = Math.round((H - boardH) / 2);
     ctx.fillStyle = '#0b1020';
     ctx.fillRect(0, 0, W, H);
-    const box = destCoverLeft(sw, sh, 0, 0, boardW, H);
     ctx.save();
-    roundRectPath(0, 0, boardW, H, 20);
+    roundRectPath(boardX, boardY, boardW, boardH, 20);
     ctx.clip();
     if (sharing) {
       ctx.fillStyle = '#0b1020';
-      ctx.fillRect(0, 0, boardW, H);
+      ctx.fillRect(boardX, boardY, boardW, boardH);
       const vw = screenVid.videoWidth || boardW;
-      const vh = screenVid.videoHeight || H;
-      const sb = destCoverLeft(vw, vh, 0, 0, boardW, H);
+      const vh = screenVid.videoHeight || boardH;
+      const sb = destFitLeft(vw, vh, boardX, boardY, boardW, boardH);
       try { ctx.drawImage(screenVid, sb.x, sb.y, sb.w, sb.h); } catch (e) {}
     } else {
       ctx.fillStyle = '#ececef';
-      ctx.fillRect(0, 0, boardW, H);
+      ctx.fillRect(boardX, boardY, boardW, boardH);
       if (bg && bg.width) {
-        try { ctx.drawImage(bg, box.x, box.y, box.w, box.h); } catch (e) {}
+        try { ctx.drawImage(bg, boardX, boardY, boardW, boardH); } catch (e) {}
       }
       if (draw && draw.width) {
-        try { ctx.drawImage(draw, box.x, box.y, box.w, box.h); } catch (e) {}
+        try { ctx.drawImage(draw, boardX, boardY, boardW, boardH); } catch (e) {}
       }
     }
     ctx.restore();
@@ -179,10 +191,10 @@
       const pr = pip.getBoundingClientRect();
       const rw = Math.max(1, st.width);
       const rh = Math.max(1, st.height);
-      ox = ((pr.left - st.left) / rw) * W;
-      oy = ((pr.top - st.top) / rh) * H;
-      ovalW = (pr.width / rw) * W;
-      ovalH = (pr.height / rh) * H;
+      ox = boardX + ((pr.left - st.left) / rw) * boardW;
+      oy = boardY + ((pr.top - st.top) / rh) * boardH;
+      ovalW = (pr.width / rw) * boardW;
+      ovalH = (pr.height / rh) * boardH;
     } else {
       const camPad = 20;
       ovalW = Math.max(160, sideNow - camPad * 2);
@@ -315,7 +327,7 @@
     hideCount();
     if (startBtn && !armed && !done) {
       startBtn.disabled = false;
-      startBtn.textContent = 'Kaydı başlat';
+      startBtn.textContent = 'Kayıt';
     }
   }
 
@@ -326,7 +338,7 @@
     if (!startedMs) startedMs = Date.now();
     if (startBtn) {
       startBtn.disabled = true;
-      startBtn.textContent = '● Kayıt alınıyor';
+      startBtn.textContent = '● Kayıt';
       startBtn.classList.add('is-hot');
     }
     if (!raf) paint();
@@ -406,7 +418,7 @@
     cancelAnimationFrame(raf);
     if (startBtn) {
       startBtn.disabled = true;
-      startBtn.textContent = recorder ? 'Kayıt bitti' : 'Kaydı başlat';
+      startBtn.textContent = recorder ? 'Bitti' : 'Kayıt';
     }
   }
 
