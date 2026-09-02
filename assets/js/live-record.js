@@ -4,7 +4,7 @@
 
   const W = 1920;
   const H = 1080;
-  const sideW = 400;
+  const sideW = 500;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -87,26 +87,6 @@
     return { x: x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh };
   }
 
-  function destCoverLeft(sw, sh, x, y, w, h) {
-    if (sw < 2 || sh < 2) {
-      return { x: x, y: y, w: w, h: h };
-    }
-    const s = Math.max(w / sw, h / sh);
-    const dw = sw * s;
-    const dh = sh * s;
-    return { x: x, y: y + (h - dh) / 2, w: dw, h: dh };
-  }
-
-  function destFitLeft(sw, sh, x, y, w, h) {
-    if (sw < 2 || sh < 2) {
-      return { x: x, y: y, w: w, h: h };
-    }
-    const s = Math.min(w / sw, h / sh);
-    const dw = sw * s;
-    const dh = sh * s;
-    return { x: x, y: y + (h - dh) / 2, w: dw, h: dh };
-  }
-
   function drawContain(src, x, y, w, h) {
     if (!src) return false;
     const vw = src.videoWidth || src.width || 0;
@@ -142,34 +122,25 @@
     }
     const full = !!document.body.classList.contains('is-board-full');
     const sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
-    const sw = (bg && bg.width) ? bg.width : W;
-    const sh = (bg && bg.height) ? bg.height : H;
-    const srcA = sw / Math.max(1, sh);
-    const minSide = full ? 0 : 280;
-    let boardH = H;
-    let boardW = Math.round(boardH * srcA);
-    if (boardW > W - minSide) {
-      boardW = W - minSide;
-      boardH = Math.round(boardW / srcA);
-    }
-    if (boardW < 1) boardW = W;
-    if (boardH < 1) boardH = H;
+    const boardW = full ? W : (W - sideW);
+    const boardH = H;
     const boardX = 0;
-    const boardY = Math.round((H - boardH) / 2);
+    const boardY = 0;
     ctx.fillStyle = '#0b1020';
     ctx.fillRect(0, 0, W, H);
     ctx.save();
-    roundRectPath(boardX, boardY, boardW, boardH, 20);
+    ctx.beginPath();
+    ctx.rect(boardX, boardY, boardW, boardH);
     ctx.clip();
     if (sharing) {
       ctx.fillStyle = '#0b1020';
       ctx.fillRect(boardX, boardY, boardW, boardH);
       const vw = screenVid.videoWidth || boardW;
       const vh = screenVid.videoHeight || boardH;
-      const sb = destFitLeft(vw, vh, boardX, boardY, boardW, boardH);
+      const sb = destCover(vw, vh, boardX, boardY, boardW, boardH);
       try { ctx.drawImage(screenVid, sb.x, sb.y, sb.w, sb.h); } catch (e) {}
     } else {
-      ctx.fillStyle = '#ececef';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(boardX, boardY, boardW, boardH);
       if (bg && bg.width) {
         try { ctx.drawImage(bg, boardX, boardY, boardW, boardH); } catch (e) {}
@@ -196,8 +167,8 @@
       ovalW = (pr.width / rw) * boardW;
       ovalH = (pr.height / rh) * boardH;
     } else {
-      const camPad = 20;
-      ovalW = Math.max(160, sideNow - camPad * 2);
+      const camPad = 18;
+      ovalW = Math.max(220, sideNow - camPad * 2);
       ovalH = Math.round(ovalW * 9 / 16);
       ox = boardW + camPad;
       oy = camPad;
@@ -214,20 +185,20 @@
     ctx.restore();
     if (!full) {
       ctx.fillStyle = '#ffffff';
-      ctx.font = '600 18px Nunito, sans-serif';
-      ctx.fillText('Sohbet', boardW + 16, camBlock + 28);
+      ctx.font = '600 20px Nunito, sans-serif';
+      ctx.fillText('Sohbet', boardW + 20, camBlock + 30);
       const log = document.getElementById('chat-log');
       if (log) {
-        ctx.font = '15px Nunito, sans-serif';
+        ctx.font = '16px Nunito, sans-serif';
         ctx.fillStyle = '#e5e7eb';
-        const lines = Array.from(log.querySelectorAll('p')).slice(-18);
-        let y = camBlock + 54;
+        const lines = Array.from(log.querySelectorAll('p')).slice(-20);
+        let y = camBlock + 58;
         lines.forEach((p) => {
           const t = (p.textContent || '').replace(/\s+/g, ' ').trim();
           if (!t) return;
-          const cut = t.length > 42 ? t.slice(0, 41) + '…' : t;
-          ctx.fillText(cut, boardW + 16, y);
-          y += 22;
+          const cut = t.length > 52 ? t.slice(0, 51) + '…' : t;
+          ctx.fillText(cut, boardW + 20, y);
+          y += 24;
         });
       }
     }
