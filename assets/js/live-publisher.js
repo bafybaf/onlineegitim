@@ -482,10 +482,7 @@
   });
 
   if (shareBtn) {
-    shareBtn.addEventListener('click', () => {
-      if (sharing) stopShare();
-      else startShare().catch(() => setProto('Paylaşım iptal'));
-    });
+    shareBtn.hidden = true;
   }
 
   if (listenBtn) {

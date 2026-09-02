@@ -139,6 +139,7 @@ foreach ($students as $s) {
         <span id="board-zoom">100%</span>
         <button type="button" class="live-board-tool" data-act="zoomin">+</button>
         <button type="button" class="live-board-tool" data-act="zoomreset">1:1</button>
+        <button type="button" class="live-board-tool" id="board-full">Tam ekran</button>
         <span id="board-page"></span>
       </div>
       <?php endif; ?>
@@ -158,14 +159,16 @@ foreach ($students as $s) {
       </div>
     </section>
     <div class="live-side">
-      <div class="live-stage">
-        <video id="live-video" playsinline autoplay muted controls></video>
-        <div id="wait-overlay" class="live-wait">
-          <p id="wait-title" class="font-display text-2xl"><?= e($waitTitle) ?></p>
-          <p id="wait-detail" hidden></p>
+      <div class="live-stage" id="live-stage">
+        <div class="live-stage-oval" id="live-cam-pip">
+          <video id="live-video" playsinline autoplay muted controls></video>
+          <div id="wait-overlay" class="live-wait">
+            <p id="wait-title" class="font-display text-2xl"><?= e($waitTitle) ?></p>
+            <p id="wait-detail" hidden></p>
+          </div>
+          <button type="button" id="live-unmute" class="live-unmute-btn" hidden>Sesi aç</button>
         </div>
         <p id="live-proto" class="absolute bottom-14 left-4 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white/80" hidden></p>
-        <button type="button" id="live-unmute" class="live-unmute-btn" hidden>Sesi aç</button>
         <div class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= $presentN ?>/<?= count($students) ?> · <?= live_mins($room['started_at']) ?> dk</div>
       </div>
       <aside class="chat">
@@ -189,7 +192,6 @@ foreach ($students as $s) {
   <section class="live-obs text-white">
     <div class="live-obs-cam">
       <button type="button" id="whip-toggle" class="live-cam-btn">Kamerayı aç</button>
-      <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranı beyaz tahtada paylaşın; kamera açık kalır">Ekran paylaş</button>
       <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Önizlemede ses kapalı</button>
       <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
     </div>
@@ -263,6 +265,7 @@ setInterval(async () => {
 }, 2000);
 </script>
 <script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
+<script src="<?= e(url('assets/js/live-layout.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-layout.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-board.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-board.js') ?>"></script>
 <?php if ($canPublish): ?>
 <script src="<?= e(url('assets/js/live-publisher.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-publisher.js') ?>"></script>

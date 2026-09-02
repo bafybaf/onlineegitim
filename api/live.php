@@ -341,6 +341,15 @@ if ($action === 'board') {
         json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
     }
 
+    if ($op === 'layout') {
+        $saved = live_board_save($pdo, $id, [
+            'board_full' => !empty($body['full']) ? 1 : 0,
+            'cam_x' => $body['camX'] ?? 0.72,
+            'cam_y' => $body['camY'] ?? 0.04,
+        ]);
+        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+    }
+
     json_out(['ok' => false], 400);
 }
 

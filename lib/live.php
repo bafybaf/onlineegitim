@@ -240,6 +240,15 @@ function ensure_live_board_schema(): void
         if (!isset($cols['screen'])) {
             db()->exec('ALTER TABLE live_board ADD COLUMN screen TINYINT NOT NULL DEFAULT 0');
         }
+        if (!isset($cols['board_full'])) {
+            db()->exec('ALTER TABLE live_board ADD COLUMN board_full TINYINT NOT NULL DEFAULT 0');
+        }
+        if (!isset($cols['cam_x'])) {
+            db()->exec('ALTER TABLE live_board ADD COLUMN cam_x DECIMAL(5,4) NOT NULL DEFAULT 0.7200');
+        }
+        if (!isset($cols['cam_y'])) {
+            db()->exec('ALTER TABLE live_board ADD COLUMN cam_y DECIMAL(5,4) NOT NULL DEFAULT 0.0400');
+        }
     } catch (Throwable $e) {
         $done = false;
     }
@@ -283,6 +292,9 @@ function live_board_public(array $row, int $roomId): array
         'panX' => max(-200, min(200, (float) ($row['pan_x'] ?? 0))),
         'panY' => max(-200, min(200, (float) ($row['pan_y'] ?? 0))),
         'screen' => !empty($row['screen']) ? 1 : 0,
+        'boardFull' => !empty($row['board_full']) ? 1 : 0,
+        'camX' => max(0, min(1, (float) ($row['cam_x'] ?? 0.72))),
+        'camY' => max(0, min(1, (float) ($row['cam_y'] ?? 0.04))),
     ];
 }
 
@@ -297,13 +309,21 @@ function live_board_save(PDO $pdo, int $roomId, array $fields): array
     $panX = array_key_exists('pan_x', $fields) ? max(-200, min(200, (float) $fields['pan_x'])) : max(-200, min(200, (float) ($row['pan_x'] ?? 0)));
     $panY = array_key_exists('pan_y', $fields) ? max(-200, min(200, (float) $fields['pan_y'])) : max(-200, min(200, (float) ($row['pan_y'] ?? 0)));
     $screen = array_key_exists('screen', $fields) ? ((int) $fields['screen'] ? 1 : 0) : ((int) ($row['screen'] ?? 0) ? 1 : 0);
+    $boardFull = array_key_exists('board_full', $fields) ? ((int) $fields['board_full'] ? 1 : 0) : ((int) ($row['board_full'] ?? 0) ? 1 : 0);
+    $camX = array_key_exists('cam_x', $fields) ? max(0, min(1, (float) $fields['cam_x'])) : max(0, min(1, (float) ($row['cam_x'] ?? 0.72)));
+    $camY = array_key_exists('cam_y', $fields) ? max(0, min(1, (float) $fields['cam_y'])) : max(0, min(1, (float) ($row['cam_y'] ?? 0.04)));
     $rev = (int) ($row['rev'] ?? 0) + 1;
     try {
-        $pdo->prepare('UPDATE live_board SET pdf_path=?, page=?, pages=?, zoom=?, pan_x=?, pan_y=?, screen=?, strokes=?, rev=? WHERE room_id=?')
-            ->execute([$pdf, $page, $pages, $zoom, $panX, $panY, $screen, $strokes, $rev, $roomId]);
+        $pdo->prepare('UPDATE live_board SET pdf_path=?, page=?, pages=?, zoom=?, pan_x=?, pan_y=?, screen=?, board_full=?, cam_x=?, cam_y=?, strokes=?, rev=? WHERE room_id=?')
+            ->execute([$pdf, $page, $pages, $zoom, $panX, $panY, $screen, $boardFull, $camX, $camY, $strokes, $rev, $roomId]);
     } catch (Throwable $e) {
-        $pdo->prepare('UPDATE live_board SET pdf_path=?, page=?, pages=?, strokes=?, rev=? WHERE room_id=?')
-            ->execute([$pdf, $page, $pages, $strokes, $rev, $roomId]);
+        try {
+            $pdo->prepare('UPDATE live_board SET pdf_path=?, page=?, pages=?, zoom=?, pan_x=?, pan_y=?, screen=?, strokes=?, rev=? WHERE room_id=?')
+                ->execute([$pdf, $page, $pages, $zoom, $panX, $panY, $screen, $strokes, $rev, $roomId]);
+        } catch (Throwable $e2) {
+            $pdo->prepare('UPDATE live_board SET pdf_path=?, page=?, pages=?, strokes=?, rev=? WHERE room_id=?')
+                ->execute([$pdf, $page, $pages, $strokes, $rev, $roomId]);
+        }
     }
     return live_board_row($pdo, $roomId);
 }

@@ -394,8 +394,22 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
 .live-shell--obs { grid-template-rows: auto 56px 1fr auto; }
 .live-main { display: grid; grid-template-columns: 1fr 320px; min-height: 0; }
 .live-side { display: grid; grid-template-rows: auto 1fr; min-height: 0; border-left: 1px solid #1d2744; }
-.live-stage { position: relative; background: #000; aspect-ratio: 16 / 9; min-height: 160px; }
-.live-stage video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.live-stage { position: relative; background: #0b1020; padding: 12px 12px 8px; min-height: 0; }
+.live-stage-oval {
+  position: relative; aspect-ratio: 16 / 9; min-height: 140px;
+  border-radius: 50%; overflow: hidden; background: #000;
+  box-shadow: 0 0 0 2px #243152;
+}
+.live-stage-oval video { width: 100%; height: 100%; object-fit: cover; background: #000; display: block; }
+.live-shell.is-board-full .live-main { grid-template-columns: 1fr; }
+.live-shell.is-board-full .live-side { display: none; }
+.live-shell.is-board-full .live-board-stage #live-cam-pip {
+  position: absolute; z-index: 6; top: 4%; left: 72%;
+  width: min(22vw, 260px); min-height: 0; cursor: grab;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .35), 0 0 0 2px #243152;
+}
+.live-shell.is-board-full .live-board-stage #live-cam-pip.is-drag { cursor: grabbing; }
+.live-shell.is-board-full .live-stage-oval .live-unmute-btn { right: 18%; bottom: 18%; padding: 8px 10px; font-size: 12px; }
 .live-board { display: flex; flex-direction: column; min-height: 0; background: #ececef; color: #111827; }
 .live-board-bar {
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
@@ -563,7 +577,8 @@ body.is-sorting, body.is-sorting * { cursor: grabbing !important; user-select: n
   .dash-stats, .dash-grid { grid-template-columns: 1fr; }
   .live-main { grid-template-columns: 1fr; }
   .live-side { order: -1; border-left: 0; border-bottom: 1px solid #1d2744; }
-  .live-stage { max-height: 200px; }
+  .live-stage { padding: 8px 10px; }
+  .live-stage-oval { min-height: 0; max-height: 180px; }
   .chat { display: none; }
   .live-obs { flex-direction: column; align-items: stretch; }
 }

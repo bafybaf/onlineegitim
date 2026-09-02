@@ -372,6 +372,9 @@
         window.liveScreenWatch(screenOn);
       }
     }
+    if (typeof window.liveLayoutApply === 'function') {
+      window.liveLayoutApply(j);
+    }
     const nextPdf = j.pdf || '';
     const pdfOff = document.getElementById('board-pdf-off');
     const pdfText = document.getElementById('board-pdf-text');
