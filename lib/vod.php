@@ -212,14 +212,16 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id):
     if ($teacher !== '') {
         $label .= ' — ' . $teacher;
     }
-    $mins = max(1, $mins);
-    $started = strtotime((string) ($room['started_at'] ?? ''));
-    if ($started) {
-        $mins = max($mins, (int) ceil((time() - $started) / 60));
+    $fileMs = is_file($dest) ? vod_webm_last_timecode_ms($dest) : 0.0;
+    if ($fileMs > 400) {
+        $mins = max(1, (int) ceil($fileMs / 60000));
+    } else {
+        $mins = max(1, $mins);
     }
     $mins = min(300, $mins);
+    $patchMs = $fileMs > 400 ? $fileMs : ($mins * 60 * 1000.0);
     if (function_exists('vod_webm_patch_duration') && is_file($dest)) {
-        vod_webm_patch_duration($dest, $mins * 60 * 1000.0);
+        vod_webm_patch_duration($dest, $patchMs);
     }
     try {
         $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')

@@ -33,6 +33,8 @@
   let countTimer = 0;
   let startedMs = 0;
   let raf = 0;
+  let paintTimer = 0;
+  let paintWorker = null;
   let audioClone = null;
   let pendingMedia = null;
   let recPaused = false;
@@ -181,14 +183,47 @@
     }
   }
 
+  function stopPaintLoop() {
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    if (paintTimer) {
+      clearInterval(paintTimer);
+      paintTimer = 0;
+    }
+    if (paintWorker) {
+      try { paintWorker.terminate(); } catch (e) {}
+      paintWorker = null;
+    }
+  }
+
+  function startPaintLoop() {
+    stopPaintLoop();
+    paint();
+    try {
+      const src = 'setInterval(function(){postMessage(1);},66);';
+      paintWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      paintWorker.onmessage = function () { paint(); };
+    } catch (e) {
+      paintTimer = setInterval(paint, 66);
+    }
+    if (screenVid && typeof screenVid.requestVideoFrameCallback === 'function') {
+      const onFrame = () => {
+        if (!armed || finishing || done) return;
+        paint();
+        try { screenVid.requestVideoFrameCallback(onFrame); } catch (err) {}
+      };
+      try { screenVid.requestVideoFrameCallback(onFrame); } catch (e) {}
+    }
+  }
+
   function paint() {
     if (finishing || done || !armed || recPaused) {
-      raf = 0;
       return;
     }
-    const full = !!document.body.classList.contains('is-board-full');
     const sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
-    const boardW = full ? W : (W - sideW);
+    const boardW = W - sideW;
     const boardH = H;
     const boardX = 0;
     const boardY = 0;
@@ -200,32 +235,15 @@
     ctx.clip();
     paintStage(boardX, boardY, boardW, boardH, sharing);
     ctx.restore();
-    const pip = document.getElementById('live-cam-pip');
     const sideNow = W - boardW;
-    let ox;
-    let oy;
-    let ovalW;
-    let ovalH;
-    let camBlock = 0;
-    if (full && pip && stage) {
-      const st = stage.getBoundingClientRect();
-      const pr = pip.getBoundingClientRect();
-      const rw = Math.max(1, st.width);
-      const rh = Math.max(1, st.height);
-      ox = boardX + ((pr.left - st.left) / rw) * boardW;
-      oy = boardY + ((pr.top - st.top) / rh) * boardH;
-      ovalW = (pr.width / rw) * boardW;
-      ovalH = (pr.height / rh) * boardH;
-    } else {
-      const camPad = 18;
-      ovalW = Math.max(220, sideNow - camPad * 2);
-      ovalH = Math.round(ovalW * 9 / 16);
-      ox = boardW + camPad;
-      oy = camPad;
-      camBlock = oy + ovalH + camPad;
-      ctx.fillStyle = '#10182d';
-      ctx.fillRect(boardW, 0, sideNow, H);
-    }
+    const camPad = 18;
+    const ovalW = Math.max(220, sideNow - camPad * 2);
+    const ovalH = Math.round(ovalW * 9 / 16);
+    const ox = boardW + camPad;
+    const oy = camPad;
+    const camBlock = oy + ovalH + camPad;
+    ctx.fillStyle = '#10182d';
+    ctx.fillRect(boardW, 0, sideNow, H);
     ctx.save();
     roundRectPath(ox, oy, ovalW, ovalH, 20);
     ctx.fillStyle = '#000';
@@ -233,26 +251,23 @@
     ctx.clip();
     drawCover(video, ox, oy, ovalW, ovalH);
     ctx.restore();
-    if (!full) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '600 20px Nunito, sans-serif';
-      ctx.fillText('Sohbet', boardW + 20, camBlock + 30);
-      const log = document.getElementById('chat-log');
-      if (log) {
-        ctx.font = '16px Nunito, sans-serif';
-        ctx.fillStyle = '#e5e7eb';
-        const lines = Array.from(log.querySelectorAll('p')).slice(-20);
-        let y = camBlock + 58;
-        lines.forEach((p) => {
-          const t = (p.textContent || '').replace(/\s+/g, ' ').trim();
-          if (!t) return;
-          const cut = t.length > 52 ? t.slice(0, 51) + '…' : t;
-          ctx.fillText(cut, boardW + 20, y);
-          y += 24;
-        });
-      }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 20px Nunito, sans-serif';
+    ctx.fillText('Sohbet', boardW + 20, camBlock + 30);
+    const log = document.getElementById('chat-log');
+    if (log) {
+      ctx.font = '16px Nunito, sans-serif';
+      ctx.fillStyle = '#e5e7eb';
+      const lines = Array.from(log.querySelectorAll('p')).slice(-20);
+      let y = camBlock + 58;
+      lines.forEach((p) => {
+        const t = (p.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!t) return;
+        const cut = t.length > 52 ? t.slice(0, 51) + '…' : t;
+        ctx.fillText(cut, boardW + 20, y);
+        y += 24;
+      });
     }
-    raf = requestAnimationFrame(paint);
   }
 
   function mediaFrom(input) {
@@ -388,7 +403,7 @@
       startBtn.classList.add('is-hot');
     }
     lockCanvasSize();
-    if (!raf) paint();
+    startPaintLoop();
     start(pendingMedia || (video && video.srcObject));
   }
 
@@ -444,8 +459,7 @@
     if (finishing || done) return;
     cancelCount();
     finishing = true;
-    cancelAnimationFrame(raf);
-    raf = 0;
+    stopPaintLoop();
     if (recorder && recorder.state !== 'inactive') {
       await new Promise((resolve) => {
         let settled = false;
@@ -462,7 +476,7 @@
     }
     done = true;
     armed = false;
-    cancelAnimationFrame(raf);
+    stopPaintLoop();
     if (startBtn) {
       startBtn.disabled = true;
       startBtn.textContent = recorder ? 'Bitti' : 'Kayıt';
@@ -482,8 +496,8 @@
         }
       } catch (e) {}
     }
-    if (!recPaused && armed && !raf && !finishing && !done) {
-      paint();
+    if (!recPaused && armed && !finishing && !done) {
+      startPaintLoop();
     }
   };
   window.liveRecordOnCam = function (media) {
