@@ -48,11 +48,11 @@ function ensure_home_schema(): void
 function home_migrate_hero_images(): void
 {
     try {
-        $old = db()->query("SELECT id FROM home_slides WHERE image LIKE '%hero-cami%' OR image LIKE '%hero-kitap%'")->fetchAll();
+        $has = (int) db()->query("SELECT COUNT(*) FROM home_slides WHERE image LIKE '%hero-1.jpg%' OR image LIKE '%hero-2.jpg%'")->fetchColumn();
     } catch (Throwable) {
         return;
     }
-    if (!$old) {
+    if ($has > 0) {
         return;
     }
     db()->exec("DELETE FROM home_slides");
