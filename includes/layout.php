@@ -69,7 +69,7 @@ function public_head(string $title, string $desc = ''): void
           <?php foreach (array_slice(programs(), 0, 6) as $p): ?>
             <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('program', $p['slug'])) ?>"><?= e($p['title']) ?></a>
           <?php endforeach; ?>
-          <a class="mt-1 block rounded-lg px-3 py-2 text-sm font-extrabold text-navy" href="<?= e(page_url('programlar')) ?>">Tüm programlar →</a>
+          <a class="mt-1 block rounded-lg px-3 py-2 text-sm font-extrabold text-navy" href="<?= e(page_url('programlar')) ?>">Tüm eğitimler →</a>
         </div></div>
       </div>
       <a class="nav-link flex items-center" href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
@@ -155,7 +155,7 @@ function public_foot(): void
       <p class="mt-4 text-sm font-bold">0850 303 40 14<br>info@onlineilahiyat.com</p>
     </div>
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-white/50">Programlar</p>
+      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-white/50">Eğitimler</p>
       <div class="mt-3 grid gap-2 text-sm text-white/80">
         <a href="<?= e(page_url('programlar')) ?>">Tefsir</a><a href="<?= e(page_url('programlar')) ?>">Hadis</a>
         <a href="<?= e(page_url('programlar')) ?>">Fıkıh</a><a href="<?= e(page_url('programlar')) ?>">Arapça</a>
@@ -279,7 +279,7 @@ function panel_nav(string $role, string $page): array
             ['id' => 'hocalar', 'href' => 'admin/hocalar', 'label' => 'Hocalar', 'icon' => 'user'],
         ]],
         ['label' => 'Eğitim', 'items' => [
-            ['id' => 'programlar', 'href' => 'admin/programlar', 'label' => 'Programlar', 'icon' => 'layers'],
+            ['id' => 'programlar', 'href' => 'admin/programlar', 'label' => 'Eğitimler', 'icon' => 'layers'],
             ['id' => 'gruplar', 'href' => 'admin/gruplar', 'label' => 'Gruplar', 'icon' => 'users'],
             ['id' => 'uyelikler', 'href' => 'admin/uyelikler', 'label' => 'Üyelikler', 'icon' => 'card'],
             ['id' => 'canli', 'href' => 'admin/canli', 'label' => 'Canlı', 'icon' => 'live', 'badge' => $liveN],

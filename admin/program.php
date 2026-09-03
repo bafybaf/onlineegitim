@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (post('act') === 'sil' && $id > 0) {
         try {
             admin_delete_program($id);
-            flash_ok('Program silindi.');
+            flash_ok('Eğitim silindi.');
             redirect('admin/programlar');
         } catch (Throwable $e) {
             $err = $e->getMessage();
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $id = (int) db()->lastInsertId();
                     media_attach_uploads('program', $id, 'images', $slug);
                     media_attach_uploads('program_body', $id, 'body_images', $slug);
-                    flash_ok('Program oluşturuldu.');
+                    flash_ok('Eğitim oluşturuldu.');
                 } else {
                     $prevNow = (int) ($p['price_now'] ?? 0);
                     db()->prepare(
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     media_attach_uploads('program', $id, 'images', $slug);
                     media_attach_uploads('program_body', $id, 'body_images', $slug);
-                    flash_ok('Program kaydedildi.');
+                    flash_ok('Eğitim kaydedildi.');
                 }
                 redirect('admin/program.php?id=' . $id);
             } catch (Throwable $e) {
@@ -86,9 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $ok = flash_ok();
 $isNew = $id < 1;
-panel_head('admin', 'programlar', ($isNew ? 'Yeni program' : 'Program düzenle') . ' | Admin', $u);
+panel_head('admin', 'programlar', ($isNew ? 'Yeni eğitim' : 'Eğitim düzenle') . ' | Admin', $u);
 ?>
-<p class="mb-4"><a class="text-sm font-extrabold text-navy" href="<?= e(url('admin/programlar')) ?>">← Programlar</a></p>
+<p class="mb-4"><a class="text-sm font-extrabold text-navy" href="<?= e(url('admin/programlar')) ?>">← Eğitimler</a></p>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 
@@ -122,7 +122,7 @@ panel_head('admin', 'programlar', ($isNew ? 'Yeni program' : 'Program düzenle')
     </label>
     <label class="text-sm font-bold">Açıklama görselleri</label>
     <?= media_dropzone_html('program_body', $isNew ? 0 : $id, 'body_images') ?>
-    <p class="text-xs text-muted">Program hakkında bölümünde metnin altında görünür. Birden fazla yükleyebilirsiniz.</p>
+    <p class="text-xs text-muted">Eğitim hakkında bölümünde metnin altında görünür. Birden fazla yükleyebilirsiniz.</p>
     <label class="text-sm font-bold">Kapak görselleri</label>
     <?= media_dropzone_html('program', $isNew ? 0 : $id) ?>
     <p class="text-xs text-muted">JPG, PNG veya WEBP. Üstteki slayt için birden fazla yükleyin; sürükleyerek sırayı değiştirin.</p>
@@ -139,7 +139,7 @@ panel_head('admin', 'programlar', ($isNew ? 'Yeni program' : 'Program düzenle')
     </div>
     <a class="btn-outline text-center" href="<?= e(page_url('program', (string) $p['slug'])) ?>">Sitede gör</a>
     <a class="btn-outline text-center" href="<?= e(url('admin/gruplar')) ?>">Gruplar</a>
-    <?= panel_delete_form(program_admin_url($id), ['act' => 'sil'], 'Program silinsin mi? Bağlı grup varsa silinmez.', 'Programı sil', 'btn-outline text-center') ?>
+    <?= panel_delete_form(program_admin_url($id), ['act' => 'sil'], 'Eğitim silinsin mi? Bağlı grup varsa silinmez.', 'Eğitimi sil', 'btn-outline text-center') ?>
     <?php else: ?>
     <p class="text-sm text-muted">Kayıttan sonra kapak ve genel sayfa linki görünür.</p>
     <?php endif; ?>

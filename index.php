@@ -84,8 +84,8 @@ if ($campBanner):
 <section class="py-16">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
     <div class="flex items-end justify-between gap-4">
-      <div><p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Eğitim satış</p><h2 class="font-display mt-2 text-4xl">Seviyenize uygun program</h2></div>
-      <a href="<?= e(url('programlar.php')) ?>" class="btn-outline text-sm">Tüm programlar</a>
+      <div><p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Eğitim</p><h2 class="font-display mt-2 text-4xl">Seviyenize uygun eğitim</h2></div>
+      <a href="<?= e(url('programlar.php')) ?>" class="btn-outline text-sm">Tüm eğitimler</a>
     </div>
     <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <?php foreach (array_slice($progs, 0, 4) as $p): ?>

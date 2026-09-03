@@ -10,13 +10,13 @@ $rows = db()->query(
 )->fetchAll();
 $ok = flash_ok();
 $err = flash_error();
-panel_head('admin', 'programlar', 'Programlar | Admin', $u);
+panel_head('admin', 'programlar', 'Eğitimler | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
   <p class="text-sm text-muted">Eğitim programları. Satırları tutup sürükleyerek vitrin sırasını değiştirin.</p>
-  <a class="btn-primary text-sm" href="<?= e(url('admin/program/yeni')) ?>">Yeni program</a>
+  <a class="btn-primary text-sm" href="<?= e(url('admin/program/yeni')) ?>">Yeni eğitim</a>
 </div>
 
 <?php if (!$rows): ?>
@@ -58,7 +58,7 @@ panel_head('admin', 'programlar', 'Programlar | Admin', $u);
               <span class="text-muted"> · </span>
               <a class="font-extrabold text-navy" href="<?= e(page_url('program', (string) $p['slug'])) ?>">Sitede gör</a>
               <span class="text-muted"> · </span>
-              <?= panel_delete_form(program_admin_url((int) $p['id']), ['act' => 'sil'], 'Program silinsin mi? Bağlı grup varsa silinmez.') ?>
+              <?= panel_delete_form(program_admin_url((int) $p['id']), ['act' => 'sil'], 'Eğitim silinsin mi? Bağlı grup varsa silinmez.') ?>
             </td>
           </tr>
         <?php endforeach; ?>

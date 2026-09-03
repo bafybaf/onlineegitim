@@ -35,7 +35,7 @@ public_head($h['name'] . ' | Kadro | Online İlahiyat', (string) ($h['bio'] ?? '
   </div>
 </header>
 <main class="mx-auto max-w-5xl px-4 py-12 lg:px-8">
-  <h2 class="font-display text-3xl">Programlar</h2>
+  <h2 class="font-display text-3xl">Eğitimler</h2>
   <div class="mt-4 grid gap-3 md:grid-cols-2">
     <?php foreach ($groups as $g): ?>
       <a class="card p-5 hover:border-navy" href="<?= e(page_url('program', (string) $g['program_slug'])) ?>">

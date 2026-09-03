@@ -23,8 +23,8 @@ panel_head('admin', 'dashboard', 'Yönetim özeti | Admin', $u);
   </a>
   <a class="card p-5 hover:border-navy" href="<?= e(url('admin/programlar')) ?>">
     <p class="stat-label">Eğitim</p>
-    <h2 class="font-display mt-1 text-2xl">Programlar, gruplar, üyelikler</h2>
-    <p class="mt-2 text-sm text-muted">Programlar · Gruplar · Üyelikler · Canlı · Takvim</p>
+    <h2 class="font-display mt-1 text-2xl">Eğitimler, gruplar, üyelikler</h2>
+    <p class="mt-2 text-sm text-muted">Eğitimler · Gruplar · Üyelikler · Canlı · Takvim</p>
   </a>
   <a class="card p-5 hover:border-navy" href="<?= e(url('admin/eticaret')) ?>">
     <p class="stat-label">Mağaza</p>

@@ -50,8 +50,8 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
   <div class="grid items-start gap-8 lg:grid-cols-[1fr_340px]">
     <div class="grid gap-8">
       <section>
-        <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Program</p>
-        <h2 class="font-display mt-2 text-3xl">Program hakkında</h2>
+        <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Eğitim</p>
+        <h2 class="font-display mt-2 text-3xl">Eğitim hakkında</h2>
         <div class="mt-4 grid gap-4 text-lg leading-relaxed text-muted">
           <?php foreach ($paras as $para): ?>
             <p><?= e($para) ?></p>
@@ -72,7 +72,7 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
       </section>
 
       <section class="card p-6">
-        <h2 class="font-display text-2xl">Program ve kontenjan</h2>
+        <h2 class="font-display text-2xl">Eğitim ve kontenjan</h2>
         <p class="mt-2 text-sm text-muted">Haftalık tempo: <b class="text-ink"><?= e($p['hours']) ?></b> · Grup üst sınırı: <b class="text-ink"><?= (int) $cap ?> kişi</b></p>
         <?php if ($groups): ?>
           <table class="table mt-4">

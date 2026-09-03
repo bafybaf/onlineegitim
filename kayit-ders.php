@@ -88,7 +88,7 @@ public_head('Ders kaydı | Online İlahiyat');
         <?php endforeach; ?>
       </select>
     </label>
-    <p class="mt-4 text-sm font-extrabold">Program ve grup</p>
+    <p class="mt-4 text-sm font-extrabold">Eğitim ve grup</p>
     <?php if (!$packages): ?>
       <p class="mt-2 text-sm text-muted">Satışa açık paket henüz yok. Yönetim panelinden grup ve üyelik paketi ekleyin.</p>
     <?php else: ?>
