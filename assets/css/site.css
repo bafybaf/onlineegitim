@@ -148,7 +148,8 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
   flex-shrink: 0;
   text-decoration: none;
 }
-.site-logo img { width: 44px; height: 44px; border-radius: 12px; }
+.site-logo img { width: auto; height: 56px; max-width: min(260px, 52vw); border-radius: 0; }
+.footer-logo { width: auto; height: 56px; max-width: 240px; border-radius: 8px; }
 .site-logo-text { display: flex; flex-direction: column; line-height: 1.15; }
 .site-logo-name {
   font-family: "Bricolage Grotesque", sans-serif;
@@ -175,7 +176,7 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
   font-size: 0.95rem;
 }
 .side-logo:hover { background: none !important; }
-.side-logo img { height: 36px; width: 36px; border-radius: 10px; filter: none; }
+.side-logo img { height: 42px; width: auto; max-width: 190px; border-radius: 0; filter: none; }
 .side-close { display: none; color: #c9d2ef; padding: 6px; border-radius: 8px; }
 .side-close:hover { background: rgba(255,255,255,.08); color: #fff; }
 .side-kicker {

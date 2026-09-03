@@ -40,7 +40,7 @@ function public_head(string $title, string $desc = ''): void
   <?php if ($metaDesc): ?><meta name="twitter:description" content="<?= e($metaDesc) ?>" /><?php endif; ?>
   <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>" /><?php endif; ?>
   <?php if ($verify): ?><meta name="google-site-verification" content="<?= e($verify) ?>" /><?php endif; ?>
-  <link rel="icon" href="<?= e(url('assets/img/logo.svg')) ?>" type="image/svg+xml" />
+  <link rel="icon" href="<?= e(url('assets/img/logo.png')) ?>" type="image/png" />
   <?php if ($ga !== ''): ?>
   <script async src="https://www.googletagmanager.com/gtag/js?id=<?= e($ga) ?>"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',<?= json_encode($ga, JSON_UNESCAPED_UNICODE) ?>);</script>
@@ -56,11 +56,7 @@ function public_head(string $title, string $desc = ''): void
 <header class="site-header">
   <div class="mx-auto flex max-w-7xl items-stretch justify-between gap-4 px-4 lg:px-8">
     <a href="<?= e(page_url('home')) ?>" class="site-logo">
-      <img src="<?= e(url('assets/img/logo-mark.png')) ?>" alt="" width="44" height="44">
-      <span class="site-logo-text">
-        <span class="site-logo-name">Online İlahiyat</span>
-        <span class="site-logo-tag">Canlı ders · Kitap · Takip</span>
-      </span>
+      <img src="<?= e(url('assets/img/logo.png')) ?>" alt="Online İlahiyat">
     </a>
     <nav class="hidden items-stretch gap-6 uppercase lg:flex">
       <div class="nav-item">
@@ -147,9 +143,8 @@ function public_foot(): void
 <footer class="border-t border-[#e5e5e7] bg-[#0a1a4e] text-white">
   <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-4 lg:px-8">
     <div>
-      <p class="flex items-center gap-3 font-display text-2xl">
-        <img src="<?= e(url('assets/img/logo-mark.png')) ?>" alt="" width="36" height="36" class="rounded-xl">
-        Online İlahiyat
+      <p>
+        <img src="<?= e(url('assets/img/logo-dark.jpg')) ?>" alt="Online İlahiyat" class="footer-logo">
       </p>
       <p class="mt-3 text-sm text-white/70">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
       <p class="mt-4 text-sm font-bold">info@onlineilahiyat.com</p>
@@ -391,7 +386,7 @@ function panel_head(string $role, string $page, string $title, array $user): voi
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <?php security_html_head(); ?>
   <title><?= e($title) ?></title>
-  <link rel="icon" href="<?= e(url('assets/img/logo.svg')) ?>" type="image/svg+xml" />
+  <link rel="icon" href="<?= e(url('assets/img/logo.png')) ?>" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={theme:{extend:{colors:{navy:'#1a3fad',navy3:'#0a1a4e',accent:'#e8232a',muted:'#6e6e73',soft:'#f5f5f7'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
@@ -403,8 +398,7 @@ function panel_head(string $role, string $page, string $title, array $user): voi
   <aside class="side" id="panel-side">
     <div class="side-brand">
       <a href="<?= e(page_url('home')) ?>" class="side-logo">
-        <img src="<?= e(url('assets/img/logo-mark.png')) ?>" alt="">
-        <span>Online İlahiyat</span>
+        <img src="<?= e(url('assets/img/logo-dark.jpg')) ?>" alt="Online İlahiyat">
       </a>
       <button type="button" class="side-close" id="panel-close" aria-label="Menüyü kapat"><?= panel_icon('close') ?></button>
     </div>
