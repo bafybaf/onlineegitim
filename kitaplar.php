@@ -16,14 +16,12 @@ public_head('Kitap Mağazası | Online İlahiyat');
   </div>
 </header>
 <main class="mx-auto max-w-7xl px-4 py-12 lg:px-8">
-  <?php if ($cats): ?>
   <nav class="mb-8 flex flex-wrap gap-2">
     <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= !$activeCat ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url()) ?>">Tümü</a>
-    <?php foreach ($cats as $c): ?>
-      <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && (int) $activeCat['id'] === (int) $c['id'] ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url((string) $c['slug'])) ?>"><?= e((string) $c['name']) ?></a>
-    <?php endforeach; ?>
+    <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && ($activeCat['slug'] ?? '') === 'dkab-ihl' ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
+    <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && ($activeCat['slug'] ?? '') === 'mbsts' ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url('mbsts')) ?>">MBSTS</a>
+    <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && ($activeCat['slug'] ?? '') === 'dhbt' ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url('dhbt')) ?>">DHBT</a>
   </nav>
-  <?php endif; ?>
   <?php if (!$books): ?>
     <div class="card p-8 max-w-xl">
       <h2 class="font-display text-3xl">Bu kategoride kitap yok</h2>

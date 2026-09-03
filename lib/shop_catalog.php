@@ -75,13 +75,6 @@ function shop_default_categories(): array
         ['slug' => 'dkab-ihl', 'name' => 'DKAB-İHL (2027)', 'sort' => 1],
         ['slug' => 'mbsts', 'name' => 'MBSTS (2027)', 'sort' => 2],
         ['slug' => 'dhbt', 'name' => 'DHBT YENİ GRUP', 'sort' => 3],
-        ['slug' => 'tefsir', 'name' => 'Tefsir', 'sort' => 10],
-        ['slug' => 'hadis', 'name' => 'Hadis', 'sort' => 20],
-        ['slug' => 'fikih', 'name' => 'Fıkıh', 'sort' => 30],
-        ['slug' => 'akaid', 'name' => 'Akaid', 'sort' => 40],
-        ['slug' => 'arapca', 'name' => 'Arapça', 'sort' => 50],
-        ['slug' => 'kiraat', 'name' => 'Kıraat', 'sort' => 60],
-        ['slug' => 'siyer', 'name' => 'Siyer', 'sort' => 70],
     ];
 }
 
@@ -152,11 +145,48 @@ function ensure_shop_catalog_schema(): void
             );
         }
         shop_seed_categories();
+        shop_migrate_exam_categories();
         shop_backfill_book_categories();
         shop_seed_campaigns();
     } catch (Throwable) {
         // Şema yoksa sessizce geçilir.
     }
+}
+
+function shop_migrate_exam_categories(): void
+{
+    $pdo = db();
+    $examSlugs = ['dkab-ihl', 'mbsts', 'dhbt'];
+    try {
+        $oldCount = (int) $pdo->query("SELECT COUNT(*) FROM categories WHERE slug NOT IN ('dkab-ihl','mbsts','dhbt')")->fetchColumn();
+    } catch (Throwable) {
+        return;
+    }
+    if ($oldCount < 1) {
+        return;
+    }
+    $catId = fn(string $slug) => (int) $pdo->query("SELECT id FROM categories WHERE slug = " . $pdo->quote($slug))->fetchColumn();
+    $dkab = $catId('dkab-ihl');
+    $mbsts = $catId('mbsts');
+    $dhbt = $catId('dhbt');
+    if (!$dkab || !$mbsts || !$dhbt) {
+        return;
+    }
+    $map = [
+        'tefsir' => $dkab, 'akaid' => $dkab, 'siyer' => $dkab,
+        'hadis' => $mbsts, 'fikih' => $mbsts,
+        'arapca' => $dhbt, 'kiraat' => $dhbt,
+    ];
+    foreach ($map as $oldSlug => $newId) {
+        $oldId = $catId($oldSlug);
+        if ($oldId) {
+            $newName = (string) $pdo->query("SELECT name FROM categories WHERE id = " . (int) $newId)->fetchColumn();
+            $pdo->prepare("UPDATE books SET category_id = ?, category = ? WHERE category_id = ?")->execute([$newId, $newName, $oldId]);
+        }
+    }
+    $pdo->prepare("UPDATE books SET category_id = ?, category = 'DKAB-İHL (2027)' WHERE category_id IS NULL OR category_id NOT IN (?,?,?)")
+        ->execute([$dkab, $dkab, $mbsts, $dhbt]);
+    $pdo->query("DELETE FROM categories WHERE slug NOT IN ('dkab-ihl','mbsts','dhbt')");
 }
 
 function shop_seed_categories(): void
