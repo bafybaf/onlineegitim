@@ -16,6 +16,7 @@ AddDefaultCharset UTF-8
   RewriteRule ^(config|lib|sql|vendor|tools|scripts|docs)(/|$) - [F,L]
   RewriteRule ^(composer\.(json|lock)|\.env)$ - [F,L]
 
+  RewriteRule ^uploads/([A-Za-z0-9._\-/]+)$ media-public.php?f=$1 [L,QSA]
   RewriteRule ^(api|assets|mtx-hls|mtx-whep)(/|$) - [L]
 
   RewriteCond %{THE_REQUEST} \s/+online-ilahiyat/program-detay\.php\?slug=([^\s&]+) [NC]

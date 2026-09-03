@@ -87,6 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($uploaded) {
                     $image = $uploaded;
                 }
+                if ($image === '' && $id < 1) {
+                    throw new RuntimeException('Görsel seçin.');
+                }
                 if ($id > 0) {
                     db()->prepare(
                         'UPDATE home_slides SET badge=?, title=?, title_accent=?, accent_class=?, body=?, btn1_label=?, btn1_url=?, btn2_label=?, btn2_url=?, btn2_kind=?, image=?, alt=?, active=? WHERE id=?'

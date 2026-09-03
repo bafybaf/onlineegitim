@@ -158,6 +158,10 @@ function catalog_media_src(?string $path): string
         return $path;
     }
     $rel = ltrim($path, '/');
+    if (str_starts_with($rel, 'uploads/')) {
+        $abs = dirname(__DIR__) . '/storage/' . $rel;
+        return is_file($abs) ? url($rel) : '';
+    }
     $abs = catalog_media_root() . '/' . $rel;
     if (!is_file($abs)) {
         return '';
@@ -229,8 +233,12 @@ function program_image_html(array $p, string $class = '', string $kind = 'card')
 function catalog_store_upload(string $field, string $subdir, string $slug): ?string
 {
     foreach (media_uploaded_files($field) as $file) {
-        if ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE || ($file['tmp_name'] ?? '') === '') {
+        $err = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($err === UPLOAD_ERR_NO_FILE) {
             continue;
+        }
+        if ($err !== UPLOAD_ERR_OK || ($file['tmp_name'] ?? '') === '') {
+            throw new RuntimeException('Görsel yüklenemedi. Dosya 80 MB altında olmalı.');
         }
         return media_store_tmp($file, $subdir, $slug);
     }
@@ -310,8 +318,8 @@ function media_store_tmp(array $file, string $subdir, string $slug): string
     }
     $slug = preg_replace('/[^A-Za-z0-9\-_]/', '', $slug) ?: 'item';
     $subdir = trim($subdir, '/');
-    $rel = 'assets/img/' . $subdir . '/' . $slug . '-' . bin2hex(random_bytes(4)) . '.' . $ok[$mime];
-    $abs = catalog_media_root() . '/' . $rel;
+    $rel = 'uploads/' . $subdir . '/' . $slug . '-' . bin2hex(random_bytes(4)) . '.' . $ok[$mime];
+    $abs = dirname(__DIR__) . '/storage/' . $rel;
     if (!is_dir(dirname($abs)) && !mkdir(dirname($abs), 0775, true) && !is_dir(dirname($abs))) {
         throw new RuntimeException('Görsel klasörü oluşturulamadı.');
     }

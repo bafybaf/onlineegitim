@@ -41,26 +41,7 @@ function ensure_home_schema(): void
     } catch (Throwable) {
         return;
     }
-    home_migrate_hero_images();
     home_seed_if_empty();
-}
-
-function home_migrate_hero_images(): void
-{
-    try {
-        $has = (int) db()->query("SELECT COUNT(*) FROM home_slides WHERE image LIKE '%hero-1.jpg%' OR image LIKE '%hero-2.jpg%'")->fetchColumn();
-    } catch (Throwable) {
-        return;
-    }
-    if ($has > 0) {
-        return;
-    }
-    db()->exec("DELETE FROM home_slides");
-    $ins = db()->prepare(
-        'INSERT INTO home_slides (badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)'
-    );
-    $ins->execute(['', 'Hero', '', 'accent', '', '', 'kayit-ders', '', '', 'link', 'assets/img/hero-1.jpg', 'Online İlahiyat Canlı Dersler', 10]);
-    $ins->execute(['', 'Hero', '', 'accent', '', '', 'kitaplar', '', '', 'link', 'assets/img/hero-2.jpg', 'Online İlahiyat Kitaplar', 20]);
 }
 
 function home_seed_if_empty(): void
