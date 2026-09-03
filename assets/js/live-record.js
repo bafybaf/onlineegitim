@@ -185,6 +185,12 @@
         y += 22;
       });
     }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 16px Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('onlineilahiyat.com', boardW + sideW / 2, H - 16);
+    ctx.textAlign = 'left';
   }
 
   function stopPaintLoop() {
