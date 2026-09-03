@@ -9,8 +9,7 @@ public_head('Kitap Mağazası | Online İlahiyat');
 ?>
 <header class="bg-soft py-14">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">E-ticaret</p>
-    <h1 class="font-display mt-2 text-4xl md:text-6xl"><?= $activeCat ? e((string) $activeCat['name']) : 'Kitap mağazası' ?></h1>
+    <h1 class="font-display text-4xl md:text-6xl"><?= $activeCat ? e((string) $activeCat['name']) : 'Kitap mağazası' ?></h1>
     <?php if ($activeCat): ?>
       <p class="mt-2 text-muted"><a class="font-extrabold text-navy" href="<?= e(kitaplar_url()) ?>">Tüm kitaplar</a></p>
     <?php endif; ?>
