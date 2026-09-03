@@ -48,10 +48,10 @@ if ($campBanner):
 </section>
 <?php endif; ?>
 <?php if ($heroSlides): ?>
-<section class="relative overflow-hidden bg-gradient-to-b from-[#f5f7ff] to-white">
+<section class="relative overflow-hidden">
   <?php if (count($heroSlides) > 1): ?>
-  <button id="hero-prev" class="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#e5e5e7] bg-white text-navy md:grid">‹</button>
-  <button id="hero-next" class="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#e5e5e7] bg-white text-navy md:grid">›</button>
+  <button id="hero-prev" class="absolute left-4 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-navy backdrop-blur md:grid">‹</button>
+  <button id="hero-next" class="absolute right-4 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-navy backdrop-blur md:grid">›</button>
   <?php endif; ?>
   <?php foreach ($heroSlides as $i => $slide):
       $img = home_image_src((string) ($slide['image'] ?? ''));
@@ -62,26 +62,28 @@ if ($campBanner):
       $href2 = home_public_href((string) $slide['btn2_url']);
       $call = ($slide['btn2_kind'] ?? '') === 'call';
   ?>
-  <article class="hero-slide<?= $i === 0 ? ' is-active' : '' ?> mx-auto max-w-7xl items-center gap-10 px-4 py-12 lg:grid-cols-2 lg:px-8 lg:py-16">
-    <div>
-      <?php if (trim((string) $slide['badge']) !== ''): ?><span class="badge"><?= e((string) $slide['badge']) ?></span><?php endif; ?>
-      <<?= $heading ?> class="font-display mt-5 text-4xl leading-tight text-ink md:text-6xl"><?= e((string) $slide['title']) ?><?php if (trim((string) $slide['title_accent']) !== ''): ?><br><span class="<?= e(home_accent_class((string) $slide['accent_class'])) ?>"><?= e((string) $slide['title_accent']) ?></span><?php endif; ?></<?= $heading ?>>
-      <?php if (trim((string) $slide['body']) !== ''): ?><p class="mt-4 max-w-xl text-lg text-muted"><?= e((string) $slide['body']) ?></p><?php endif; ?>
-      <?php if ($b1 !== '' || $b2 !== ''): ?>
-      <div class="mt-7 flex flex-wrap gap-3">
-        <?php if ($b1 !== '' && $href1 !== ''): ?><a href="<?= e($href1) ?>" class="btn-primary"><?= e($b1) ?></a><?php endif; ?>
-        <?php if ($b2 !== '' && $call): ?><button type="button" data-open-call class="btn-outline"><?= e($b2) ?></button>
-        <?php elseif ($b2 !== '' && $href2 !== ''): ?><a href="<?= e($href2) ?>" class="btn-outline"><?= e($b2) ?></a><?php endif; ?>
-      </div>
-      <?php endif; ?>
-    </div>
+  <article class="hero-slide<?= $i === 0 ? ' is-active' : '' ?> relative">
     <?php if ($img !== ''): ?>
-    <img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="h-[360px] w-full rounded-[22px] object-cover shadow-[0_12px_40px_rgba(26,63,173,.15)] md:h-[440px]" />
+    <img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full object-cover" />
     <?php endif; ?>
+    <div class="hero-overlay absolute inset-0 flex items-end">
+      <div class="w-full px-4 pb-8 pt-20 lg:px-8 lg:pb-12">
+        <?php if (trim((string) $slide['badge']) !== ''): ?><span class="badge"><?= e((string) $slide['badge']) ?></span><?php endif; ?>
+        <<?= $heading ?> class="font-display mt-3 text-3xl leading-tight text-white drop-shadow-lg md:text-5xl lg:text-6xl"><?= e((string) $slide['title']) ?><?php if (trim((string) $slide['title_accent']) !== ''): ?><br><span class="text-[#f7c948]"><?= e((string) $slide['title_accent']) ?></span><?php endif; ?></<?= $heading ?>>
+        <?php if (trim((string) $slide['body']) !== ''): ?><p class="mt-3 max-w-2xl text-base text-white/90 drop-shadow md:text-lg"><?= e((string) $slide['body']) ?></p><?php endif; ?>
+        <?php if ($b1 !== '' || $b2 !== ''): ?>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <?php if ($b1 !== '' && $href1 !== ''): ?><a href="<?= e($href1) ?>" class="btn-primary"><?= e($b1) ?></a><?php endif; ?>
+          <?php if ($b2 !== '' && $call): ?><button type="button" data-open-call class="btn-outline border-white text-white hover:bg-white hover:text-navy"><?= e($b2) ?></button>
+          <?php elseif ($b2 !== '' && $href2 !== ''): ?><a href="<?= e($href2) ?>" class="btn-outline border-white text-white hover:bg-white hover:text-navy"><?= e($b2) ?></a><?php endif; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
   </article>
   <?php endforeach; ?>
   <?php if (count($heroSlides) > 1): ?>
-  <div class="dots mx-auto flex max-w-7xl gap-2 px-4 pb-8 lg:px-8">
+  <div class="dots absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2">
     <?php foreach ($heroSlides as $i => $_): ?><button type="button"<?= $i === 0 ? ' class="is-on"' : '' ?>></button><?php endforeach; ?>
   </div>
   <?php endif; ?>

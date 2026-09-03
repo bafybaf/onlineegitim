@@ -99,9 +99,11 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
 .drawer.is-open .drawer-panel { transform: none; }
 
 .hero-slide { display: none; }
-.hero-slide.is-active { display: grid; }
-.dots button { width: 8px; height: 8px; border-radius: 999px; background: #cfd6ea; }
-.dots button.is-on { width: 22px; background: var(--navy); }
+.hero-slide.is-active { display: block; }
+.hero-img { height: clamp(320px, 50vw, 600px); }
+.hero-overlay { background: linear-gradient(to top, rgba(0,0,0,.65) 0%, rgba(0,0,0,.25) 50%, transparent 100%); }
+.dots button { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.5); }
+.dots button.is-on { width: 22px; background: #fff; }
 
 .wa {
   position: fixed; right: 18px; bottom: 18px; z-index: 40;

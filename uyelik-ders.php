@@ -70,7 +70,20 @@ public_head('Canlı ders üyeliği | Online İlahiyat');
       <?php endforeach; ?>
     </div>
     <p class="mt-3 text-xs text-muted">Satın alınca grup kaydı hemen hesabınıza düşer. Grup henüz yoksa üyelik açılır; grup açılınca yerleştirilirsiniz.</p>
-    <button class="btn-primary mt-5 w-full">Satın al</button>
+    <button id="submit-btn" class="btn-primary mt-5 w-full">Satın al</button>
+    <script>
+    (function(){
+      var pkgs=<?= json_encode(array_map(function($p){return['id'=>(int)$p['id'],'price'=>(int)$p['price']];}, $packages)) ?>;
+      var btn=document.getElementById('submit-btn');
+      document.querySelectorAll('input[name="package_id"]').forEach(function(r){
+        r.addEventListener('change',function(){
+          var p=pkgs.find(function(x){return x.id==+r.value;});
+          btn.textContent=(p&&p.price<1)?'Ücretsiz kayıt ol':'Satın al';
+        });
+        if(r.checked){var p=pkgs.find(function(x){return x.id==+r.value;});if(p&&p.price<1)btn.textContent='Ücretsiz kayıt ol';}
+      });
+    })();
+    </script>
     <?php endif; ?>
   </form>
 </main>
