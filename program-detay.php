@@ -23,12 +23,8 @@ if ($relatedSlug !== '') {
     $bst->execute([$relatedSlug]);
     $related = $bst->fetch() ?: null;
 }
-$ilgi = catalog_interest_label((string) $p['slug']);
-$kayitHref = ($u && $u['role'] === 'ogrenci')
-    ? (page_url('uyelik-ders') . '?ilgi=' . rawurlencode($ilgi))
-    : (page_url('kayit-ders') . '?ilgi=' . rawurlencode($ilgi));
 $isFree = (int) $p['price_now'] <= 0;
-$kayitLabel = $isFree ? 'Ücretsiz kaydol' : 'Canlı ders üyeliği al';
+$kayitLabel = $isFree ? 'Ücretsiz sepete ekle' : 'Sepete ekle';
 $askName = (string) ($u['name'] ?? '');
 $askEmail = (string) ($u['email'] ?? '');
 public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
@@ -41,7 +37,8 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
     <p class="mt-4 text-sm font-bold text-navy"><?= e($p['hours']) ?> · <?= e($p['tag']) ?></p>
     <p class="mt-4"><?= program_price_html($p, 'price-now text-3xl md:text-4xl') ?></p>
     <div class="mt-7 flex flex-wrap gap-3">
-      <a href="<?= e($kayitHref) ?>" class="btn-primary"><?= e($kayitLabel) ?></a>
+      <button type="button" class="btn-primary" data-add-program="<?= (int) $p['id'] ?>"><?= e($kayitLabel) ?></button>
+      <a href="<?= e(page_url('sepet')) ?>" class="btn-outline">Sepete git</a>
       <button type="button" class="btn-outline" data-open-ask>Soru sor</button>
     </div>
   </div>
@@ -95,7 +92,7 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
 
       <?php render_installment_table((int) $p['price_now']); ?>
       <?php if (!$isFree): ?>
-      <p class="text-sm text-muted">Taksit tablosu bilgilendirme içindir. Ödeme bu sayfada alınmaz; <a class="font-extrabold text-navy" href="<?= e($kayitHref) ?>">üyelik satın al</a> sayfasında güvenli kart ödemesiyle tamamlanır.</p>
+      <p class="text-sm text-muted">Taksit tablosu bilgilendirme içindir. Ödeme bu sayfada alınmaz; sepete ekleyip <a class="font-extrabold text-navy" href="<?= e(page_url('sepet')) ?>">mağaza hesabıyla</a> güvenli kart ödemesiyle tamamlanır.</p>
       <?php endif; ?>
     </div>
 
@@ -110,15 +107,15 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
           <p class="mt-1 text-sm text-white/70"><?= e($p['tag']) ?></p>
         </div>
         <div class="grid gap-3 p-6">
-          <a href="<?= e($kayitHref) ?>" class="btn-primary text-center"><?= e($kayitLabel) ?></a>
+          <button type="button" class="btn-primary" data-add-program="<?= (int) $p['id'] ?>"><?= e($kayitLabel) ?></button>
           <button type="button" class="btn-outline" data-open-ask>Soru sor</button>
           <?php if (!$u): ?>
-            <a href="<?= e(page_url('giris-ders')) ?>" class="text-center text-sm font-extrabold text-navy">Hesabınız varsa ders girişi</a>
+            <a href="<?= e(url('giris-magaza.php?next=sepet')) ?>" class="text-center text-sm font-extrabold text-navy">Hesabınız varsa mağaza girişi</a>
           <?php endif; ?>
           <?php if ($isFree): ?>
-          <p class="text-xs text-muted">Bu program ücretsizdir. Kayıt formundan üyelik alınır, kart çekilmez.</p>
+          <p class="text-xs text-muted">Bu eğitim ücretsizdir. Sepete ekleyip mağaza hesabıyla kaydı tamamlayın; kart çekilmez.</p>
           <?php else: ?>
-          <p class="text-xs text-muted">Kart bu sayfada çekilmez. Üyelik ücreti kayıt / üyelik satın al formunda ödenir.</p>
+          <p class="text-xs text-muted">Kart bu sayfada çekilmez. Eğitimi sepete ekleyin; ödeme mağaza hesabıyla sepette yapılır. Sınıfa admin yerleştirir.</p>
           <?php endif; ?>
         </div>
       </div>

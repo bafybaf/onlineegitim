@@ -26,11 +26,20 @@ if ($orders) {
     foreach ($it as $row) {
         $itemsByOrder[(int) $row['order_id']][] = $row;
     }
+    foreach (program_purchases_for_orders($ids) as $oid => $progs) {
+        foreach ($progs as $row) {
+            $itemsByOrder[$oid][] = [
+                'title' => (string) $row['title'],
+                'qty' => 1,
+                'price' => (int) $row['price'],
+            ];
+        }
+    }
 }
 
 panel_head('musteri', 'siparisler', 'Siparişlerim | Mağaza', $u);
 ?>
-<p class="mb-5 text-sm text-muted">Kitap siparişlerinizin ödeme, teslimat ve güncel durumu. Canlı ders kayıtları bu listede yer almaz.</p>
+<p class="mb-5 text-sm text-muted">Kitap ve eğitim siparişlerinizin ödeme, teslimat ve güncel durumu.</p>
 <?php if (!$orders): ?>
   <div class="card">
     <?php shop_empty('Henüz siparişiniz yok', 'Ödeme sonrası siparişler burada görünür. Kargo ve dijital teslim ayrı izlenir.', page_url('kitaplar'), 'Mağazadan kitap al'); ?>

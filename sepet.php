@@ -2,7 +2,9 @@
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
 $items = cart();
+$progItems = cart_programs();
 $rows = [];
+$progRows = [];
 $sub = $list = 0;
 if ($items) {
     $ids = array_map('intval', array_keys($items));
@@ -17,10 +19,26 @@ if ($items) {
         $list += $b['price_old'] * $qty;
     }
 }
+if ($progItems) {
+    $pids = array_map('intval', array_keys($progItems));
+    $pin = implode(',', array_fill(0, count($pids), '?'));
+    $pst = db()->prepare("SELECT * FROM programs WHERE id IN ($pin)");
+    $pst->execute($pids);
+    foreach ($pst as $p) {
+        $p['qty'] = 1;
+        $p['price'] = (int) ($p['price_now'] ?? 0);
+        $p['price_old'] = (int) ($p['price_old'] ?? 0);
+        $p['is_digital'] = 1;
+        $progRows[] = $p;
+        $sub += $p['price'];
+        $list += max($p['price_old'], $p['price']);
+    }
+}
 $save = max(0, $list - $sub);
-$allDigital = $rows && count(array_filter($rows, static fn(array $b): bool => empty($b['is_digital']))) === 0;
+$allDigital = ($rows || $progRows) && count(array_filter($rows, static fn(array $b): bool => empty($b['is_digital']))) === 0;
 $ship = ($sub >= 500 || $allDigital) ? 0 : ($rows ? 49 : 0);
-$autoCamp = $rows ? campaign_resolve_for_cart($rows, $sub, $ship, '') : ['discount' => 0, 'ship' => $ship, 'campaign' => null, 'code' => null, 'label' => ''];
+$campLines = array_merge($rows, $progRows);
+$autoCamp = $campLines ? campaign_resolve_for_cart($campLines, $sub, $ship, '') : ['discount' => 0, 'ship' => $ship, 'campaign' => null, 'code' => null, 'label' => ''];
 $couponHint = campaign_first_code_hint();
 $campDisc = (int) ($autoCamp['discount'] ?? 0);
 $ship = (int) ($autoCamp['ship'] ?? $ship);
@@ -33,19 +51,22 @@ public_head('Sepet | Online İlahiyat');
 ?>
 <header class="border-b border-[#e5e5e7] bg-white">
   <div class="mx-auto max-w-7xl px-4 py-10 lg:px-8">
-    <p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Kitap mağazası</p>
+    <p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Mağaza</p>
     <h1 class="font-display mt-2 text-4xl md:text-5xl">Sepetiniz</h1>
   </div>
 </header>
 <main class="mx-auto max-w-7xl px-4 py-10 lg:px-8">
 <?php if ($done): ?>
-  <div class="card p-8"><h2 class="font-display text-3xl">Sipariş alındı</h2><p class="mt-2 text-muted">Takip mağaza hesabınızdaki Kitaplarım bölümünde.</p><a class="btn-primary mt-4" href="<?= e(url('magaza/kitaplarim.php')) ?>">Hesabıma git</a></div>
-<?php elseif (!$rows): ?>
+  <div class="card p-8"><h2 class="font-display text-3xl">Sipariş alındı</h2><p class="mt-2 text-muted">Kitaplar Kitaplarım’da, eğitimler Eğitimlerim’de görünür. Sınıf yerleştirmenizi yönetim yapar.</p><a class="btn-primary mt-4" href="<?= e(url('magaza/index.php')) ?>">Hesabıma git</a></div>
+<?php elseif (!$rows && !$progRows): ?>
   <div class="card overflow-hidden max-w-xl">
     <img src="<?= e(url('assets/img/kitaplik.jpg')) ?>" alt="" class="h-56 w-full object-cover">
     <div class="p-8">
-      <h2 class="font-display text-3xl">Henüz kitap eklemediniz</h2>
-      <a href="<?= e(url('kitaplar.php')) ?>" class="btn-primary mt-6">Mağazayı aç</a>
+      <h2 class="font-display text-3xl">Sepetiniz boş</h2>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="<?= e(url('programlar.php')) ?>" class="btn-primary">Eğitimlere bak</a>
+        <a href="<?= e(url('kitaplar.php')) ?>" class="btn-outline">Kitaplar</a>
+      </div>
     </div>
   </div>
 <?php else: ?>
@@ -68,7 +89,22 @@ public_head('Sepet | Online İlahiyat');
         </div>
       </article>
       <?php endforeach; ?>
-      <?php if ($shopReady): ?>
+      <?php foreach ($progRows as $i): ?>
+      <article class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+        <a href="<?= e(page_url('program', (string) $i['slug'])) ?>" class="book-cover-wrap h-28 w-full shrink-0 overflow-hidden rounded-xl sm:w-28"><?= program_image_html($i, 'h-full w-full object-cover', 'thumb') ?></a>
+        <div class="flex-1">
+          <p class="text-[11px] font-extrabold uppercase tracking-[0.16em] text-navy">Eğitim</p>
+          <p class="font-extrabold"><?= e($i['title']) ?></p>
+          <p class="text-sm text-muted"><?= e((string) $i['level']) ?><?= !empty($i['hours']) ? ' · ' . e((string) $i['hours']) : '' ?></p>
+          <p class="mt-2"><?= program_price_html($i) ?></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="qty-prog grid h-10 rounded-xl border px-3 text-sm font-extrabold" data-id="<?= (int) $i['id'] ?>">Kaldır</button>
+          <p class="font-display text-xl"><?= money((int) $i['price']) ?></p>
+        </div>
+      </article>
+      <?php endforeach; ?>
+      <?php if ($shopReady && !$allDigital): ?>
       <section class="card p-5" id="addr-box">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -153,6 +189,9 @@ public_head('Sepet | Online İlahiyat');
       const span = b.parentElement.querySelector('span');
       const qty = Math.max(0, Number(span.textContent) + Number(b.dataset.d));
       await OICart.set(b.dataset.id, qty); location.reload();
+    }));
+    document.querySelectorAll('.qty-prog').forEach((b) => b.addEventListener('click', async () => {
+      await OICart.setProgram(b.dataset.id, 0); location.reload();
     }));
     const newAddr = document.getElementById('new-addr');
     const syncNewAddr = () => {

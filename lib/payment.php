@@ -147,6 +147,23 @@ function fulfill_book_payment(PDO $pdo, array $payment): void
             $stk->execute([$qty, $bookId, $qty]);
         }
     }
+    $pp = $pdo->prepare(
+        'INSERT INTO program_purchases (user_id, program_id, order_id, payment_id, price, status) VALUES (?,?,?,?,?,?)'
+    );
+    foreach ($basket as $line) {
+        $programId = (int) ($line['program_id'] ?? 0);
+        if ($programId < 1) {
+            continue;
+        }
+        $pp->execute([
+            $payment['user_id'],
+            $programId,
+            $oid,
+            (int) $payment['id'],
+            (int) ($line['price'] ?? 0),
+            'Satın alındı',
+        ]);
+    }
     $pdo->prepare('UPDATE payments SET order_id = ? WHERE id = ?')->execute([$oid, $payment['id']]);
 }
 

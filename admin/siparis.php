@@ -88,6 +88,7 @@ $it = db()->prepare(
 );
 $it->execute([$id]);
 $items = $it->fetchAll();
+$progItems = (program_purchases_for_orders([$id])[$id] ?? []);
 
 $pay = null;
 if (!empty($o['merchant_oid'])) {
@@ -170,7 +171,7 @@ panel_head('admin', 'siparisler', 'Sipariş #' . $id . ' | Admin', $u);
 
 <section class="card mt-6 overflow-hidden">
   <div class="border-b px-5 py-3 font-extrabold">Kalemler</div>
-  <?php if (!$items): ?>
+  <?php if (!$items && !$progItems): ?>
     <p class="dash-empty px-5 py-8">Bu siparişte ürün satırı yok.</p>
   <?php else: ?>
     <table class="table">
@@ -190,6 +191,19 @@ panel_head('admin', 'siparisler', 'Sipariş #' . $id . ' | Admin', $u);
             <td><?= (int) $line['qty'] ?></td>
             <td><?= money((int) $line['price']) ?></td>
             <td class="font-extrabold"><?= money((int) $line['price'] * (int) $line['qty']) ?></td>
+          </tr>
+        <?php endforeach; ?>
+        <?php foreach ($progItems as $line): ?>
+          <tr>
+            <td>
+              <span>
+                <a class="font-extrabold text-navy" href="<?= e(page_url('program', (string) $line['slug'])) ?>"><?= e((string) $line['title']) ?></a>
+                <span class="block text-xs text-muted">Eğitim · <?= e((string) $line['status']) ?></span>
+              </span>
+            </td>
+            <td>1</td>
+            <td><?= money((int) $line['price']) ?></td>
+            <td class="font-extrabold"><?= money((int) $line['price']) ?></td>
           </tr>
         <?php endforeach; ?>
       </tbody>

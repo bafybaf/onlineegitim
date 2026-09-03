@@ -14,12 +14,15 @@ public_head('Eğitimler | Online İlahiyat');
     <?php foreach (programs() as $p): ?>
     <article class="card overflow-hidden hover:border-navy">
       <?= program_gallery_html($p, 'card', page_url('program', (string) $p['slug'])) ?>
-      <a href="<?= e(page_url('program', (string) $p['slug'])) ?>" class="block p-5">
-        <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy"><?= e($p['level']) ?></p>
-        <h2 class="font-display mt-2 text-2xl"><?= e($p['title']) ?></h2>
-        <p class="mt-2 text-sm text-muted"><?= e($p['hours']) ?> · <?= e($p['tag']) ?></p>
-        <p class="mt-4"><?= program_price_html($p) ?></p>
-      </a>
+      <div class="p-5">
+        <a href="<?= e(page_url('program', (string) $p['slug'])) ?>" class="block">
+          <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy"><?= e($p['level']) ?></p>
+          <h2 class="font-display mt-2 text-2xl"><?= e($p['title']) ?></h2>
+          <p class="mt-2 text-sm text-muted"><?= e($p['hours']) ?> · <?= e($p['tag']) ?></p>
+          <p class="mt-4"><?= program_price_html($p) ?></p>
+        </a>
+        <button type="button" data-add-program="<?= (int) $p['id'] ?>" class="btn-primary mt-4 w-full text-sm">Sepete ekle</button>
+      </div>
     </article>
     <?php endforeach; ?>
   </div>

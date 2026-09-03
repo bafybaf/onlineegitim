@@ -266,6 +266,7 @@ function panel_nav(string $role, string $page): array
                 ['id' => 'siparisler', 'href' => 'magaza/siparisler', 'label' => 'Siparişlerim', 'icon' => 'bag'],
                 ['id' => 'bildirimler', 'href' => 'magaza/bildirimler', 'label' => 'Bildirimler', 'icon' => 'mail', 'badge' => function_exists('academy_unread_count') ? academy_unread_count((int) (current_user()['id'] ?? 0)) : 0],
                 ['id' => 'kitaplar', 'href' => 'magaza/kitaplarim', 'label' => 'Kitaplarım', 'icon' => 'library'],
+                ['id' => 'egitimler', 'href' => 'magaza/egitimlerim', 'label' => 'Eğitimlerim', 'icon' => 'layers'],
                 ['id' => 'adresler', 'href' => 'magaza/adresler', 'label' => 'Adresler', 'icon' => 'pin'],
                 ['id' => 'profil', 'href' => 'magaza/profil', 'label' => 'Profilim', 'icon' => 'user'],
             ]],

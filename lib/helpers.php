@@ -82,11 +82,20 @@ function cart(): array
     return $_SESSION['cart'] ?? [];
 }
 
+function cart_programs(): array
+{
+    $rows = $_SESSION['cart_programs'] ?? [];
+    return is_array($rows) ? $rows : [];
+}
+
 function cart_count(): int
 {
     $n = 0;
     foreach (cart() as $qty) {
         $n += (int) $qty;
+    }
+    foreach (cart_programs() as $qty) {
+        $n += max(1, (int) $qty);
     }
     return $n;
 }
@@ -101,6 +110,21 @@ function cart_set(int $bookId, int $qty): void
         return;
     }
     $_SESSION['cart'][$bookId] = min(9, $qty);
+}
+
+function cart_program_set(int $programId, int $qty): void
+{
+    if ($programId < 1) {
+        return;
+    }
+    if (!isset($_SESSION['cart_programs']) || !is_array($_SESSION['cart_programs'])) {
+        $_SESSION['cart_programs'] = [];
+    }
+    if ($qty < 1) {
+        unset($_SESSION['cart_programs'][$programId]);
+        return;
+    }
+    $_SESSION['cart_programs'][$programId] = 1;
 }
 
 function live_mins(string $startedAt): int

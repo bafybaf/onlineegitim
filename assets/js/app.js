@@ -12,8 +12,20 @@
       paint(j.count);
       return j;
     },
+    async addProgram(id) {
+      const r = await fetch(base + "api/cart.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "action=add_program&program_id=" + id });
+      const j = await r.json();
+      paint(j.count);
+      return j;
+    },
     async set(id, qty) {
       const r = await fetch(base + "api/cart.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "action=set&book_id=" + id + "&qty=" + qty });
+      const j = await r.json();
+      paint(j.count);
+      return j;
+    },
+    async setProgram(id, qty) {
+      const r = await fetch(base + "api/cart.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "action=set_program&program_id=" + id + "&qty=" + qty });
       const j = await r.json();
       paint(j.count);
       return j;
@@ -32,6 +44,12 @@
     document.querySelectorAll("[data-add-book]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await OICart.add(btn.dataset.addBook);
+      btn.textContent = "Sepete eklendi";
+    });
+  });
+  document.querySelectorAll("[data-add-program]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await OICart.addProgram(btn.dataset.addProgram);
       btn.textContent = "Sepete eklendi";
     });
   });

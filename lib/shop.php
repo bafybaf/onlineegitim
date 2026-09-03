@@ -62,7 +62,7 @@ function shop_ship_label(string $mode): string
 function shop_status_class(string $status): string
 {
     return match ($status) {
-        'Teslim edildi', 'Dijital teslim', 'İndirilebilir', 'odendi' => 'shop-pill shop-pill-ok',
+        'Teslim edildi', 'Dijital teslim', 'İndirilebilir', 'Satın alındı', 'odendi' => 'shop-pill shop-pill-ok',
         'Kargoda', 'Hazırlanıyor' => 'shop-pill shop-pill-wait',
         'bekliyor' => 'shop-pill shop-pill-pay',
         'basarisiz' => 'shop-pill shop-pill-bad',
@@ -402,5 +402,78 @@ function ensure_order_admin_schema(): void
         );
     } catch (Throwable) {
         // Şema yoksa sessizce geçilir.
+    }
+}
+
+function ensure_program_purchases_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec(
+            "CREATE TABLE IF NOT EXISTS program_purchases (
+              id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              user_id INT UNSIGNED NOT NULL,
+              program_id INT UNSIGNED NOT NULL,
+              order_id INT UNSIGNED NULL,
+              payment_id INT UNSIGNED NULL,
+              price INT UNSIGNED NOT NULL DEFAULT 0,
+              status VARCHAR(40) NOT NULL DEFAULT 'Satın alındı',
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              KEY idx_pp_user (user_id),
+              KEY idx_pp_prog (program_id),
+              KEY idx_pp_order (order_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    } catch (Throwable) {
+    }
+}
+
+function program_purchases_for_user(int $userId): array
+{
+    if ($userId < 1) {
+        return [];
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT pp.*, p.title, p.slug, p.level, p.hours, p.tag, p.price_now
+             FROM program_purchases pp
+             JOIN programs p ON p.id = pp.program_id
+             WHERE pp.user_id = ?
+             ORDER BY pp.id DESC'
+        );
+        $st->execute([$userId]);
+        return $st->fetchAll();
+    } catch (Throwable) {
+        return [];
+    }
+}
+
+function program_purchases_for_orders(array $orderIds): array
+{
+    $ids = array_values(array_filter(array_map('intval', $orderIds)));
+    if (!$ids) {
+        return [];
+    }
+    try {
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $st = db()->prepare(
+            "SELECT pp.*, p.title, p.slug
+             FROM program_purchases pp
+             JOIN programs p ON p.id = pp.program_id
+             WHERE pp.order_id IN ($in)
+             ORDER BY pp.id"
+        );
+        $st->execute($ids);
+        $out = [];
+        foreach ($st as $row) {
+            $out[(int) $row['order_id']][] = $row;
+        }
+        return $out;
+    } catch (Throwable) {
+        return [];
     }
 }

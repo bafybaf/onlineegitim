@@ -81,6 +81,9 @@ if (function_exists('ensure_address_schema')) {
 if (function_exists('ensure_order_admin_schema')) {
     ensure_order_admin_schema();
 }
+if (function_exists('ensure_program_purchases_schema')) {
+    ensure_program_purchases_schema();
+}
 if (function_exists('ensure_shop_catalog_schema')) {
     ensure_shop_catalog_schema();
 }
