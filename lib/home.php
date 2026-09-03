@@ -41,7 +41,26 @@ function ensure_home_schema(): void
     } catch (Throwable) {
         return;
     }
+    home_migrate_hero_images();
     home_seed_if_empty();
+}
+
+function home_migrate_hero_images(): void
+{
+    try {
+        $old = db()->query("SELECT id FROM home_slides WHERE image LIKE '%hero-cami%' OR image LIKE '%hero-kitap%'")->fetchAll();
+    } catch (Throwable) {
+        return;
+    }
+    if (!$old) {
+        return;
+    }
+    db()->exec("DELETE FROM home_slides");
+    $ins = db()->prepare(
+        'INSERT INTO home_slides (badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)'
+    );
+    $ins->execute(['', 'Hero', '', 'accent', '', '', 'kayit-ders', '', '', 'link', 'assets/img/hero-1.jpg', 'Online İlahiyat Canlı Dersler', 10]);
+    $ins->execute(['', 'Hero', '', 'accent', '', '', 'kitaplar', '', '', 'link', 'assets/img/hero-2.jpg', 'Online İlahiyat Kitaplar', 20]);
 }
 
 function home_seed_if_empty(): void
@@ -56,34 +75,12 @@ function home_seed_if_empty(): void
             'INSERT INTO home_slides (badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)'
         );
         $ins->execute([
-            '2026 sezon kayıtları açık',
-            'Evden canlı ilahiyat,',
-            'küçük grupta gerçek takip',
-            'accent',
-            'Tefsir, hadis, fıkıh ve Arapça. En fazla 10 kişilik sınıflar, haftalık koçluk ve takıldığınız yerde hoca desteği.',
-            'Canlı ders üyeliği al',
-            'kayit-ders',
-            'Sizi Arayalım',
-            '',
-            'call',
-            'assets/img/hero-cami.jpg',
-            'İlahiyat eğitimi',
-            10,
+            '', 'Hero', '', 'accent', '', '', 'kayit-ders', '', '', 'link',
+            'assets/img/hero-1.jpg', 'Online İlahiyat Canlı Dersler', 10,
         ]);
         $ins->execute([
-            'Kitap mağazası',
-            'Dersin yanında',
-            'seçme ilahiyat kitapları',
-            'navy',
-            'Tefsir, hadis, fıkıh ve Arapça kaynakları. Sipariş panelinize düşer; kargo veya dijital erişim.',
-            'Mağazayı aç',
-            'kitaplar',
-            'Sepete bak',
-            'sepet',
-            'link',
-            'assets/img/hero-kitap.jpg',
-            'Kitap mağazası',
-            20,
+            '', 'Hero', '', 'accent', '', '', 'kitaplar', '', '', 'link',
+            'assets/img/hero-2.jpg', 'Online İlahiyat Kitaplar', 20,
         ]);
     }
     try {
