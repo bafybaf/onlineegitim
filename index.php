@@ -55,9 +55,12 @@ if ($campBanner):
   <?php endif; ?>
   <?php foreach ($heroSlides as $i => $slide):
       $img = home_image_src((string) ($slide['image'] ?? ''));
+      $link = home_public_href((string) ($slide['btn1_url'] ?? ''));
   ?>
   <article class="hero-slide<?= $i === 0 ? ' is-active' : '' ?>">
-    <?php if ($img !== ''): ?>
+    <?php if ($img !== '' && $link !== ''): ?>
+    <a href="<?= e($link) ?>"><img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full object-cover" /></a>
+    <?php elseif ($img !== ''): ?>
     <img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full object-cover" />
     <?php endif; ?>
   </article>

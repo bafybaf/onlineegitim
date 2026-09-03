@@ -141,6 +141,10 @@ panel_head('admin', 'anasayfa', 'Anasayfa | Admin', $u);
   <input type="hidden" name="action" value="save_slide">
   <input type="hidden" name="id" value="<?= (int) $slide['id'] ?>">
   <input type="hidden" name="title" value="<?= e((string) ($slide['title'] ?: 'Hero')) ?>">
+  <label class="text-sm font-bold">Link (tıklanınca gideceği sayfa)
+    <input name="btn1_url" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="kayit-ders veya https://..." value="<?= e((string) $slide['btn1_url']) ?>">
+  </label>
+  <p class="text-xs text-muted">Boş bırakılırsa görsel tıklanamaz. Örnek: <code>kayit-ders</code>, <code>programlar</code>, <code>kitaplar</code> veya tam URL.</p>
   <label class="text-sm font-bold">Görsel alt metni<input name="alt" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $slide['alt']) ?>"></label>
   <?php $imgSrc = home_image_src((string) ($slide['image'] ?? '')); ?>
   <?php if ($imgSrc !== ''): ?>
