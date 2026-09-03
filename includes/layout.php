@@ -152,7 +152,7 @@ function public_foot(): void
         Online İlahiyat
       </p>
       <p class="mt-3 text-sm text-white/70">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
-      <p class="mt-4 text-sm font-bold">0850 303 40 14<br>info@onlineilahiyat.com</p>
+      <p class="mt-4 text-sm font-bold">info@onlineilahiyat.com</p>
     </div>
     <div>
       <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-white/50">Eğitimler</p>

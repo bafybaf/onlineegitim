@@ -8,7 +8,7 @@ public_head('KVKK Aydınlatma Metni | Online İlahiyat', 'Kişisel verilerin iş
   <h1 class="font-display mt-4 text-4xl">KVKK aydınlatma metni</h1>
   <p class="mt-4 text-muted">6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında, Online İlahiyat olarak kişisel verilerinizi aşağıdaki amaçlarla işleriz.</p>
   <h2 class="font-display mt-8 text-2xl">Veri sorumlusu</h2>
-  <p class="mt-2">Online İlahiyat · 0850 303 40 14 · info@onlineilahiyat.com</p>
+  <p class="mt-2">Online İlahiyat · info@onlineilahiyat.com</p>
   <h2 class="font-display mt-8 text-2xl">İşlenen veriler</h2>
   <ul class="mt-2 list-disc pl-5 text-muted">
     <li>Kimlik ve iletişim: ad soyad, e-posta, telefon</li>
