@@ -398,7 +398,7 @@ function panel_head(string $role, string $page, string $title, array $user): voi
   <aside class="side" id="panel-side">
     <div class="side-brand">
       <a href="<?= e(page_url('home')) ?>" class="side-logo">
-        <img src="<?= e(url('assets/img/logo-dark.jpg')) ?>" alt="Online İlahiyat">
+        <img src="<?= e(url('assets/img/logo.png')) ?>" alt="Online İlahiyat">
       </a>
       <button type="button" class="side-close" id="panel-close" aria-label="Menüyü kapat"><?= panel_icon('close') ?></button>
     </div>
