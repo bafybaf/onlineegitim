@@ -65,7 +65,7 @@ function public_head(string $title, string $desc = ''): void
     <nav class="hidden items-stretch gap-6 lg:flex">
       <a class="nav-link flex items-center" href="<?= e(page_url('home')) ?>">Ana Sayfa</a>
       <div class="nav-item">
-        <a class="nav-link flex h-full items-center" href="<?= e(page_url('programlar')) ?>">Programlar</a>
+        <a class="nav-link flex h-full items-center" href="<?= e(page_url('programlar')) ?>">Eğitimlerimiz</a>
         <div class="mega"><div class="mega-panel">
           <?php foreach (array_slice(programs(), 0, 6) as $p): ?>
             <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('program', $p['slug'])) ?>"><?= e($p['title']) ?></a>
@@ -119,7 +119,7 @@ function public_head(string $title, string $desc = ''): void
     <div class="mb-4 flex items-center justify-between"><strong>Menü</strong><button id="drawer-close" class="text-2xl leading-none">×</button></div>
     <div class="grid gap-2 font-bold">
       <a href="<?= e(page_url('home')) ?>">Ana Sayfa</a>
-      <a href="<?= e(page_url('programlar')) ?>">Programlar</a>
+      <a href="<?= e(page_url('programlar')) ?>">Eğitimlerimiz</a>
       <a href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
       <a href="<?= e(kitaplar_url('mbsts')) ?>">MBSTS</a>
       <a href="<?= e(kitaplar_url('dhbt')) ?>">DHBT</a>
