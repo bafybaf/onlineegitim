@@ -133,46 +133,23 @@ panel_head('admin', 'anasayfa', 'Anasayfa | Admin', $u);
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 
-<h2 class="font-display text-2xl">Hero slaytları</h2>
-<p class="mb-4 text-sm text-muted">Ana sayfa üst kaydırıcı. Sürükleyerek sıralayın. Buton yolu: <code>kayit-ders</code>, <code>kitaplar</code> veya tam URL.</p>
+<h2 class="font-display text-2xl">Hero görselleri</h2>
+<p class="mb-4 text-sm text-muted">Ana sayfa üst bölüm. Tam genişlik, 900 px yükseklik. Sürükleyerek sıralayın.</p>
 
 <form method="post" enctype="multipart/form-data" class="card mb-6 grid gap-3 p-5">
   <?= csrf_field() ?>
   <input type="hidden" name="action" value="save_slide">
   <input type="hidden" name="id" value="<?= (int) $slide['id'] ?>">
-  <div class="grid gap-3 sm:grid-cols-2">
-    <label class="text-sm font-bold">Rozet<input name="badge" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $slide['badge']) ?>"></label>
-    <label class="text-sm font-bold">Vurgu rengi
-      <select name="accent_class" class="mt-1 w-full rounded-xl border px-3 py-2">
-        <option value="accent" <?= ($slide['accent_class'] ?? '') !== 'navy' ? 'selected' : '' ?>>Kırmızı</option>
-        <option value="navy" <?= ($slide['accent_class'] ?? '') === 'navy' ? 'selected' : '' ?>>Lacivert</option>
-      </select>
-    </label>
-  </div>
-  <label class="text-sm font-bold">Başlık satırı 1<input name="title" required class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $slide['title']) ?>"></label>
-  <label class="text-sm font-bold">Başlık satırı 2 (renkli)<input name="title_accent" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $slide['title_accent']) ?>"></label>
-  <label class="text-sm font-bold">Metin<textarea name="body" rows="3" class="mt-1 w-full rounded-xl border px-3 py-2"><?= e((string) $slide['body']) ?></textarea></label>
-  <div class="grid gap-3 sm:grid-cols-2">
-    <label class="text-sm font-bold">1. buton yazı<input name="btn1_label" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $slide['btn1_label']) ?>"></label>
-    <label class="text-sm font-bold">1. buton link<input name="btn1_url" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="kayit-ders" value="<?= e((string) $slide['btn1_url']) ?>"></label>
-    <label class="text-sm font-bold">2. buton yazı<input name="btn2_label" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $slide['btn2_label']) ?>"></label>
-    <label class="text-sm font-bold">2. buton
-      <select name="btn2_kind" class="mt-1 w-full rounded-xl border px-3 py-2">
-        <option value="link" <?= ($slide['btn2_kind'] ?? '') !== 'call' ? 'selected' : '' ?>>Link</option>
-        <option value="call" <?= ($slide['btn2_kind'] ?? '') === 'call' ? 'selected' : '' ?>>Sizi arayalım (form)</option>
-      </select>
-    </label>
-    <label class="text-sm font-bold sm:col-span-2">2. buton link (link seçildiyse)<input name="btn2_url" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="sepet" value="<?= e((string) $slide['btn2_url']) ?>"></label>
-  </div>
+  <input type="hidden" name="title" value="<?= e((string) ($slide['title'] ?: 'Hero')) ?>">
   <label class="text-sm font-bold">Görsel alt metni<input name="alt" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $slide['alt']) ?>"></label>
   <?php $imgSrc = home_image_src((string) ($slide['image'] ?? '')); ?>
   <?php if ($imgSrc !== ''): ?>
-    <img src="<?= e($imgSrc) ?>" alt="" class="h-28 w-auto rounded-xl object-cover">
+    <img src="<?= e($imgSrc) ?>" alt="" class="h-40 w-full rounded-xl object-cover">
   <?php endif; ?>
-  <label class="text-sm font-bold">Görsel<input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="mt-1 w-full text-sm"></label>
+  <label class="text-sm font-bold">Görsel (en az 1920×900 px)<input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="mt-1 w-full text-sm"></label>
   <label class="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="active" value="1" <?= (int) $slide['active'] ? 'checked' : '' ?>> Yayında</label>
   <div class="flex flex-wrap gap-2">
-    <button class="btn-primary"><?= (int) $slide['id'] ? 'Slaytı güncelle' : 'Slayt ekle' ?></button>
+    <button class="btn-primary"><?= (int) $slide['id'] ? 'Görseli güncelle' : 'Görsel ekle' ?></button>
     <?php if ((int) $slide['id']): ?>
       <a class="btn-outline" href="<?= e(url('admin/anasayfa')) ?>">Vazgeç</a>
     <?php endif; ?>
@@ -181,11 +158,13 @@ panel_head('admin', 'anasayfa', 'Anasayfa | Admin', $u);
 
 <div data-sort-table="home_slides">
 <?php foreach ($slides as $s): ?>
-  <article class="card mb-3 flex flex-wrap items-center justify-between gap-3 p-5" data-sort-id="<?= (int) $s['id'] ?>">
+  <article class="card mb-3 flex flex-wrap items-center justify-between gap-3 p-3" data-sort-id="<?= (int) $s['id'] ?>">
     <span class="sort-handle" title="Sürükleyerek sıralayın">⋮⋮</span>
+    <?php $thumbSrc = home_image_src((string) ($s['image'] ?? '')); ?>
+    <?php if ($thumbSrc !== ''): ?><img src="<?= e($thumbSrc) ?>" alt="" class="h-16 w-28 rounded-lg object-cover"><?php endif; ?>
     <div class="min-w-0 flex-1">
-      <p class="font-extrabold"><?= e((string) $s['title']) ?><?php if ($s['title_accent']): ?> <span class="text-navy"><?= e((string) $s['title_accent']) ?></span><?php endif; ?></p>
-      <p class="text-sm text-muted"><?= (int) $s['active'] ? 'Yayında' : 'Gizli' ?><?php if ($s['badge']): ?> · <?= e((string) $s['badge']) ?><?php endif; ?></p>
+      <p class="font-extrabold"><?= e((string) ($s['alt'] ?: $s['title'])) ?></p>
+      <p class="text-sm text-muted"><?= (int) $s['active'] ? 'Yayında' : 'Gizli' ?></p>
     </div>
     <div class="flex gap-2">
       <a class="btn-outline text-sm" href="<?= e(url('admin/anasayfa.php?slide=' . (int) $s['id'])) ?>">Düzenle</a>

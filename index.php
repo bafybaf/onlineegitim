@@ -55,31 +55,11 @@ if ($campBanner):
   <?php endif; ?>
   <?php foreach ($heroSlides as $i => $slide):
       $img = home_image_src((string) ($slide['image'] ?? ''));
-      $heading = $i === 0 ? 'h1' : 'h2';
-      $b1 = trim((string) $slide['btn1_label']);
-      $b2 = trim((string) $slide['btn2_label']);
-      $href1 = home_public_href((string) $slide['btn1_url']);
-      $href2 = home_public_href((string) $slide['btn2_url']);
-      $call = ($slide['btn2_kind'] ?? '') === 'call';
   ?>
-  <article class="hero-slide<?= $i === 0 ? ' is-active' : '' ?> relative">
+  <article class="hero-slide<?= $i === 0 ? ' is-active' : '' ?>">
     <?php if ($img !== ''): ?>
     <img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full object-cover" />
     <?php endif; ?>
-    <div class="hero-overlay absolute inset-0 flex items-end">
-      <div class="w-full px-4 pb-8 pt-20 lg:px-8 lg:pb-12">
-        <?php if (trim((string) $slide['badge']) !== ''): ?><span class="badge"><?= e((string) $slide['badge']) ?></span><?php endif; ?>
-        <<?= $heading ?> class="font-display mt-3 text-3xl leading-tight text-white drop-shadow-lg md:text-5xl lg:text-6xl"><?= e((string) $slide['title']) ?><?php if (trim((string) $slide['title_accent']) !== ''): ?><br><span class="text-[#f7c948]"><?= e((string) $slide['title_accent']) ?></span><?php endif; ?></<?= $heading ?>>
-        <?php if (trim((string) $slide['body']) !== ''): ?><p class="mt-3 max-w-2xl text-base text-white/90 drop-shadow md:text-lg"><?= e((string) $slide['body']) ?></p><?php endif; ?>
-        <?php if ($b1 !== '' || $b2 !== ''): ?>
-        <div class="mt-5 flex flex-wrap gap-3">
-          <?php if ($b1 !== '' && $href1 !== ''): ?><a href="<?= e($href1) ?>" class="btn-primary"><?= e($b1) ?></a><?php endif; ?>
-          <?php if ($b2 !== '' && $call): ?><button type="button" data-open-call class="btn-outline border-white text-white hover:bg-white hover:text-navy"><?= e($b2) ?></button>
-          <?php elseif ($b2 !== '' && $href2 !== ''): ?><a href="<?= e($href2) ?>" class="btn-outline border-white text-white hover:bg-white hover:text-navy"><?= e($b2) ?></a><?php endif; ?>
-        </div>
-        <?php endif; ?>
-      </div>
-    </div>
   </article>
   <?php endforeach; ?>
   <?php if (count($heroSlides) > 1): ?>
