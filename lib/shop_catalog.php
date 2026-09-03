@@ -72,6 +72,9 @@ function shop_catalog_columns(string $table): array
 function shop_default_categories(): array
 {
     return [
+        ['slug' => 'dkab-ihl', 'name' => 'DKAB-İHL (2027)', 'sort' => 1],
+        ['slug' => 'mbsts', 'name' => 'MBSTS (2027)', 'sort' => 2],
+        ['slug' => 'dhbt', 'name' => 'DHBT YENİ GRUP', 'sort' => 3],
         ['slug' => 'tefsir', 'name' => 'Tefsir', 'sort' => 10],
         ['slug' => 'hadis', 'name' => 'Hadis', 'sort' => 20],
         ['slug' => 'fikih', 'name' => 'Fıkıh', 'sort' => 30],

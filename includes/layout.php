@@ -76,9 +76,20 @@ function public_head(string $title, string $desc = ''): void
       <div class="nav-item">
         <a class="nav-link flex h-full items-center" href="<?= e(page_url('kitaplar')) ?>">Kitaplar</a>
         <div class="mega"><div class="mega-panel">
-          <?php foreach (shop_categories() as $sc): ?>
-            <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(kitaplar_url((string) $sc['slug'])) ?>"><?= e($sc['name']) ?></a>
+          <?php
+            $navCats = shop_categories();
+            $navMain = array_filter($navCats, fn($c) => (int) $c['sort'] < 10);
+            $navSub  = array_filter($navCats, fn($c) => (int) $c['sort'] >= 10);
+          ?>
+          <?php foreach ($navMain as $sc): ?>
+            <a class="block rounded-lg px-3 py-2 text-sm font-extrabold text-navy hover:bg-soft" href="<?= e(kitaplar_url((string) $sc['slug'])) ?>"><?= e($sc['name']) ?></a>
           <?php endforeach; ?>
+          <?php if ($navSub): ?>
+          <div class="my-1 border-t border-[#e5e5e7]"></div>
+          <?php foreach ($navSub as $sc): ?>
+            <a class="block rounded-lg px-3 py-2 text-sm font-bold text-muted hover:bg-soft hover:text-ink" href="<?= e(kitaplar_url((string) $sc['slug'])) ?>"><?= e($sc['name']) ?></a>
+          <?php endforeach; ?>
+          <?php endif; ?>
           <a class="mt-1 block rounded-lg px-3 py-2 text-sm font-extrabold text-navy" href="<?= e(page_url('kitaplar')) ?>">Tüm kitaplar →</a>
         </div></div>
       </div>
@@ -127,8 +138,16 @@ function public_head(string $title, string $desc = ''): void
       <a href="<?= e(page_url('home')) ?>">Ana Sayfa</a>
       <a href="<?= e(page_url('programlar')) ?>">Programlar</a>
       <p class="mt-2 text-xs font-extrabold uppercase tracking-wider text-muted">Kitaplar</p>
-      <?php foreach (shop_categories() as $sc): ?>
-        <a href="<?= e(kitaplar_url((string) $sc['slug'])) ?>"><?= e($sc['name']) ?></a>
+      <?php
+        $drwCats = shop_categories();
+        $drwMain = array_filter($drwCats, fn($c) => (int) $c['sort'] < 10);
+        $drwSub  = array_filter($drwCats, fn($c) => (int) $c['sort'] >= 10);
+      ?>
+      <?php foreach ($drwMain as $sc): ?>
+        <a href="<?= e(kitaplar_url((string) $sc['slug'])) ?>" class="font-extrabold text-navy"><?= e($sc['name']) ?></a>
+      <?php endforeach; ?>
+      <?php foreach ($drwSub as $sc): ?>
+        <a href="<?= e(kitaplar_url((string) $sc['slug'])) ?>" class="text-sm"><?= e($sc['name']) ?></a>
       <?php endforeach; ?>
       <a href="<?= e(page_url('kitaplar')) ?>" class="text-navy">Tüm kitaplar →</a>
       <a href="<?= e(page_url('kadro')) ?>">Kadromuz</a>
