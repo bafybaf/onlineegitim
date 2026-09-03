@@ -62,8 +62,7 @@ function public_head(string $title, string $desc = ''): void
         <span class="site-logo-tag">Canlı ders · Kitap · Takip</span>
       </span>
     </a>
-    <nav class="hidden items-stretch gap-6 lg:flex">
-      <a class="nav-link flex items-center" href="<?= e(page_url('home')) ?>">Ana Sayfa</a>
+    <nav class="hidden items-stretch gap-6 uppercase lg:flex">
       <div class="nav-item">
         <a class="nav-link flex h-full items-center" href="<?= e(page_url('programlar')) ?>">Eğitimlerimiz</a>
         <div class="mega"><div class="mega-panel">
@@ -76,7 +75,6 @@ function public_head(string $title, string $desc = ''): void
       <a class="nav-link flex items-center" href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
       <a class="nav-link flex items-center" href="<?= e(kitaplar_url('mbsts')) ?>">MBSTS</a>
       <a class="nav-link flex items-center" href="<?= e(kitaplar_url('dhbt')) ?>">DHBT</a>
-      <a class="nav-link flex items-center" href="<?= e(page_url('kadro')) ?>">Kadromuz</a>
       <a class="nav-link flex items-center" href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a class="nav-link flex items-center" href="<?= e(page_url('iletisim')) ?>">İletişim</a>
     </nav>
@@ -117,13 +115,11 @@ function public_head(string $title, string $desc = ''): void
 <div id="drawer" class="drawer">
   <div class="drawer-panel p-5">
     <div class="mb-4 flex items-center justify-between"><strong>Menü</strong><button id="drawer-close" class="text-2xl leading-none">×</button></div>
-    <div class="grid gap-2 font-bold">
-      <a href="<?= e(page_url('home')) ?>">Ana Sayfa</a>
+    <div class="grid gap-2 font-bold uppercase">
       <a href="<?= e(page_url('programlar')) ?>">Eğitimlerimiz</a>
       <a href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
       <a href="<?= e(kitaplar_url('mbsts')) ?>">MBSTS</a>
       <a href="<?= e(kitaplar_url('dhbt')) ?>">DHBT</a>
-      <a href="<?= e(page_url('kadro')) ?>">Kadromuz</a>
       <a href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a href="<?= e(page_url('iletisim')) ?>">İletişim</a>
       <?php if ($u && membership_needs_pay($u)): ?>
