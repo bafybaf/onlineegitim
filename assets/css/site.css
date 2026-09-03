@@ -100,8 +100,7 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
 
 .hero-slide { display: none; }
 .hero-slide.is-active { display: block; }
-.hero-img { height: 900px; }
-@media (max-width: 768px) { .hero-img { height: 400px; } }
+.hero-img { width: 100%; height: auto; }
 .dots button { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.5); }
 .dots button.is-on { width: 22px; background: #fff; }
 
