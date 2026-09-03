@@ -35,23 +35,22 @@ panel_head('ogretmen', 'kayitlar', (string) $r['title'] . ' | Kayıt', $u);
 $err = flash_error();
 ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4"><a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle')) ?>">← Ders kayıtları</a></p>
-<article class="card overflow-hidden p-5">
-  <div class="flex flex-wrap items-start justify-between gap-3">
-    <div>
-      <p class="text-xs font-extrabold uppercase text-navy"><?= e($r['gname']) ?></p>
-      <h2 class="font-display mt-1 text-3xl"><?= e($r['title']) ?></h2>
-      <p class="mt-1 text-sm text-muted"><?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</p>
-    </div>
-    <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
+<div class="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle')) ?>">← <?= e($r['gname']) ?></a>
+    <h2 class="font-display text-lg leading-tight"><?= e($r['title']) ?></h2>
+    <span class="text-xs text-muted"><?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</span>
   </div>
+  <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
+</div>
+<article class="card overflow-hidden p-3">
   <?php if ($vodJs === '' && $src === ''): ?>
-    <p class="mt-6 text-muted">Bu kayıt için henüz video yok.</p>
+    <p class="p-4 text-muted">Bu kayıt için henüz video yok.</p>
   <?php elseif ($vodJs === '' && !empty($r['video_url']) && empty($r['video_path']) && !preg_match('/\.(mp4|webm|mov)(\?|$)/i', $src)): ?>
-    <p class="mt-6"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
+    <p class="p-4"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
   <?php else: ?>
-    <div id="vod-box" class="mt-6" data-src="<?= e($vodJs !== '' ? $vodJs : $src) ?>">
-      <video id="vod-player" class="w-full rounded-2xl bg-black h-auto object-contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>
+    <div id="vod-box" data-src="<?= e($vodJs !== '' ? $vodJs : $src) ?>">
+      <video id="vod-player" class="w-full rounded-xl bg-black" style="aspect-ratio:16/9;object-fit:contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>
     </div>
     <script>
     (function () {
