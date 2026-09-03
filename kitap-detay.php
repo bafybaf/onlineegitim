@@ -36,10 +36,7 @@ public_head($b['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
     <div>
       <p class="badge"><?= e(book_category_name($b)) ?></p>
       <?php if ($camp): ?>
-        <p class="mt-3"><span class="badge"><?= e(campaign_badge_text($camp)) ?> · <?= e((string) $camp['title']) ?><?php if (!empty($camp['code'])): ?> · <?= e((string) $camp['code']) ?><?php endif; ?></span></p>
-        <?php if (!empty($camp['description'])): ?>
-          <p class="mt-2 text-sm text-muted"><?= e((string) $camp['description']) ?></p>
-        <?php endif; ?>
+        <p class="mt-3"><span class="badge"><?= e(campaign_badge_text($camp)) ?> · <?= e((string) $camp['title']) ?></span></p>
       <?php endif; ?>
       <h1 class="font-display mt-4 text-4xl md:text-5xl"><?= e($b['title']) ?></h1>
       <p class="mt-2 text-lg text-muted"><?= e($b['author']) ?></p>
