@@ -73,7 +73,15 @@ function public_head(string $title, string $desc = ''): void
           <a class="mt-1 block rounded-lg px-3 py-2 text-sm font-extrabold text-navy" href="<?= e(page_url('programlar')) ?>">Tüm programlar →</a>
         </div></div>
       </div>
-      <a class="nav-link flex items-center" href="<?= e(page_url('kitaplar')) ?>">Kitap Mağazası</a>
+      <div class="nav-item">
+        <a class="nav-link flex h-full items-center" href="<?= e(page_url('kitaplar')) ?>">Kitaplar</a>
+        <div class="mega"><div class="mega-panel">
+          <?php foreach (shop_categories() as $sc): ?>
+            <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(kitaplar_url((string) $sc['slug'])) ?>"><?= e($sc['name']) ?></a>
+          <?php endforeach; ?>
+          <a class="mt-1 block rounded-lg px-3 py-2 text-sm font-extrabold text-navy" href="<?= e(page_url('kitaplar')) ?>">Tüm kitaplar →</a>
+        </div></div>
+      </div>
       <a class="nav-link flex items-center" href="<?= e(page_url('kadro')) ?>">Kadromuz</a>
       <a class="nav-link flex items-center" href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a class="nav-link flex items-center" href="<?= e(page_url('iletisim')) ?>">İletişim</a>
@@ -118,7 +126,11 @@ function public_head(string $title, string $desc = ''): void
     <div class="grid gap-2 font-bold">
       <a href="<?= e(page_url('home')) ?>">Ana Sayfa</a>
       <a href="<?= e(page_url('programlar')) ?>">Programlar</a>
-      <a href="<?= e(page_url('kitaplar')) ?>">Kitap Mağazası</a>
+      <p class="mt-2 text-xs font-extrabold uppercase tracking-wider text-muted">Kitaplar</p>
+      <?php foreach (shop_categories() as $sc): ?>
+        <a href="<?= e(kitaplar_url((string) $sc['slug'])) ?>"><?= e($sc['name']) ?></a>
+      <?php endforeach; ?>
+      <a href="<?= e(page_url('kitaplar')) ?>" class="text-navy">Tüm kitaplar →</a>
       <a href="<?= e(page_url('kadro')) ?>">Kadromuz</a>
       <a href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a href="<?= e(page_url('iletisim')) ?>">İletişim</a>
