@@ -5,9 +5,27 @@ if ($rel === '' || str_contains($rel, '..') || !preg_match('#^[A-Za-z0-9._\-/]+\
     http_response_code(404);
     exit;
 }
-$abs = realpath(__DIR__ . '/storage/uploads/' . $rel);
-$root = realpath(__DIR__ . '/storage/uploads');
-if ($abs === false || $root === false || !str_starts_with($abs, $root) || !is_file($abs)) {
+$candidates = [
+    realpath(__DIR__ . '/uploads/' . $rel),
+    realpath(__DIR__ . '/storage/uploads/' . $rel),
+];
+$roots = array_values(array_filter([
+    realpath(__DIR__ . '/uploads'),
+    realpath(__DIR__ . '/storage/uploads'),
+]));
+$abs = false;
+foreach ($candidates as $cand) {
+    if ($cand === false || !is_file($cand)) {
+        continue;
+    }
+    foreach ($roots as $root) {
+        if (str_starts_with($cand, $root)) {
+            $abs = $cand;
+            break 2;
+        }
+    }
+}
+if ($abs === false) {
     http_response_code(404);
     exit;
 }

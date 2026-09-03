@@ -17,6 +17,8 @@ storage/notes/**
 !storage/notes/.gitkeep
 storage/uploads/**
 !storage/uploads/.gitkeep
+uploads/**
+!uploads/.htaccess
 tools/mediamtx/*.exe
 tools/mediamtx/*.log
 tools/mediamtx/*.zip

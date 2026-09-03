@@ -159,11 +159,7 @@ function catalog_media_src(?string $path): string
     }
     $rel = ltrim($path, '/');
     if (str_starts_with($rel, 'uploads/')) {
-        $abs = dirname(__DIR__) . '/storage/' . $rel;
-        if (!is_file($abs)) {
-            return '';
-        }
-        return url('media-public.php?f=' . rawurlencode(substr($rel, strlen('uploads/'))));
+        return media_upload_file_abs($rel) !== '' ? url($rel) : '';
     }
     $abs = catalog_media_root() . '/' . $rel;
     if (!is_file($abs)) {
@@ -322,14 +318,46 @@ function media_store_tmp(array $file, string $subdir, string $slug): string
     $slug = preg_replace('/[^A-Za-z0-9\-_]/', '', $slug) ?: 'item';
     $subdir = trim($subdir, '/');
     $rel = 'uploads/' . $subdir . '/' . $slug . '-' . bin2hex(random_bytes(4)) . '.' . $ok[$mime];
-    $abs = dirname(__DIR__) . '/storage/' . $rel;
-    if (!is_dir(dirname($abs)) && !mkdir(dirname($abs), 0775, true) && !is_dir(dirname($abs))) {
-        throw new RuntimeException('Görsel klasörü oluşturulamadı.');
-    }
+    $abs = media_upload_write_abs($rel);
     if (!move_uploaded_file($tmp, $abs)) {
         throw new RuntimeException('Görsel kaydedilemedi.');
     }
     return $rel;
+}
+
+function media_upload_public_abs(string $rel): string
+{
+    return catalog_media_root() . '/' . ltrim(str_replace('\\', '/', $rel), '/');
+}
+
+function media_upload_storage_abs(string $rel): string
+{
+    return catalog_media_root() . '/storage/' . ltrim(str_replace('\\', '/', $rel), '/');
+}
+
+function media_upload_file_abs(string $rel): string
+{
+    $rel = ltrim(str_replace('\\', '/', $rel), '/');
+    foreach ([media_upload_public_abs($rel), media_upload_storage_abs($rel)] as $abs) {
+        if (is_file($abs)) {
+            return $abs;
+        }
+    }
+    return '';
+}
+
+function media_upload_write_abs(string $rel): string
+{
+    $abs = media_upload_public_abs($rel);
+    $dir = dirname($abs);
+    if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+        $abs = media_upload_storage_abs($rel);
+        $dir = dirname($abs);
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new RuntimeException('Görsel klasörü oluşturulamadı.');
+        }
+    }
+    return $abs;
 }
 
 function media_items(string $type, int $ownerId): array
