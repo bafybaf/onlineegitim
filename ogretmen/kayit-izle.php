@@ -43,14 +43,15 @@ $err = flash_error();
   </div>
   <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
 </div>
-<article class="card overflow-hidden p-3">
+<style>.vod-wide{margin-left:-1.5rem;margin-right:-1.5rem;width:calc(100% + 3rem)}@media(min-width:768px){.vod-wide{margin-left:-2.25rem;margin-right:-2.25rem;width:calc(100% + 4.5rem)}}</style>
+<div class="vod-wide" style="background:#000;border-radius:.75rem;overflow:hidden">
   <?php if ($vodJs === '' && $src === ''): ?>
-    <p class="p-4 text-muted">Bu kayıt için henüz video yok.</p>
+    <p class="p-5 text-muted">Bu kayıt için henüz video yok.</p>
   <?php elseif ($vodJs === '' && !empty($r['video_url']) && empty($r['video_path']) && !preg_match('/\.(mp4|webm|mov)(\?|$)/i', $src)): ?>
-    <p class="p-4"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
+    <p class="p-5"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
   <?php else: ?>
     <div id="vod-box" data-src="<?= e($vodJs !== '' ? $vodJs : $src) ?>">
-      <video id="vod-player" class="w-full rounded-xl bg-black" style="aspect-ratio:16/9;object-fit:contain" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>
+      <video id="vod-player" class="block w-full bg-black" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>
     </div>
     <script>
     (function () {
@@ -69,5 +70,5 @@ $err = flash_error();
     })();
     </script>
   <?php endif; ?>
-</article>
+</div>
 <?php panel_foot();
