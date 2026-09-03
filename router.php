@@ -184,6 +184,12 @@ if (preg_match('#^kitap/([A-Za-z0-9\-_]+)$#', $path, $m)) {
     exit;
 }
 
+if (preg_match('#^uploads/(.+)$#', $path, $m)) {
+    $_GET['f'] = $m[1];
+    require __DIR__ . '/media-public.php';
+    exit;
+}
+
 if (preg_match('#^canli-sinif/(\d+)$#', $path, $m)) {
     $_GET['id'] = $m[1];
     require __DIR__ . '/canli-sinif.php';

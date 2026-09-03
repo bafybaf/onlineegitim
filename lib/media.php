@@ -160,7 +160,10 @@ function catalog_media_src(?string $path): string
     $rel = ltrim($path, '/');
     if (str_starts_with($rel, 'uploads/')) {
         $abs = dirname(__DIR__) . '/storage/' . $rel;
-        return is_file($abs) ? url($rel) : '';
+        if (!is_file($abs)) {
+            return '';
+        }
+        return url('media-public.php?f=' . rawurlencode(substr($rel, strlen('uploads/'))));
     }
     $abs = catalog_media_root() . '/' . $rel;
     if (!is_file($abs)) {
