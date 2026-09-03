@@ -59,9 +59,9 @@ if ($campBanner):
   ?>
   <article class="hero-slide<?= $i === 0 ? ' is-active' : '' ?>">
     <?php if ($img !== '' && $link !== ''): ?>
-    <a href="<?= e($link) ?>"><img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full object-cover" /></a>
+    <a href="<?= e($link) ?>"><img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full" /></a>
     <?php elseif ($img !== ''): ?>
-    <img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full object-cover" />
+    <img src="<?= e($img) ?>" alt="<?= e((string) ($slide['alt'] ?: $slide['title'])) ?>" class="hero-img block w-full" />
     <?php endif; ?>
   </article>
   <?php endforeach; ?>
