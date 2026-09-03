@@ -147,15 +147,5 @@ if ($campBanner):
   </div>
 </section>
 <?php endif; ?>
-<section class="bg-navy3 py-16 text-white">
-  <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <h2 class="font-display text-4xl">Kayıttan derse 4 adım</h2>
-    <div class="mt-8 grid gap-4 md:grid-cols-4">
-      <div class="rounded-2xl bg-white/5 p-5"><p class="font-display text-3xl text-accent">1</p><h3 class="mt-2 font-extrabold">Ücretsiz tanışma</h3></div>
-      <div class="rounded-2xl bg-white/5 p-5"><p class="font-display text-3xl text-accent">2</p><h3 class="mt-2 font-extrabold">Program + kitap</h3></div>
-      <div class="rounded-2xl bg-white/5 p-5"><p class="font-display text-3xl text-accent">3</p><h3 class="mt-2 font-extrabold">Panelden canlı ders</h3><p class="mt-1 text-sm text-white/70">Sınıfa yalnızca panel üzerinden girilir.</p></div>
-      <div class="rounded-2xl bg-white/5 p-5"><p class="font-display text-3xl text-accent">4</p><h3 class="mt-2 font-extrabold">Panel takibi</h3></div>
-    </div>
-  </div>
-</section>
+
 <?php public_foot();

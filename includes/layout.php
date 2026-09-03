@@ -140,43 +140,43 @@ function public_head(string $title, string $desc = ''): void
 function public_foot(): void
 {
     ?>
-<footer class="border-t border-[#e5e5e7] bg-[#0a1a4e] text-white">
+<footer class="border-t border-[#e5e5e7] bg-white text-ink">
   <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-4 lg:px-8">
     <div>
       <p>
-        <img src="<?= e(url('assets/img/logo-dark.jpg')) ?>" alt="Online İlahiyat" class="footer-logo">
+        <img src="<?= e(url('assets/img/logo.png')) ?>" alt="Online İlahiyat" class="footer-logo">
       </p>
-      <p class="mt-3 text-sm text-white/70">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
+      <p class="mt-3 text-sm text-muted">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
       <p class="mt-4 text-sm font-bold">info@onlineilahiyat.com</p>
     </div>
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-white/50">Eğitimler</p>
-      <div class="mt-3 grid gap-2 text-sm text-white/80">
-        <a href="<?= e(page_url('programlar')) ?>">Tefsir</a><a href="<?= e(page_url('programlar')) ?>">Hadis</a>
-        <a href="<?= e(page_url('programlar')) ?>">Fıkıh</a><a href="<?= e(page_url('programlar')) ?>">Arapça</a>
+      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-muted">Eğitimler</p>
+      <div class="mt-3 grid gap-2 text-sm">
+        <a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Tefsir</a><a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Hadis</a>
+        <a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Fıkıh</a><a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Arapça</a>
       </div>
     </div>
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-white/50">Mağaza &amp; Sistem</p>
-      <div class="mt-3 grid gap-2 text-sm text-white/80">
-        <a href="<?= e(page_url('kitaplar')) ?>">Kitaplar</a>
-        <a href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a>
-        <a href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a>
-        <a href="<?= e(page_url('kayit-magaza')) ?>">Mağaza kaydı</a>
-        <a href="<?= e(page_url('kayit-ders')) ?>">Ders kaydı</a>
+      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-muted">Mağaza &amp; Sistem</p>
+      <div class="mt-3 grid gap-2 text-sm">
+        <a class="hover:text-navy" href="<?= e(page_url('kitaplar')) ?>">Kitaplar</a>
+        <a class="hover:text-navy" href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a>
+        <a class="hover:text-navy" href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a>
+        <a class="hover:text-navy" href="<?= e(page_url('kayit-magaza')) ?>">Mağaza kaydı</a>
+        <a class="hover:text-navy" href="<?= e(page_url('kayit-ders')) ?>">Ders kaydı</a>
       </div>
     </div>
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-white/50">Yasal</p>
-      <div class="mt-3 grid gap-2 text-sm text-white/80">
-        <a href="<?= e(page_url('iletisim')) ?>">İletişim</a>
-        <a href="<?= e(page_url('gizlilik')) ?>">Gizlilik</a>
-        <a href="<?= e(page_url('kvkk')) ?>">KVKK</a>
-        <a href="<?= e(page_url('blog')) ?>">Duyurular</a>
+      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-muted">Yasal</p>
+      <div class="mt-3 grid gap-2 text-sm">
+        <a class="hover:text-navy" href="<?= e(page_url('iletisim')) ?>">İletişim</a>
+        <a class="hover:text-navy" href="<?= e(page_url('gizlilik')) ?>">Gizlilik</a>
+        <a class="hover:text-navy" href="<?= e(page_url('kvkk')) ?>">KVKK</a>
+        <a class="hover:text-navy" href="<?= e(page_url('blog')) ?>">Duyurular</a>
       </div>
     </div>
   </div>
-  <p class="border-t border-white/10 py-4 text-center text-xs text-white/50">© <?= date('Y') ?> Online İlahiyat. Tüm hakları saklıdır.</p>
+  <p class="border-t border-[#e5e5e7] py-4 text-center text-xs text-muted">© <?= date('Y') ?> Online İlahiyat. Tüm hakları saklıdır.</p>
 </footer>
 <div id="call-modal" class="modal">
   <div class="card w-full max-w-md p-6">

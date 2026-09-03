@@ -149,7 +149,7 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
   text-decoration: none;
 }
 .site-logo img { width: auto; height: 56px; max-width: min(260px, 52vw); border-radius: 0; }
-.footer-logo { width: auto; height: 56px; max-width: 240px; border-radius: 8px; }
+.footer-logo { width: auto; height: 56px; max-width: 240px; object-fit: contain; }
 .site-logo-text { display: flex; flex-direction: column; line-height: 1.15; }
 .site-logo-name {
   font-family: "Bricolage Grotesque", sans-serif;
