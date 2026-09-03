@@ -27,9 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 public_head('İletişim | Online İlahiyat');
 ?>
-<header class="bg-soft py-14">
+<header class="bg-soft py-6">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <h1 class="font-display text-4xl md:text-6xl">İletişim</h1>
+    <h1 class="font-display text-2xl md:text-3xl">İletişim</h1>
     <p class="mt-4 text-muted">Kayıt, kitap siparişi ve canlı ders teknik destek. 0850 303 40 14 · info@onlineilahiyat.com</p>
   </div>
 </header>

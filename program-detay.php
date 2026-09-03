@@ -34,10 +34,10 @@ $askEmail = (string) ($u['email'] ?? '');
 public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
 ?>
 <header class="bg-soft">
-  <div class="mx-auto max-w-6xl px-4 py-12 lg:px-8 lg:py-16">
+  <div class="mx-auto max-w-6xl px-4 py-6 lg:px-8 lg:py-8">
     <div class="mb-8 overflow-hidden rounded-[22px]"><?= program_gallery_html($p, 'detail') ?></div>
     <p class="badge"><?= e($p['level']) ?></p>
-    <h1 class="font-display mt-4 text-4xl leading-tight md:text-6xl"><?= e($p['title']) ?></h1>
+    <h1 class="font-display mt-3 text-2xl leading-tight md:text-3xl"><?= e($p['title']) ?></h1>
     <p class="mt-4 text-sm font-bold text-navy"><?= e($p['hours']) ?> · <?= e($p['tag']) ?></p>
     <p class="mt-4"><?= program_price_html($p, 'price-now text-3xl md:text-4xl') ?></p>
     <div class="mt-7 flex flex-wrap gap-3">

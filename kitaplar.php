@@ -7,9 +7,9 @@ $activeCat = $catSlug !== '' ? shop_category_by_slug($catSlug) : null;
 $books = books_with_category($activeCat ? (string) $activeCat['slug'] : null);
 public_head('Kitap Mağazası | Online İlahiyat');
 ?>
-<header class="bg-soft py-14">
+<header class="bg-soft py-6">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <h1 class="font-display text-4xl md:text-6xl"><?= $activeCat ? e((string) $activeCat['name']) : 'Kitap mağazası' ?></h1>
+    <h1 class="font-display text-2xl md:text-3xl"><?= $activeCat ? e((string) $activeCat['name']) : 'Kitap mağazası' ?></h1>
     <?php if ($activeCat): ?>
       <p class="mt-2 text-muted"><a class="font-extrabold text-navy" href="<?= e(kitaplar_url()) ?>">Tüm kitaplar</a></p>
     <?php endif; ?>

@@ -27,10 +27,10 @@ if (function_exists('schedule_fetch')) {
 }
 public_head($h['name'] . ' | Kadro | Online İlahiyat', (string) ($h['bio'] ?? ''));
 ?>
-<header class="bg-soft py-14">
+<header class="bg-soft py-6">
   <div class="mx-auto max-w-5xl px-4 lg:px-8">
     <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy"><?= e((string) ($h['city'] ?? 'Hoca')) ?></p>
-    <h1 class="font-display mt-2 text-4xl md:text-6xl"><?= e($h['name']) ?></h1>
+    <h1 class="font-display mt-2 text-2xl md:text-3xl"><?= e($h['name']) ?></h1>
     <?php if (!empty($h['bio'])): ?><p class="mt-4 max-w-2xl text-muted"><?= e($h['bio']) ?></p><?php endif; ?>
   </div>
 </header>

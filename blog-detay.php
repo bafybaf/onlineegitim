@@ -14,10 +14,10 @@ if (!$p) {
 }
 public_head($p['title'] . ' | Duyurular', mb_strimwidth(strip_tags((string) $p['body']), 0, 160, ''));
 ?>
-<header class="bg-soft py-14">
+<header class="bg-soft py-6">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
     <p class="text-xs font-extrabold uppercase text-navy"><?= e(date('d.m.Y', strtotime((string) $p['created_at']))) ?></p>
-    <h1 class="font-display mt-2 text-4xl md:text-6xl"><?= e($p['title']) ?></h1>
+    <h1 class="font-display mt-2 text-2xl md:text-3xl"><?= e($p['title']) ?></h1>
   </div>
 </header>
 <main class="mx-auto max-w-7xl px-4 py-12 lg:px-8">

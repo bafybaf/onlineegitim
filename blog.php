@@ -4,9 +4,9 @@ require_once __DIR__ . '/includes/layout.php';
 $posts = db()->query('SELECT * FROM posts WHERE published=1 ORDER BY ' . catalog_order_sql('', 'posts'))->fetchAll();
 public_head('Duyurular | Online İlahiyat', 'Online İlahiyat duyuru ve yazıları.');
 ?>
-<header class="bg-soft py-14">
+<header class="bg-soft py-6">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <h1 class="font-display text-4xl md:text-6xl">Duyurular</h1>
+    <h1 class="font-display text-2xl md:text-3xl">Duyurular</h1>
     <p class="mt-3 text-muted">Dönem, kayıt ve ders duyuruları.</p>
   </div>
 </header>

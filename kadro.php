@@ -5,9 +5,9 @@ $hocalar = db()->query("SELECT * FROM users WHERE role='ogretmen' ORDER BY " . c
 $imgs = ['assets/img/hoca.jpg', 'assets/img/kitaplik.jpg', 'assets/img/ogrenci.jpg', 'assets/img/hero-kuran.jpg'];
 public_head('Kadromuz | Online İlahiyat');
 ?>
-<header class="bg-soft py-14">
+<header class="bg-soft py-6">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <h1 class="font-display text-4xl md:text-6xl">Kadromuz</h1>
+    <h1 class="font-display text-2xl md:text-3xl">Kadromuz</h1>
     <p class="mt-3 max-w-2xl text-muted">Tefsir, hadis, Arapça ve kıraat hocaları. Aynı anda birden fazla canlı oda açabilirler.</p>
   </div>
 </header>
