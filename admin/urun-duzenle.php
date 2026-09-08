@@ -13,7 +13,7 @@ $b = [
     'category_id' => 0,
     'price' => 0,
     'price_old' => 0,
-    'color' => '#1a3fad',
+    'color' => '#111111',
     'cover' => '',
     'stock' => 0,
     'is_digital' => 0,
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $pages > 0 ? $pages : null,
                         $digital,
                         null,
-                        '#1a3fad',
+                        '#111111',
                     ]);
                     $id = (int) db()->lastInsertId();
                     media_attach_uploads('book', $id, 'images', $slug);

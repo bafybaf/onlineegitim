@@ -46,6 +46,9 @@ if (is_file(__DIR__ . '/iyzico.php')) {
 require_once __DIR__ . '/seo_urls.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/catalog.php';
+if (is_file(__DIR__ . '/site_content.php')) {
+    require_once __DIR__ . '/site_content.php';
+}
 if (is_file(__DIR__ . '/media.php')) {
     require_once __DIR__ . '/media.php';
 }
@@ -86,6 +89,9 @@ if (function_exists('ensure_program_purchases_schema')) {
 }
 if (function_exists('ensure_shop_catalog_schema')) {
     ensure_shop_catalog_schema();
+}
+if (function_exists('ensure_public_site_content')) {
+    ensure_public_site_content();
 }
 if (function_exists('ensure_academy_schema')) {
     ensure_academy_schema();

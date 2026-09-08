@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
-$progs = programs();
+$progs = public_programs();
 $books = db()->query('SELECT b.*, c.name AS category_name, c.slug AS category_slug FROM books b LEFT JOIN categories c ON c.id = b.category_id ORDER BY ' . catalog_order_sql('b', 'books') . ' LIMIT 4')->fetchAll();
 $homePosts = [];
 try {
@@ -15,7 +15,7 @@ $heroStrip = home_highlights(true);
 $campBanner = campaign_banner();
 public_head(
     $homeTitle !== '' ? $homeTitle : 'Online İlahiyat — Canlı Ders, Program ve Kitap',
-    $homeDesc !== '' ? $homeDesc : 'Tefsir, hadis, fıkıh, Arapça canlı dersleri ve kitap mağazası.'
+    $homeDesc !== '' ? $homeDesc : 'ÖABT-DKAB, DHBT, MBSTS ve Arapça YÖKDİL-YDS canlı dersleri ile kitap mağazası.'
 );
 if (!empty($_SESSION['flash'])) {
     echo '<p class="mx-auto max-w-7xl px-4 pt-4 font-bold text-accent lg:px-8">' . e($_SESSION['flash']) . '</p>';
@@ -23,32 +23,17 @@ if (!empty($_SESSION['flash'])) {
 }
 if ($campBanner):
     $campHref = kitaplar_url();
-    if (!empty($campBanner['category_id'])) {
-        $bannerCat = shop_category_by_id((int) $campBanner['category_id']);
-        if ($bannerCat) {
-            $campHref = kitaplar_url((string) $bannerCat['slug']);
-        }
-    }
 ?>
-<section class="bg-navy text-white">
+<section class="bg-navy text-accent">
   <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8">
-    <p class="text-sm font-extrabold">
-      <?= e((string) $campBanner['title']) ?>
-      <?php if (!empty($campBanner['description'])): ?>
-        <span class="font-semibold text-white/80"> — <?= e((string) $campBanner['description']) ?></span>
-      <?php endif; ?>
-      <?php if (!empty($campBanner['code'])): ?>
-        <span class="ml-2 rounded-full bg-white/15 px-2 py-0.5 text-xs">Kupon <?= e((string) $campBanner['code']) ?></span>
-      <?php else: ?>
-        <span class="ml-2 rounded-full bg-white/15 px-2 py-0.5 text-xs"><?= e(campaign_badge_text($campBanner)) ?></span>
-      <?php endif; ?>
-    </p>
+    <p class="text-sm font-extrabold"><?= e((string) $campBanner['title']) ?></p>
     <a class="text-sm font-extrabold underline" href="<?= e($campHref) ?>">Kitaplara bak</a>
   </div>
 </section>
 <?php endif; ?>
 <?php if ($heroSlides): ?>
-<section class="relative overflow-hidden">
+<section class="mx-auto max-w-7xl px-4 pt-6 pb-8 lg:px-8">
+  <div class="relative overflow-hidden rounded-2xl">
   <?php if (count($heroSlides) > 1): ?>
   <button id="hero-prev" class="absolute left-4 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-navy backdrop-blur md:grid">‹</button>
   <button id="hero-next" class="absolute right-4 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-navy backdrop-blur md:grid">›</button>
@@ -70,6 +55,7 @@ if ($campBanner):
     <?php foreach ($heroSlides as $i => $_): ?><button type="button"<?= $i === 0 ? ' class="is-on"' : '' ?>></button><?php endforeach; ?>
   </div>
   <?php endif; ?>
+  </div>
 </section>
 <?php endif; ?>
 <?php if ($heroStrip): ?>
@@ -84,11 +70,11 @@ if ($campBanner):
 <section class="py-16">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
     <div class="flex items-end justify-between gap-4">
-      <div><p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Eğitim</p><h2 class="font-display mt-2 text-4xl">Seviyenize uygun eğitim</h2></div>
+      <div><p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Eğitim</p><h2 class="font-display mt-2 text-4xl">Seviyenize uygun kurslar</h2></div>
       <a href="<?= e(url('programlar.php')) ?>" class="btn-outline text-sm">Tüm eğitimler</a>
     </div>
     <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <?php foreach (array_slice($progs, 0, 4) as $p): ?>
+      <?php foreach ($progs as $p): ?>
       <article class="card overflow-hidden hover:border-navy">
         <?= program_gallery_html($p, 'card', page_url('program', (string) $p['slug'])) ?>
         <div class="p-5">

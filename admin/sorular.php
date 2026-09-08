@@ -59,7 +59,7 @@ panel_head('admin', 'sorular', 'Sorular | Admin', $u);
         <h2 class="font-display mt-1 text-2xl"><?= e(question_row_name($q)) ?></h2>
         <p class="text-sm text-muted"><?= e(question_row_email($q)) ?> · <?= e((string) $q['created_at']) ?></p>
       </div>
-      <span class="rounded-full px-3 py-1 text-xs font-extrabold <?= $done ? 'bg-[#eef2ff] text-navy' : 'bg-soft text-muted' ?>"><?= $done ? 'Cevaplandı' : 'Bekliyor' ?></span>
+      <span class="rounded-full px-3 py-1 text-xs font-extrabold <?= $done ? 'bg-[#faf6ea] text-navy' : 'bg-soft text-muted' ?>"><?= $done ? 'Cevaplandı' : 'Bekliyor' ?></span>
     </div>
     <p class="mt-4 whitespace-pre-wrap"><?= e((string) $q['body']) ?></p>
     <form method="post" class="mt-4 grid gap-3">

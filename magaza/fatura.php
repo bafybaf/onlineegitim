@@ -38,7 +38,7 @@ header('Content-Type: text/html; charset=utf-8');
 </head>
 <body>
   <p class="no-print"><button onclick="window.print()">Yazdır / PDF</button></p>
-  <p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#1a3fad">Online İlahiyat · Sipariş özeti</p>
+  <p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#111111">Online İlahiyat · Sipariş özeti</p>
   <h1>Sipariş #<?= (int) $o['id'] ?></h1>
   <p><?= e((string) ($o['ship_name'] ?? $u['name'])) ?><br><?= e((string) ($o['ship_line'] ?? '')) ?> <?= e((string) ($o['ship_district'] ?? '')) ?> <?= e((string) ($o['ship_city'] ?? '')) ?></p>
   <p>Durum: <?= e((string) $o['status']) ?> · <?= e((string) ($o['merchant_oid'] ?? '')) ?></p>

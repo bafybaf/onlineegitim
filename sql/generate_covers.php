@@ -106,7 +106,7 @@ function make_book(string $path, string $title, string $category, string $hex, s
     $rgb = hex_rgb($hex);
     fill_vgrad($im, $w, $h, shade($rgb, 1.15), shade($rgb, 0.55));
     $white = imagecolorallocate($im, 255, 255, 255);
-    $gold = imagecolorallocate($im, 232, 214, 160);
+    $gold = imagecolorallocate($im, 245, 197, 66);
     $mute = imagecolorallocatealpha($im, 255, 255, 255, 70);
     imagerectangle($im, 18, 18, $w - 19, $h - 19, $gold);
     imagerectangle($im, 24, 24, $w - 25, $h - 25, $mute);
@@ -134,7 +134,7 @@ function make_program(string $path, string $title, string $level, string $hex, s
     $rgb = hex_rgb($hex);
     fill_vgrad($im, $w, $h, shade($rgb, 1.2), shade($rgb, 0.5));
     $white = imagecolorallocate($im, 255, 255, 255);
-    $gold = imagecolorallocate($im, 232, 214, 160);
+    $gold = imagecolorallocate($im, 245, 197, 66);
     imagerectangle($im, 22, 22, $w - 23, $h - 23, $gold);
     draw_centered($im, $font, 14, (int) ($w / 2), 80, 'EĞİTİM PROGRAMI', $gold);
     $lines = wrap_text($title, $font, 36, 680);
@@ -150,24 +150,24 @@ function make_program(string $path, string $title, string $level, string $hex, s
 }
 
 $books = [
-    ['tecvid', 'Tecvid Atlası', 'Kıraat', '#0f2a7a'],
-    ['riyazu', 'Riyazü’s-Salihin', 'Hadis', '#0f2a7a'],
-    ['usul', 'Fıkıh Usulü', 'Fıkıh', '#1a3fad'],
-    ['nahiv', 'Nahiv', 'Arapça', '#0c5444'],
-    ['muvatta', 'Muvatta', 'Hadis', '#0a1a4e'],
-    ['siyer', 'Siyer', 'Siyer', '#0a1a4e'],
-    ['tefsir-ozet', 'Tefsir Usulü', 'Tefsir', '#1a3fad'],
-    ['akaid-ders', 'Akaid Ders Notları', 'Akaid', '#12705a'],
+    ['tecvid', 'Tecvid Atlası', 'Kıraat', '#111111'],
+    ['riyazu', 'Riyazü’s-Salihin', 'Hadis', '#111111'],
+    ['usul', 'Fıkıh Usulü', 'Fıkıh', '#111111'],
+    ['nahiv', 'Nahiv', 'Arapça', '#111111'],
+    ['muvatta', 'Muvatta', 'Hadis', '#111111'],
+    ['siyer', 'Siyer', 'Siyer', '#111111'],
+    ['tefsir-ozet', 'Tefsir Usulü', 'Tefsir', '#111111'],
+    ['akaid-ders', 'Akaid Ders Notları', 'Akaid', '#111111'],
 ];
 $programs = [
-    ['tefsir', 'Tefsir Programı', 'İlahiyat / İhtisas', '#1a3fad'],
-    ['hadis', 'Hadis Programı', 'İhtisas', '#0f2a7a'],
-    ['fikih', 'Fıkıh Programı', 'Temel + İhtisas', '#12705a'],
-    ['akaid', 'Akaid & Kelam', 'Temel', '#0c5444'],
-    ['arapca', 'Klasik Arapça', 'A1–B2', '#0a1a4e'],
-    ['kiraat', 'Kıraat & Tecvid', 'Tüm seviyeler', '#1a3fad'],
-    ['hafizlik', 'Hafızlık Takibi', 'Birebir + grup', '#0f2a7a'],
-    ['vaizlik', 'Vaizlik & Hitabet', 'İleri', '#12705a'],
+    ['tefsir', 'Tefsir Programı', 'İlahiyat / İhtisas', '#111111'],
+    ['hadis', 'Hadis Programı', 'İhtisas', '#111111'],
+    ['fikih', 'Fıkıh Programı', 'Temel + İhtisas', '#111111'],
+    ['akaid', 'Akaid & Kelam', 'Temel', '#111111'],
+    ['arapca', 'Klasik Arapça', 'A1–B2', '#111111'],
+    ['kiraat', 'Kıraat & Tecvid', 'Tüm seviyeler', '#111111'],
+    ['hafizlik', 'Hafızlık Takibi', 'Birebir + grup', '#111111'],
+    ['vaizlik', 'Vaizlik & Hitabet', 'İleri', '#111111'],
 ];
 
 $n = 0;

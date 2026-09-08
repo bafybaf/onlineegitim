@@ -71,10 +71,10 @@ function home_seed_if_empty(): void
     }
     if ($h < 1) {
         $insH = db()->prepare('INSERT INTO home_highlights (mark, label, active, sort) VALUES (?,?,1,?)');
-        $insH->execute(['10', 'En fazla 10 kişilik sınıf', 10]);
-        $insH->execute(['▶', 'Canlı ders + kayıt', 20]);
-        $insH->execute(['📚', 'Kitap mağazası', 30]);
-        $insH->execute(['✓', 'Ücretsiz tanışma', 40]);
+        $insH->execute(['🎓', 'Uzman Akademisyenlerden Dersler', 10]);
+        $insH->execute(['🎥', 'Canlı Dersler + Video Dersler', 20]);
+        $insH->execute(['📝', 'Deneme Sınavları', 30]);
+        $insH->execute(['📚', 'Alan Kitapları', 40]);
     }
 }
 

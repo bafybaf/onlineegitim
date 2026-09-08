@@ -206,7 +206,7 @@ function book_cover_html(array $b, string $class = '', string $kind = 'card'): s
 {
     $src = book_cover_src($b);
     $title = (string) ($b['title'] ?? '');
-    $color = (string) ($b['color'] ?? '#1a3fad');
+    $color = (string) ($b['color'] ?? '#111111');
     $cls = trim('book-cover ' . $class);
     if ($src !== '') {
         return '<img src="' . e($src) . '" alt="' . e($title) . '" class="' . e($cls) . '">';

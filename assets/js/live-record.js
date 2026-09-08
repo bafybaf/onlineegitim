@@ -157,7 +157,7 @@
     var oy = pad;
     var camBlock = oy + ovalH + pad;
 
-    ctx.fillStyle = '#10182d';
+    ctx.fillStyle = '#111111';
     ctx.fillRect(boardW, 0, sideW, H);
 
     ctx.save();

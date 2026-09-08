@@ -18,9 +18,9 @@ public_head('Kitap Mağazası | Online İlahiyat');
 <main class="mx-auto max-w-7xl px-4 py-12 lg:px-8">
   <nav class="mb-8 flex flex-wrap gap-2">
     <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= !$activeCat ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url()) ?>">Tümü</a>
-    <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && ($activeCat['slug'] ?? '') === 'dkab-ihl' ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
-    <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && ($activeCat['slug'] ?? '') === 'mbsts' ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url('mbsts')) ?>">MBSTS</a>
-    <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && ($activeCat['slug'] ?? '') === 'dhbt' ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url('dhbt')) ?>">DHBT</a>
+    <?php foreach (shop_chip_links() as $chip): ?>
+    <a class="rounded-full border px-4 py-2 text-sm font-extrabold <?= $activeCat && ($activeCat['slug'] ?? '') === $chip['slug'] ? 'border-navy bg-navy text-white' : 'border-[#e5e5e7] hover:border-navy' ?>" href="<?= e(kitaplar_url($chip['slug'])) ?>"><?= e($chip['label']) ?></a>
+    <?php endforeach; ?>
   </nav>
   <?php if (!$books): ?>
     <div class="card p-8 max-w-xl">

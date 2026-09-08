@@ -73,8 +73,9 @@ function shop_default_categories(): array
 {
     return [
         ['slug' => 'dkab-ihl', 'name' => 'DKAB-İHL (2027)', 'sort' => 1],
-        ['slug' => 'mbsts', 'name' => 'MBSTS (2027)', 'sort' => 2],
-        ['slug' => 'dhbt', 'name' => 'DHBT YENİ GRUP', 'sort' => 3],
+        ['slug' => 'dhbt', 'name' => 'DHBT', 'sort' => 2],
+        ['slug' => 'mbsts', 'name' => 'MBSTS (2027)', 'sort' => 3],
+        ['slug' => 'kpss', 'name' => 'KPSS', 'sort' => 4],
     ];
 }
 
@@ -110,7 +111,7 @@ function ensure_shop_catalog_schema(): void
             'description' => 'TEXT NULL',
             'pages' => 'SMALLINT UNSIGNED NULL',
             'publisher' => 'VARCHAR(160) NULL',
-            'color' => 'VARCHAR(16) NOT NULL DEFAULT \'#1a3fad\'',
+            'color' => 'VARCHAR(16) NOT NULL DEFAULT \'#111111\'',
         ] as $col => $def) {
             if (!isset($bookCols[$col])) {
                 $pdo->exec('ALTER TABLE books ADD COLUMN `' . $col . '` ' . $def);
@@ -156,9 +157,8 @@ function ensure_shop_catalog_schema(): void
 function shop_migrate_exam_categories(): void
 {
     $pdo = db();
-    $examSlugs = ['dkab-ihl', 'mbsts', 'dhbt'];
     try {
-        $oldCount = (int) $pdo->query("SELECT COUNT(*) FROM categories WHERE slug NOT IN ('dkab-ihl','mbsts','dhbt')")->fetchColumn();
+        $oldCount = (int) $pdo->query("SELECT COUNT(*) FROM categories WHERE slug IN ('tefsir','hadis','fikih','akaid','arapca','kiraat','siyer')")->fetchColumn();
     } catch (Throwable) {
         return;
     }
@@ -184,9 +184,12 @@ function shop_migrate_exam_categories(): void
             $pdo->prepare("UPDATE books SET category_id = ?, category = ? WHERE category_id = ?")->execute([$newId, $newName, $oldId]);
         }
     }
-    $pdo->prepare("UPDATE books SET category_id = ?, category = 'DKAB-İHL (2027)' WHERE category_id IS NULL OR category_id NOT IN (?,?,?)")
-        ->execute([$dkab, $dkab, $mbsts, $dhbt]);
-    $pdo->query("DELETE FROM categories WHERE slug NOT IN ('dkab-ihl','mbsts','dhbt')");
+    $kpss = $catId('kpss');
+    $keepIds = array_values(array_filter([$dkab, $mbsts, $dhbt, $kpss]));
+    $placeholders = implode(',', array_fill(0, count($keepIds), '?'));
+    $pdo->prepare("UPDATE books SET category_id = ?, category = 'DKAB-İHL (2027)' WHERE category_id IS NULL OR category_id NOT IN ($placeholders)")
+        ->execute(array_merge([$dkab], $keepIds));
+    $pdo->query("DELETE FROM categories WHERE slug IN ('tefsir','hadis','fikih','akaid','arapca','kiraat','siyer')");
 }
 
 function shop_seed_categories(): void
@@ -237,7 +240,6 @@ function shop_backfill_book_categories(): void
 
 function shop_seed_campaigns(): void
 {
-    $tefsirId = shop_category_id_by_slug('tefsir');
     $year = date('Y-m-d H:i:s', time() + 86400 * 365);
     $now = date('Y-m-d H:i:s');
     $st = db()->prepare('SELECT id FROM campaigns WHERE code = ? OR slug = ? LIMIT 1');
@@ -262,16 +264,15 @@ function shop_seed_campaigns(): void
     $st2->execute(['erken-kayit-kitap']);
     if (!$st2->fetch()) {
         db()->prepare(
-            'INSERT INTO campaigns (title, slug, description, type, discount_value, code, applies_to, category_id, starts_at, ends_at, active)
-             VALUES (?,?,?,?,?,NULL,?,?,?,?,1)'
+            'INSERT INTO campaigns (title, slug, description, type, discount_value, code, applies_to, starts_at, ends_at, active)
+             VALUES (?,?,?,?,?,NULL,?,?,?,1)'
         )->execute([
-            'Erken kayıt kitap',
+            'Tüm alan kitaplarından %20 indirim',
             'erken-kayit-kitap',
-            'Tefsir kitaplarında erken kayıt indirimi. Sepete ekleyince otomatik uygulanır.',
+            '',
             'yuzde',
-            15,
-            'category',
-            $tefsirId > 0 ? $tefsirId : null,
+            20,
+            'all',
             $now,
             $year,
         ]);
@@ -443,6 +444,9 @@ function campaign_for_book(array $book): ?array
     $best = null;
     $score = -1;
     foreach (campaign_active_all() as $c) {
+        if (trim((string) ($c['code'] ?? '')) !== '') {
+            continue;
+        }
         if (!campaign_applies_to_book($c, $book)) {
             continue;
         }

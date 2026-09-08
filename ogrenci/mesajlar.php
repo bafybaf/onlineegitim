@@ -57,7 +57,7 @@ panel_head('ogrenci', 'mesajlar', 'Mesajlar | Öğrenci Paneli', $u);
       <?php foreach ($msgs as $m):
           $mine = (int) $m['from_user_id'] === (int) $u['id'];
           ?>
-        <p class="rounded-xl p-3 <?= $mine ? 'ml-8 bg-soft' : 'bg-[#eef2ff]' ?>"><b><?= e($m['from_name']) ?></b><br><?= nl2br(e($m['body'])) ?></p>
+        <p class="rounded-xl p-3 <?= $mine ? 'ml-8 bg-soft' : 'bg-[#faf6ea]' ?>"><b><?= e($m['from_name']) ?></b><br><?= nl2br(e($m['body'])) ?></p>
       <?php endforeach; ?>
       <?php if (!$msgs): ?><p class="text-sm text-muted">Henüz mesaj yok. İlk sorunuzu yazın.</p><?php endif; ?>
     </div>

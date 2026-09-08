@@ -24,9 +24,9 @@ if (!$c) {
   <title><?= e($c['code']) ?> · Sertifika</title>
   <style>
     body{font-family:Georgia,serif;background:#f5f5f7;margin:0;padding:2rem}
-    .sheet{max-width:40rem;margin:0 auto;background:#fff;border:8px solid #1a3fad;padding:3rem;text-align:center}
+    .sheet{max-width:40rem;margin:0 auto;background:#fff;border:8px solid #111;padding:3rem;text-align:center}
     h1{font-size:2rem;margin:.5rem 0}
-    .code{letter-spacing:.2em;text-transform:uppercase;color:#12705a;font-size:12px}
+    .code{letter-spacing:.2em;text-transform:uppercase;color:#c9a227;font-size:12px}
     @media print{body{background:#fff} .no-print{display:none}}
   </style>
 </head>

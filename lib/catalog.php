@@ -86,11 +86,11 @@ function catalog_book_publisher(string $slug, string $author = '', string $db = 
 function catalog_related_book_slug(string $programSlug): string
 {
     return match ($programSlug) {
-        'tefsir' => 'tefsir-ozet',
-        'hadis' => 'riyazu',
-        'fikih' => 'usul',
+        'dkab-2027', 'tefsir' => 'tefsir-ozet',
+        'dhbt-2026', 'hadis' => 'riyazu',
+        'mbsts-2027', 'fikih' => 'usul',
         'akaid' => 'akaid-ders',
-        'arapca' => 'nahiv',
+        'arapca-yokdil', 'arapca' => 'nahiv',
         'kiraat', 'hafizlik' => 'tecvid',
         'vaizlik' => 'siyer',
         default => '',
@@ -100,15 +100,16 @@ function catalog_related_book_slug(string $programSlug): string
 function catalog_interest_label(string $programSlug): string
 {
     return match ($programSlug) {
-        'tefsir' => 'Tefsir',
-        'hadis' => 'Hadis',
-        'fikih' => 'Fıkıh',
+        'dkab-2027', 'tefsir' => 'ÖABT – DKAB',
+        'dhbt-2026', 'hadis' => 'DHBT',
+        'mbsts-2027', 'fikih' => 'MBSTS',
         'akaid' => 'Akaid',
-        'arapca' => 'Arapça',
+        'arapca-yokdil' => 'Arapça YÖKDİL – YDS',
+        'arapca' => 'Genel Arapça',
         'kiraat' => 'Kıraat',
         'hafizlik' => 'Hafızlık',
         'vaizlik' => 'Vaizlik',
-        default => 'Tefsir',
+        default => 'ÖABT – DKAB',
     };
 }
 
@@ -125,6 +126,41 @@ function catalog_seo_excerpt(string $text, int $len = 158): string
 function catalog_program_copy(): array
 {
     return [
+        'dhbt-2026' => "2026 DHBT’YE HAZIRLANIYORSAN, BU KAMP TAM SANA GÖRE!\n\n"
+            . "DHBT’de başarı sadece konu bilmekle değil, doğru soruyu doğru yöntemle çözebilmekle gelir.\n\n"
+            . "Bu nedenle 2026 DHBT ÜCRETSİZ SORU ÇÖZÜM KAMPI ile birlikte sınavda karşına çıkabilecek soru tarzlarını birlikte analiz ediyor, önemli noktaları yakalıyor ve soru çözme pratiğimizi güçlendiriyoruz.\n\n"
+            . "✓ ÖSYM çıkmış sorular\n✓ ÖSYM tarzı sorular\n✓ Sınav odaklı soru çözümleri\n✓ Önemli ayrıntıların vurgulanması\n✓ Soru üzerinden konu tekrarı\n✓ Canlı derslerle interaktif çalışma\n✓ Tamamen ÜCRETSİZ!\n\n"
+            . "Amacımız sadece soru çözmek değil; sorunun nasıl düşünülmesi gerektiğini öğretmek.\n\n"
+            . "2026 DHBT’ye hazırlanan herkesi bekliyoruz!\n\n"
+            . "onlineilahiyat.com",
+        'dkab-2027' => "2027 DKAB’YE HAZIRLANIYORSAN, DOĞRU YERDESİN!\n\n"
+            . "DKAB hazırlığında başarı; sadece çok çalışmakla değil, doğru bilgiyi doğru kaynaktan, sistemli ve sınav odaklı şekilde öğrenmekle gelir.\n\n"
+            . "2027 DKAB Detaylı Konu Anlatımı Full Paket ile sınavda ihtiyaç duyacağın konuları kapsamlı ve anlaşılır bir şekilde çalış, eksiklerini tamamla ve hazırlık sürecini daha planlı hâle getir.\n\n"
+            . "DETAYLI KONU ANLATIMI\nKonular yüzeysel değil, sınavda ihtiyaç duyacağın ayrıntılar dikkate alınarak ele alınır.\n\n"
+            . "AKADEMİSYEN EĞİTİMCİLER\nAlanında uzman akademisyen eğitmenlerle konuları doğrudan uzmanlarından öğren.\n\n"
+            . "CANLI DERSLER\nDersleri canlı takip et, anlatımı anlık olarak dinle ve çalışma sürecini daha verimli hâle getir.\n\n"
+            . "FULL PAKET\nDKAB hazırlığını tek bir sistem içerisinde, düzenli ve kapsamlı şekilde yürüt.\n\n"
+            . "🎯 HEDEF BELLİ: 2027 DKAB’DE BAŞARI!\nBugün başladığın çalışma, sınav günü sahip olduğun bilgiye dönüşecek.\n2027 DKAB hazırlığını şansa bırakma.\nDoğru plan, doğru kaynak ve güçlü bir eğitim sistemiyle hazırlan.\n\n"
+            . "onlineilahiyat.com",
+        'mbsts-2027' => "2027 MBSTS’YE HAZIRLANIYORSAN, HAZIRLIĞINI SAĞLAM TEMELLER ÜZERİNE KUR!\n\n"
+            . "MBSTS’de başarı; bilgiyi ezberlemekten çok, konulara hâkim olmayı ve sınavın gerektirdiği bakış açısını kazanmayı gerektirir.\n\n"
+            . "2027 MBSTS Detaylı Konu Anlatımı Full Paket ile sınav sürecini sistemli bir şekilde yürüt, temel konulardan ayrıntılara kadar kapsamlı bir çalışma gerçekleştir.\n\n"
+            . "DETAYLI KONU ANLATIMI\nMBSTS kapsamında yer alan konuları anlaşılır, düzenli ve sınav odaklı şekilde çalış.\n\n"
+            . "AKADEMİSYEN EĞİTİMCİLER\nAlanında uzman akademisyen eğitmenlerden konuları doğrudan öğren.\n\n"
+            . "CANLI DERSLER\nCanlı derslerle konuları takip et, anlatımı eş zamanlı dinle ve çalışma sürecini daha verimli hâle getir.\n\n"
+            . "FULL PAKET\nMBSTS hazırlığını farklı kaynaklar arasında dağılmadan, bütünlüklü bir eğitim sistemi içerisinde sürdür.\n\n"
+            . "🎯 HEDEF: 2027 MBSTS’DE BAŞARI!\nDüzenli çalışma + doğru kaynak + uzman anlatımı = güçlü bir hazırlık süreci.\n2027 MBSTS hazırlığını son döneme bırakma.\nBugünden başlayarak sınava sistemli ve bilinçli hazırlan.\n\n"
+            . "onlineilahiyat.com",
+        'arapca-yokdil' => "ARAPÇA YÖKDİL – YDS’YE HAZIRLANMANIN TAM ZAMANI!\n\n"
+            . "Arapça YÖKDİL ve YDS sınavlarında başarı; yalnızca kelime ezberlemekle değil, sınavın dil yapısını tanımak, doğru yöntemleri öğrenmek ve düzenli soru pratiği yapmakla mümkün.\n\n"
+            . "Arapça YÖKDİL-YDS Kursu ile sınav sürecini sistemli ve profesyonel bir eğitim programıyla yürüt.\n\n"
+            . "KAPSAMLI SINAV HAZIRLIĞI\nArapça YÖKDİL ve YDS’de ihtiyaç duyacağın temel dil bilgisi, kelime, okuma ve anlam bilgisi konularını sistemli şekilde çalış.\n\n"
+            . "AKADEMİSYEN EĞİTİMCİLER\nAlanında uzman akademisyen eğitmenlerden sınavın gerektirdiği bilgi ve yöntemleri öğren.\n\n"
+            . "CANLI DERSLER\nDersleri canlı takip ederek konuları eğitmen eşliğinde öğren ve anlamadığın noktaları doğrudan ders sürecinde pekiştir.\n\n"
+            . "SINAV ODAKLI ÇALIŞMA\nYÖKDİL ve YDS’nin soru yapısını tanı, soru çözüm tekniklerini öğren ve sınav pratiğini geliştir.\n\n"
+            . "DÜZENLİ VE SİSTEMLİ EĞİTİM\nÇalışma sürecini rastgele değil, belirli bir program ve uzman yönlendirmesiyle sürdür.\n\n"
+            . "HEDEFİNİZ YÖKDİL VEYA YDS’DE BAŞARIYSA, DOĞRU EĞİTİMLE BAŞLAYIN!\nArapça sınav hazırlığınızı ertelemeyin.\nDoğru yöntem, uzman eğitmen ve düzenli çalışma ile hedefinize adım adım ilerleyin.\n\n"
+            . "onlineilahiyat.com",
         'tefsir' => "Kur’an-ı Kerim’i meal, usul ve klasik şerh üzerinden adım adım okuyan yıllık bir ihtisas programıdır. Haftalık canlı derslerde âyetler nüzul bağlamı ve dil incelikleriyle ele alınır; evde kayıt izlenir, ödev ve koçlukla takip sürer.\n\n"
             . "İlk dönemde tefsir usulü, nüzul ortamı, muhkem-müteşabih ve meal-tefsir farkı işlenir. İkinci dönemde Taberî, Zemahşerî ve İbn Kesîr hattından seçme metinler okunur; Bakara ve Âl-i İmrân üzerinden uygulamalı tefsir yapılır.\n\n"
             . "Sınıflar en fazla 10 kişidir. Ders kayıtları öğrenci paneline düşer; takıldığınız yerde hocaya mesaj atabilir, haftalık koçlukta ezber ve okuma planınızı gözden geçirirsiniz. Kaynak kitap önerisi mağazadan sepete eklenir.\n\n"

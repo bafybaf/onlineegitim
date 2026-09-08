@@ -71,7 +71,7 @@ panel_head('ogretmen', 'mesajlar', 'Mesajlar | Öğretmen Paneli', $u);
         <?php foreach ($msgs as $m):
             $mine = (int) $m['from_user_id'] === (int) $u['id'];
             ?>
-          <p class="rounded-xl p-3 <?= $mine ? 'ml-8 bg-[#eef2ff]' : 'mr-8 bg-soft' ?>"><b><?= e($m['from_name']) ?></b><br><?= nl2br(e($m['body'])) ?></p>
+          <p class="rounded-xl p-3 <?= $mine ? 'ml-8 bg-[#faf6ea]' : 'mr-8 bg-soft' ?>"><b><?= e($m['from_name']) ?></b><br><?= nl2br(e($m['body'])) ?></p>
         <?php endforeach; ?>
       </div>
       <form method="post" class="mt-4 flex gap-2">

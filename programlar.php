@@ -5,13 +5,13 @@ public_head('Eğitimler | Online İlahiyat');
 ?>
 <header class="bg-soft py-6">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Eğitim satış</p>
-    <h1 class="font-display mt-2 text-2xl md:text-3xl">Eğitimler</h1>
+    <p class="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">Eğitim</p>
+    <h1 class="font-display mt-2 text-2xl md:text-3xl">Seviyenize uygun kurslar</h1>
   </div>
 </header>
 <main class="mx-auto max-w-7xl px-4 py-12 lg:px-8">
   <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <?php foreach (programs() as $p): ?>
+    <?php foreach (public_programs() as $p): ?>
     <article class="card overflow-hidden hover:border-navy">
       <?= program_gallery_html($p, 'card', page_url('program', (string) $p['slug'])) ?>
       <div class="p-5">

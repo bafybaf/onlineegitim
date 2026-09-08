@@ -89,8 +89,8 @@ function send_mail(string $to, string $subject, string $htmlBody, string $textBo
 
 function mail_wrap(string $title, string $innerHtml): string
 {
-    return '<div style="font-family:Nunito,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1f36">'
-        . '<p style="font-weight:800;font-size:20px;color:#1a3fad;margin:0 0 12px">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</p>'
+    return '<div style="font-family:Nunito,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">'
+        . '<p style="font-weight:800;font-size:20px;color:#111111;margin:0 0 12px">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</p>'
         . $innerHtml
         . '<p style="margin-top:24px;font-size:12px;color:#6e6e73">Online İlahiyat</p></div>';
 }

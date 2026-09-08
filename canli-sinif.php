@@ -86,7 +86,7 @@ foreach ($students as $s) {
   <?php security_html_head(); ?>
   <title>Canlı Sınıf | <?= e($room['title']) ?></title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{navy:'#1a3fad',navy3:'#0a1a4e',accent:'#e8232a'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
+  <script>tailwind.config={theme:{extend:{colors:{navy:'#111111',navy3:'#0a0a0a',accent:'#e8232a'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/css/site.css') ?>" />
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -121,11 +121,10 @@ foreach ($students as $s) {
         <button type="button" class="live-board-tool" data-tool="erase">Silgi</button>
         <button type="button" class="live-board-tool" data-tool="pan">Kaydır</button>
         <span class="live-board-swatches">
-          <button type="button" class="live-board-dot is-on" data-color="#111827" style="background:#111827"></button>
-          <button type="button" class="live-board-dot" data-color="#e8232a" style="background:#e8232a"></button>
-          <button type="button" class="live-board-dot" data-color="#1a3fad" style="background:#1a3fad"></button>
-          <button type="button" class="live-board-dot" data-color="#047857" style="background:#047857"></button>
-          <button type="button" class="live-board-dot" data-color="#ffffff" style="background:#fff"></button>
+          <button type="button" class="live-board-dot is-on" data-color="#111827" style="background:#111827" title="Siyah"></button>
+          <button type="button" class="live-board-dot" data-color="#f5c542" style="background:#f5c542" title="Sarı"></button>
+          <button type="button" class="live-board-dot" data-color="#e8232a" style="background:#e8232a" title="Kırmızı"></button>
+          <button type="button" class="live-board-dot" data-color="#1a3fad" style="background:#1a3fad" title="Mavi"></button>
         </span>
         <input type="range" id="board-size" min="2" max="18" value="4" aria-label="Kalınlık">
         <button type="button" class="live-board-tool" data-act="undo">Geri</button>
@@ -136,7 +135,6 @@ foreach ($students as $s) {
         <span id="board-zoom">100%</span>
         <button type="button" class="live-board-tool" data-act="zoomin">+</button>
         <button type="button" class="live-board-tool" data-act="zoomreset">1:1</button>
-        <button type="button" class="live-board-tool" id="board-full">Tam</button>
         <span id="board-page"></span>
         <span class="live-board-sep"></span>
         <button type="button" id="whip-toggle" class="live-cam-btn">Kamera</button>
@@ -181,16 +179,16 @@ foreach ($students as $s) {
         <div class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= $presentN ?>/<?= count($students) ?> · <?= live_mins($room['started_at']) ?> dk</div>
       </div>
       <aside class="chat">
-      <div class="border-b border-[#1d2744] px-4 py-3 font-extrabold">Sohbet · Yoklama</div>
+      <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet · Yoklama</div>
       <div id="chat-log" class="chat-log text-sm"><?php foreach ($msgs as $m): ?><p><b><?= e($m['who_label']) ?>:</b> <?= e($m['body']) ?></p><?php endforeach; ?></div>
       <?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?>
-      <div class="max-h-28 overflow-auto border-t border-[#1d2744] px-3 py-2 text-xs">
+      <div class="max-h-28 overflow-auto border-t border-[#2a2a2a] px-3 py-2 text-xs">
         <?php foreach ($students as $s): ?>
           <label class="mr-3 inline-flex items-center gap-1"><input type="checkbox" class="att" data-sid="<?= (int) $s['id'] ?>" <?= $s['present'] ? 'checked' : '' ?>> <?= e($s['name']) ?></label>
         <?php endforeach; ?>
       </div>
       <?php endif; ?>
-      <form id="chat-form" class="flex gap-2 border-t border-[#1d2744] p-3">
+      <form id="chat-form" class="flex gap-2 border-t border-[#2a2a2a] p-3">
         <input name="q" class="flex-1 rounded-lg bg-[#0b1020] px-3 py-2 text-sm outline-none" placeholder="Mesaj yazın" autocomplete="off">
         <button class="rounded-lg bg-navy px-3 font-extrabold">Gönder</button>
       </form>

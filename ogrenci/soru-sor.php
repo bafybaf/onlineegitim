@@ -68,11 +68,11 @@ panel_head('ogrenci', 'soru', 'Soru sor | Öğrenci Paneli', $u);
         <p class="text-xs font-extrabold uppercase text-navy"><?= e((string) ($q['gname'] ?: 'Ders')) ?> · <?= e((string) $q['tname']) ?></p>
         <p class="mt-1 text-sm text-muted"><?= e((string) $q['created_at']) ?></p>
       </div>
-      <span class="rounded-full px-3 py-1 text-xs font-extrabold <?= $done ? 'bg-[#eef2ff] text-navy' : 'bg-soft text-muted' ?>"><?= $done ? 'Cevaplandı' : 'Bekliyor' ?></span>
+      <span class="rounded-full px-3 py-1 text-xs font-extrabold <?= $done ? 'bg-[#faf6ea] text-navy' : 'bg-soft text-muted' ?>"><?= $done ? 'Cevaplandı' : 'Bekliyor' ?></span>
     </div>
     <p class="mt-3 whitespace-pre-wrap"><?= e((string) $q['body']) ?></p>
     <?php if ($done): ?>
-      <div class="mt-4 rounded-2xl bg-[#eef2ff] p-4">
+      <div class="mt-4 rounded-2xl bg-[#faf6ea] p-4">
         <p class="text-xs font-extrabold uppercase text-navy">Hocanın yanıtı</p>
         <p class="mt-2 whitespace-pre-wrap"><?= e((string) $q['answer']) ?></p>
         <p class="mt-2 text-xs text-muted"><?= e((string) $q['answered_at']) ?></p>

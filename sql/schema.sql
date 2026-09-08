@@ -548,14 +548,14 @@ INSERT IGNORE INTO categories (id, slug, name, sort) VALUES
 (7, 'siyer', 'Siyer', 70);
 
 INSERT IGNORE INTO books (id, slug, title, author, category, category_id, price, price_old, color, cover, stock, is_digital, description, pages, publisher) VALUES
-(1, 'tefsir-ozet', 'Tefsir Usulü El Kitabı', 'Online İlahiyat Yayınları', 'Tefsir', 1, 420, 560, '#1a3fad', 'assets/img/books/tefsir-ozet.jpg', 12, 0, 'Meal-tefsir farkı, nüzul ve klasik müfessir hatları. Tefsir programı için el kitabı.', 248, 'Online İlahiyat Yayınları'),
-(2, 'riyazu', 'Riyazü’s-Salihin Seçmeler', 'Nevevî / Şerhli', 'Hadis', 2, 380, 490, '#0f2a7a', 'assets/img/books/riyazu.jpg', 4, 0, 'Riyazü’s-Salihin’den seçme metin ve kısa şerh. Niyet, ihlas, ilim ve edep.', 312, 'Nevevî Külliyatı / Online İlahiyat'),
-(3, 'muvatta', 'Muvatta’dan Dersler', 'İmam Mâlik', 'Hadis', 2, 450, 590, '#0a1a4e', 'assets/img/books/muvatta.jpg', 9, 0, 'Muvatta’dan seçme bablar. Medine ameli ve hadis-fıkıh ilişkisi.', 276, 'Online İlahiyat Yayınları'),
-(4, 'akaid-ders', 'Akaid Ders Notları', 'Kadromuz', 'Akaid', 4, 290, 360, '#12705a', 'assets/img/books/akaid-ders.jpg', 99, 1, 'İman esasları ve kelam ıstılahları. Dijital PDF, panele düşer.', 164, 'Online İlahiyat Kadrosu'),
-(5, 'nahiv', 'Arapça Nahiv Pratik', 'Dil Atölyesi', 'Arapça', 5, 340, 430, '#0c5444', 'assets/img/books/nahiv.jpg', 7, 0, 'Mübteda-haber, fâil-mef‘ûl ve i‘rab alıştırmaları. Arapça program kaynağı.', 220, 'Dil Atölyesi'),
-(6, 'usul', 'Fıkıh Usulü Giriş', 'Usul Serisi', 'Fıkıh', 3, 410, 520, '#1a3fad', 'assets/img/books/usul.jpg', 6, 0, 'Delil türleri, emir-nehiy, umum-husus ve kıyas. Fıkıh programı omurgası.', 198, 'Usul Serisi'),
-(7, 'tecvid', 'Tecvid Atlası', 'Kıraat Birimi', 'Kıraat', 6, 260, 320, '#0f2a7a', 'assets/img/books/tecvid.jpg', 2, 0, 'Mahreç, sıfat, med ve idğam şemaları. Kıraat ve hafızlık için atlas.', 144, 'Kıraat Birimi'),
-(8, 'siyer', 'Siyer-i Nebi Özeti', 'Siyer Okulu', 'Siyer', 7, 310, 390, '#0a1a4e', 'assets/img/books/siyer.jpg', 11, 0, 'Mekke-Medine siyer özeti. Hutbe ve vaaz için işaretli başlıklar.', 188, 'Siyer Okulu');
+(1, 'tefsir-ozet', 'Tefsir Usulü El Kitabı', 'Online İlahiyat Yayınları', 'Tefsir', 1, 420, 560, '#111111', 'assets/img/books/tefsir-ozet.jpg', 12, 0, 'Meal-tefsir farkı, nüzul ve klasik müfessir hatları. Tefsir programı için el kitabı.', 248, 'Online İlahiyat Yayınları'),
+(2, 'riyazu', 'Riyazü’s-Salihin Seçmeler', 'Nevevî / Şerhli', 'Hadis', 2, 380, 490, '#2a2a2a', 'assets/img/books/riyazu.jpg', 4, 0, 'Riyazü’s-Salihin’den seçme metin ve kısa şerh. Niyet, ihlas, ilim ve edep.', 312, 'Nevevî Külliyatı / Online İlahiyat'),
+(3, 'muvatta', 'Muvatta’dan Dersler', 'İmam Mâlik', 'Hadis', 2, 450, 590, '#0a0a0a', 'assets/img/books/muvatta.jpg', 9, 0, 'Muvatta’dan seçme bablar. Medine ameli ve hadis-fıkıh ilişkisi.', 276, 'Online İlahiyat Yayınları'),
+(4, 'akaid-ders', 'Akaid Ders Notları', 'Kadromuz', 'Akaid', 4, 290, 360, '#c9a227', 'assets/img/books/akaid-ders.jpg', 99, 1, 'İman esasları ve kelam ıstılahları. Dijital PDF, panele düşer.', 164, 'Online İlahiyat Kadrosu'),
+(5, 'nahiv', 'Arapça Nahiv Pratik', 'Dil Atölyesi', 'Arapça', 5, 340, 430, '#c9a227', 'assets/img/books/nahiv.jpg', 7, 0, 'Mübteda-haber, fâil-mef‘ûl ve i‘rab alıştırmaları. Arapça program kaynağı.', 220, 'Dil Atölyesi'),
+(6, 'usul', 'Fıkıh Usulü Giriş', 'Usul Serisi', 'Fıkıh', 3, 410, 520, '#111111', 'assets/img/books/usul.jpg', 6, 0, 'Delil türleri, emir-nehiy, umum-husus ve kıyas. Fıkıh programı omurgası.', 198, 'Usul Serisi'),
+(7, 'tecvid', 'Tecvid Atlası', 'Kıraat Birimi', 'Kıraat', 6, 260, 320, '#2a2a2a', 'assets/img/books/tecvid.jpg', 2, 0, 'Mahreç, sıfat, med ve idğam şemaları. Kıraat ve hafızlık için atlas.', 144, 'Kıraat Birimi'),
+(8, 'siyer', 'Siyer-i Nebi Özeti', 'Siyer Okulu', 'Siyer', 7, 310, 390, '#0a0a0a', 'assets/img/books/siyer.jpg', 11, 0, 'Mekke-Medine siyer özeti. Hutbe ve vaaz için işaretli başlıklar.', 188, 'Siyer Okulu');
 
 INSERT IGNORE INTO home_slides (id, badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES
 (1, '2026 sezon kayıtları açık', 'Evden canlı ilahiyat,', 'küçük grupta gerçek takip', 'accent', 'Tefsir, hadis, fıkıh ve Arapça. En fazla 10 kişilik sınıflar, haftalık koçluk ve takıldığınız yerde hoca desteği.', 'Canlı ders üyeliği al', 'kayit-ders', 'Sizi Arayalım', '', 'call', 'assets/img/hero-cami.jpg', 'İlahiyat eğitimi', 1, 10),

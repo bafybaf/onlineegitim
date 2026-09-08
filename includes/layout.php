@@ -1,4 +1,10 @@
 <?php
+function brand_logo_url(string $file = 'logoyeni.png'): string
+{
+    $path = dirname(__DIR__) . '/assets/img/' . $file;
+    return url('assets/img/' . $file) . '?v=' . (int) @filemtime($path);
+}
+
 function programs(): array
 {
     return db()->query('SELECT * FROM programs ORDER BY ' . catalog_order_sql('', 'programs'))->fetchAll();
@@ -40,7 +46,7 @@ function public_head(string $title, string $desc = ''): void
   <?php if ($metaDesc): ?><meta name="twitter:description" content="<?= e($metaDesc) ?>" /><?php endif; ?>
   <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>" /><?php endif; ?>
   <?php if ($verify): ?><meta name="google-site-verification" content="<?= e($verify) ?>" /><?php endif; ?>
-  <link rel="icon" href="<?= e(url('assets/img/logo.png')) ?>" type="image/png" />
+  <link rel="icon" href="<?= e(brand_logo_url('logoyeni.png')) ?>" type="image/png" />
   <?php if ($ga !== ''): ?>
   <script async src="https://www.googletagmanager.com/gtag/js?id=<?= e($ga) ?>"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',<?= json_encode($ga, JSON_UNESCAPED_UNICODE) ?>);</script>
@@ -49,37 +55,38 @@ function public_head(string $title, string $desc = ''): void
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{navy:'#1a3fad',navy2:'#0f2a7a',navy3:'#0a1a4e',accent:'#12705a',accent2:'#0c5444',ink:'#1a1f36',muted:'#6e6e73',soft:'#f5f5f7'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
+  <script>tailwind.config={theme:{extend:{colors:{navy:'#111111',navy2:'#2a2a2a',navy3:'#0a0a0a',accent:'#f5c542',accent2:'#c9a227',ink:'#1a1a1a',muted:'#6e6e73',soft:'#f5f5f7'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/site.css') ?>" />
 </head>
 <body class="bg-white">
 <header class="site-header">
-  <div class="mx-auto flex max-w-7xl items-stretch justify-between gap-4 px-4 lg:px-8">
+  <div class="mx-auto flex w-full items-stretch justify-between gap-2 px-4 lg:px-6 xl:px-8">
     <a href="<?= e(page_url('home')) ?>" class="site-logo">
-      <img src="<?= e(url('assets/img/logo.png')) ?>" alt="Online İlahiyat">
+      <img src="<?= e(brand_logo_url()) ?>" alt="Online İlahiyat">
     </a>
-    <nav class="hidden items-stretch gap-6 uppercase lg:flex">
+    <nav class="hidden min-w-0 flex-1 items-stretch justify-center gap-2 uppercase xl:gap-3 2xl:gap-4 lg:flex">
       <div class="nav-item">
         <a class="nav-link flex h-full items-center" href="<?= e(page_url('programlar')) ?>">Eğitimlerimiz</a>
         <div class="mega"><div class="mega-panel">
-          <?php foreach (array_slice(programs(), 0, 6) as $p): ?>
-            <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('program', $p['slug'])) ?>"><?= e($p['title']) ?></a>
+          <?php foreach (nav_course_links() as $n): ?>
+            <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('program', $n['slug'])) ?>"><?= e($n['label']) ?></a>
           <?php endforeach; ?>
           <a class="mt-1 block rounded-lg px-3 py-2 text-sm font-extrabold text-navy" href="<?= e(page_url('programlar')) ?>">Tüm eğitimler →</a>
         </div></div>
       </div>
-      <a class="nav-link flex items-center" href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
-      <a class="nav-link flex items-center" href="<?= e(kitaplar_url('mbsts')) ?>">MBSTS</a>
-      <a class="nav-link flex items-center" href="<?= e(kitaplar_url('dhbt')) ?>">DHBT</a>
+      <?php foreach (nav_exam_menus() as $exam): ?>
+      <a class="nav-link flex items-center" href="<?= e(page_url('program', $exam['slug'])) ?>"><?= e($exam['label']) ?></a>
+      <?php endforeach; ?>
+      <a class="nav-link flex items-center" href="<?= e(page_url('kitaplar')) ?>">Kitaplarımız</a>
       <a class="nav-link flex items-center" href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a class="nav-link flex items-center" href="<?= e(page_url('iletisim')) ?>">İletişim</a>
     </nav>
     <div class="flex items-center gap-2 py-3">
       <a href="<?= e(page_url('sepet')) ?>" class="relative grid h-10 w-10 place-items-center rounded-xl border border-[#e5e5e7]" aria-label="Sepet">
-        <svg width="20" height="20" fill="none" stroke="#1a3fad" stroke-width="2"><path d="M4 6h16l-1.5 9h-13z"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/></svg>
-        <span id="cart-count" class="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-extrabold text-white"><?= cart_count() ?></span>
+        <svg width="20" height="20" fill="none" stroke="#111111" stroke-width="2"><path d="M4 6h16l-1.5 9h-13z"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/></svg>
+        <span id="cart-count" class="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-extrabold text-navy"><?= cart_count() ?></span>
       </a>
-      <button data-open-call class="btn-outline hidden h-10 px-3 text-sm sm:inline-flex">Sizi Arayalım</button>
+      <button data-open-call class="btn-outline hidden h-10 px-3 text-sm 2xl:inline-flex">Sizi Arayalım</button>
       <?php if ($u && membership_needs_pay($u)): ?>
         <a href="<?= e(membership_complete_url($u)) ?>" class="btn-outline h-10 px-3 text-sm">Üyeliği tamamla</a>
       <?php endif; ?>
@@ -113,9 +120,13 @@ function public_head(string $title, string $desc = ''): void
     <div class="mb-4 flex items-center justify-between"><strong>Menü</strong><button id="drawer-close" class="text-2xl leading-none">×</button></div>
     <div class="grid gap-2 font-bold uppercase">
       <a href="<?= e(page_url('programlar')) ?>">Eğitimlerimiz</a>
-      <a href="<?= e(kitaplar_url('dkab-ihl')) ?>">DKAB-İHL</a>
-      <a href="<?= e(kitaplar_url('mbsts')) ?>">MBSTS</a>
-      <a href="<?= e(kitaplar_url('dhbt')) ?>">DHBT</a>
+      <?php foreach (nav_course_links() as $n): ?>
+        <a class="drawer-sub" href="<?= e(page_url('program', $n['slug'])) ?>"><?= e($n['label']) ?></a>
+      <?php endforeach; ?>
+      <?php foreach (nav_exam_menus() as $exam): ?>
+      <a href="<?= e(page_url('program', $exam['slug'])) ?>"><?= e($exam['label']) ?></a>
+      <?php endforeach; ?>
+      <a href="<?= e(page_url('kitaplar')) ?>">Kitaplarımız</a>
       <a href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a href="<?= e(page_url('iletisim')) ?>">İletişim</a>
       <?php if ($u && membership_needs_pay($u)): ?>
@@ -144,7 +155,7 @@ function public_foot(): void
   <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-4 lg:px-8">
     <div>
       <p>
-        <img src="<?= e(url('assets/img/logo.png')) ?>" alt="Online İlahiyat" class="footer-logo">
+        <img src="<?= e(brand_logo_url()) ?>" alt="Online İlahiyat" class="footer-logo">
       </p>
       <p class="mt-3 text-sm text-muted">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
       <p class="mt-4 text-sm font-bold">info@onlineilahiyat.com</p>
@@ -152,8 +163,9 @@ function public_foot(): void
     <div>
       <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-muted">Eğitimler</p>
       <div class="mt-3 grid gap-2 text-sm">
-        <a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Tefsir</a><a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Hadis</a>
-        <a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Fıkıh</a><a class="hover:text-navy" href="<?= e(page_url('programlar')) ?>">Arapça</a>
+        <?php foreach (footer_course_links() as $n): ?>
+          <a class="hover:text-navy" href="<?= e(page_url('program', $n['slug'])) ?>"><?= e($n['label']) ?></a>
+        <?php endforeach; ?>
       </div>
     </div>
     <div>
@@ -188,7 +200,13 @@ function public_foot(): void
       <input required name="name" class="rounded-xl border border-[#e5e5e7] px-3 py-2" placeholder="Ad soyad" autocomplete="name">
       <input required name="phone" class="rounded-xl border border-[#e5e5e7] px-3 py-2" placeholder="Telefon" autocomplete="tel">
       <select name="interest" class="rounded-xl border border-[#e5e5e7] px-3 py-2">
-        <option>Program seçin</option><option>Tefsir</option><option>Hadis</option><option>Fıkıh</option><option>Arapça</option><option>Kitap siparişi</option>
+        <option>Program seçin</option>
+        <option>ÖABT – DKAB</option>
+        <option>DHBT</option>
+        <option>MBSTS</option>
+        <option>Arapça YÖKDİL – YDS</option>
+        <option>Genel Arapça</option>
+        <option>Kitap siparişi</option>
       </select>
       <button class="btn-primary">Beni arayın</button>
       <button type="button" data-close-call class="btn-outline">Vazgeç</button>
@@ -386,10 +404,10 @@ function panel_head(string $role, string $page, string $title, array $user): voi
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <?php security_html_head(); ?>
   <title><?= e($title) ?></title>
-  <link rel="icon" href="<?= e(url('assets/img/logo.png')) ?>" type="image/png" />
+  <link rel="icon" href="<?= e(brand_logo_url('logoyeni.png')) ?>" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{navy:'#1a3fad',navy3:'#0a1a4e',accent:'#e8232a',muted:'#6e6e73',soft:'#f5f5f7'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
+  <script>tailwind.config={theme:{extend:{colors:{navy:'#111111',navy3:'#0a0a0a',accent:'#e8232a',muted:'#6e6e73',soft:'#f5f5f7'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/site.css') ?>" />
 </head>
 <body class="bg-soft" data-role="<?= e($role) ?>">
@@ -398,7 +416,7 @@ function panel_head(string $role, string $page, string $title, array $user): voi
   <aside class="side" id="panel-side">
     <div class="side-brand">
       <a href="<?= e(page_url('home')) ?>" class="side-logo">
-        <img src="<?= e(url('assets/img/logo.png')) ?>" alt="Online İlahiyat">
+        <img src="<?= e(brand_logo_url()) ?>" alt="Online İlahiyat">
       </a>
       <button type="button" class="side-close" id="panel-close" aria-label="Menüyü kapat"><?= panel_icon('close') ?></button>
     </div>

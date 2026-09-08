@@ -1,10 +1,25 @@
 <?php
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
-$slug = $_GET['slug'] ?? 'tefsir';
+$raw = trim((string) ($_GET['slug'] ?? ''));
+if ($raw === '') {
+    $raw = 'dhbt-2026';
+}
+$slug = program_legacy_slug($raw);
+if ($slug !== $raw) {
+    header('Location: ' . page_url('program', $slug), true, 301);
+    exit;
+}
 $st = db()->prepare('SELECT * FROM programs WHERE slug = ?');
 $st->execute([$slug]);
-$p = $st->fetch() ?: programs()[0];
+$p = $st->fetch() ?: (public_programs()[0] ?? programs()[0] ?? null);
+if (!$p) {
+    http_response_code(404);
+    public_head('Eğitim bulunamadı | Online İlahiyat');
+    echo '<main class="mx-auto max-w-7xl px-4 py-16 lg:px-8"><h1 class="font-display text-4xl">Eğitim bulunamadı</h1></main>';
+    public_foot();
+    exit;
+}
 $groups = db()->prepare('SELECT g.*, t.name teacher, (SELECT COUNT(*) FROM enrollments e WHERE e.group_id = g.id) n FROM class_groups g JOIN users t ON t.id = g.teacher_id WHERE g.program_id = ? ORDER BY ' . catalog_order_sql('g', 'class_groups'));
 $groups->execute([(int) $p['id']]);
 $groups = $groups->fetchAll();
@@ -51,7 +66,7 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
         <h2 class="font-display mt-2 text-3xl">Eğitim hakkında</h2>
         <div class="mt-4 grid gap-4 text-lg leading-relaxed text-muted">
           <?php foreach ($paras as $para): ?>
-            <p><?= e($para) ?></p>
+            <p><?= nl2br(e($para)) ?></p>
           <?php endforeach; ?>
         </div>
         <?= program_body_gallery_html($p) ?>

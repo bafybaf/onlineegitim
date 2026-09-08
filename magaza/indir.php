@@ -30,7 +30,7 @@ if (is_file($disk)) {
 $title = (string) $book['title'];
 $html = '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>'
     . e($title) . '</title></head><body style="font-family:Georgia,serif;max-width:40rem;margin:2rem auto;padding:0 1rem">'
-    . '<p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#12705a">Online İlahiyat · Dijital kopya</p>'
+    . '<p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#c9a227">Online İlahiyat · Dijital kopya</p>'
     . '<h1>' . e($title) . '</h1>'
     . '<p>' . e((string) $book['author']) . (empty($book['publisher']) ? '' : ' · ' . e((string) $book['publisher'])) . '</p>'
     . '<p>' . nl2br(e((string) ($book['description'] ?: 'Satın aldığınız dijital kopya. Basılı nüsha kargo ile ayrıca gönderilir.'))) . '</p>'

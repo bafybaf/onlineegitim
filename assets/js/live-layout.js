@@ -4,7 +4,6 @@
   const stage = document.getElementById('board-stage');
   const home = document.getElementById('live-stage');
   const pip = document.getElementById('live-cam-pip');
-  const btn = document.getElementById('board-full');
   const api = cfg.url || '';
   const roomId = Number(cfg.roomId || 0);
   const canMove = !!cfg.publish;
@@ -50,10 +49,6 @@
       shell.classList.toggle('is-board-full', full);
     }
     document.body.classList.toggle('is-board-full', full);
-    if (btn) {
-      btn.textContent = full ? 'Küçült' : 'Tam';
-      btn.classList.toggle('is-on', full);
-    }
     placePip();
   }
 
@@ -81,9 +76,7 @@
     if (!j) {
       return;
     }
-    if (j.boardFull != null) {
-      full = !!j.boardFull;
-    }
+    full = false;
     if (j.camX != null) {
       camX = Number(j.camX);
     }
@@ -95,14 +88,6 @@
     }
     render();
   };
-
-  if (btn && canMove) {
-    btn.addEventListener('click', () => {
-      full = !full;
-      render();
-      sendLayout();
-    });
-  }
 
   if (pip && canMove) {
     pip.addEventListener('pointerdown', (ev) => {
