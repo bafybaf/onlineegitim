@@ -42,6 +42,9 @@
   let mixCtx = null;
   let mixDest = null;
   let mixHooked = {};
+  let pendingShare = null;
+  let mixNodes = [];
+  let mixWatch = 0;
 
   function mime() {
     var types = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8', 'video/webm'];
@@ -228,23 +231,39 @@
     return audioClone;
   }
 
-  function hookAudio(media) {
+  function hookAudio(media, gainVal) {
     if (!media || !mixCtx || !mixDest) return;
     media.getAudioTracks().forEach(function (t) {
       if (!t || t.readyState !== 'live' || mixHooked[t.id]) return;
       mixHooked[t.id] = true;
       try {
-        var s = mixCtx.createMediaStreamSource(new MediaStream([t]));
-        s.connect(mixDest);
+        t.enabled = true;
+        var cloned = typeof t.clone === 'function' ? t.clone() : t;
+        cloned.enabled = true;
+        var s = mixCtx.createMediaStreamSource(new MediaStream([cloned]));
+        var g = mixCtx.createGain();
+        g.gain.value = gainVal || 1;
+        s.connect(g);
+        g.connect(mixDest);
+        mixNodes.push(s, g, cloned);
       } catch (e) { delete mixHooked[t.id]; }
     });
   }
 
   function refreshMix(media) {
     if (!ensureMixer()) return;
-    if (media instanceof MediaStream) hookAudio(media);
-    if (video && video.srcObject) hookAudio(video.srcObject);
-    if (screenVid && screenVid.srcObject) hookAudio(screenVid.srcObject);
+    if (media instanceof MediaStream) hookAudio(media, 1);
+    if (pendingShare) hookAudio(pendingShare, 1.5);
+    if (video && video.srcObject) hookAudio(video.srcObject, 1);
+    if (screenVid && screenVid.srcObject) hookAudio(screenVid.srcObject, 1.5);
+  }
+
+  function watchShareMix() {
+    if (mixWatch) return;
+    mixWatch = setInterval(function () {
+      if (!armed || finishing || done) return;
+      refreshMix(pendingMedia);
+    }, 1500);
   }
 
   function startRecorder(media) {
@@ -304,6 +323,7 @@
     calcLayout();
     startPaintLoop();
     startRecorder(pendingMedia || (video && video.srcObject));
+    watchShareMix();
   }
 
   function beginCountdown() {
@@ -340,6 +360,7 @@
     if (finishing || done) return;
     cancelCount();
     finishing = true;
+    if (mixWatch) { clearInterval(mixWatch); mixWatch = 0; }
     stopPaintLoop();
     if (recorder && recorder.state !== 'inactive') {
       await new Promise(function (resolve) {
@@ -378,7 +399,13 @@
     if (armed) startRecorder(media);
   };
   window.liveRecordOnShare = function (media) {
-    if (armed) refreshMix(media);
+    pendingShare = media instanceof MediaStream ? media : null;
+    if (pendingShare) {
+      pendingShare.addEventListener('addtrack', function () {
+        if (armed) refreshMix(pendingShare);
+      });
+    }
+    if (armed) refreshMix(pendingShare || pendingMedia);
   };
 
   if (startBtn) startBtn.addEventListener('click', beginCountdown);

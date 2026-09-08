@@ -434,11 +434,15 @@
       screenPc = null;
     }
     if (displayStream) {
+      displayStream.onaddtrack = null;
       displayStream.getTracks().forEach((t) => t.stop());
       displayStream = null;
     }
     sharing = false;
     if (screenEl) screenEl.srcObject = null;
+    if (typeof window.liveRecordOnShare === 'function') {
+      window.liveRecordOnShare(null);
+    }
     if (shareBtn) shareBtn.textContent = 'Ekran';
     showBoardScreen(false);
   }
@@ -476,8 +480,14 @@
       return;
     }
     screenTrack.onended = () => { stopShare(); };
+    displayStream.onaddtrack = () => {
+      if (typeof window.liveRecordOnShare === 'function') {
+        window.liveRecordOnShare(displayStream);
+      }
+    };
     if (screenEl) {
-      screenEl.srcObject = displayStream;
+      screenEl.srcObject = new MediaStream(displayStream.getVideoTracks());
+      screenEl.muted = true;
       screenEl.play().catch(() => {});
     }
     sharing = true;
@@ -491,6 +501,9 @@
     }
     if (typeof window.liveRecordOnShare === 'function') {
       window.liveRecordOnShare(displayStream);
+    }
+    if (!displayStream.getAudioTracks().length) {
+      setProto('Ekran sesi yok — Chrome’da Sekme seçip “Sekme sesini paylaş”ı işaretleyin');
     }
     const ok = await connectWhipScreen();
     if (!ok) setProto('Ekran bağlanamadı');
