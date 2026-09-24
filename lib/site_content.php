@@ -144,13 +144,13 @@ function ensure_public_site_content(): void
     }
     $done = true;
     try {
-        if (setting('public_copy_rev') !== 'kurs-2026-v1') {
+        if (setting('public_copy_rev') !== 'kurs-2026-v2') {
             site_sync_categories();
             site_sync_programs();
             site_sync_highlights();
             site_sync_campaign();
             site_sync_announcement();
-            setting_set('public_copy_rev', 'kurs-2026-v1');
+            setting_set('public_copy_rev', 'kurs-2026-v2');
         }
         site_sync_program_posters();
         site_sync_brand_colors();
@@ -204,9 +204,9 @@ function site_featured_program_defs(): array
             'aliases' => ['tefsir'],
             'title' => '2027 DKAB KURSU',
             'level' => 'DKAB-İHL',
-            'hours' => 'Canlı ders + video',
-            'price_old' => 18000,
-            'price_now' => 12600,
+            'hours' => 'Hafta içi her gün · 19:00',
+            'price_old' => 6000,
+            'price_now' => 3499,
             'tag' => 'Full paket',
             'description' => '2027 DKAB’ye hazırlanıyorsan, doğru yerdesin!',
             'body' => $copy['dkab-2027'] ?? '',
@@ -217,9 +217,9 @@ function site_featured_program_defs(): array
             'aliases' => ['fikih'],
             'title' => '2027 MBSTS KURSU',
             'level' => 'MBSTS',
-            'hours' => 'Canlı ders + video',
-            'price_old' => 19000,
-            'price_now' => 13300,
+            'hours' => 'Hafta içi her gün · 19:00',
+            'price_old' => 5000,
+            'price_now' => 2799,
             'tag' => 'Full paket',
             'description' => '2027 MBSTS’ye hazırlanıyorsan, hazırlığını sağlam temeller üzerine kur!',
             'body' => $copy['mbsts-2027'] ?? '',
@@ -230,9 +230,9 @@ function site_featured_program_defs(): array
             'aliases' => [],
             'title' => 'ARAPÇA KURSU',
             'level' => 'YÖKDİL – YDS',
-            'hours' => 'Canlı ders',
-            'price_old' => 22000,
-            'price_now' => 15400,
+            'hours' => 'Hafta içi 2 gün / 1 saat · 19:00',
+            'price_old' => 7000,
+            'price_now' => 4999,
             'tag' => 'Sınav odaklı',
             'description' => 'Arapça YÖKDİL – YDS’ye hazırlanmanın tam zamanı!',
             'body' => $copy['arapca-yokdil'] ?? '',

@@ -151,44 +151,44 @@ function public_head(string $title, string $desc = ''): void
 function public_foot(): void
 {
     ?>
-<footer class="border-t border-[#e5e5e7] bg-white text-ink">
-  <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-4 lg:px-8">
+<footer class="site-footer">
+  <div class="site-footer-grid">
     <div>
       <p>
-        <img src="<?= e(brand_logo_url()) ?>" alt="Online İlahiyat" class="footer-logo">
+        <img src="<?= e(brand_logo_url('logo_footer.png')) ?>" alt="Online İlahiyat" class="footer-logo">
       </p>
-      <p class="mt-3 text-sm text-muted">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
-      <p class="mt-4 text-sm font-bold">info@onlineilahiyat.com</p>
+      <p class="site-footer-lead">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
+      <p class="site-footer-mail">info@onlineilahiyat.com</p>
     </div>
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-muted">Eğitimler</p>
-      <div class="mt-3 grid gap-2 text-sm">
+      <p class="site-footer-label">Eğitimler</p>
+      <div class="site-footer-links">
         <?php foreach (footer_course_links() as $n): ?>
-          <a class="hover:text-navy" href="<?= e(page_url('program', $n['slug'])) ?>"><?= e($n['label']) ?></a>
+          <a href="<?= e(page_url('program', $n['slug'])) ?>"><?= e($n['label']) ?></a>
         <?php endforeach; ?>
       </div>
     </div>
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-muted">Mağaza &amp; Sistem</p>
-      <div class="mt-3 grid gap-2 text-sm">
-        <a class="hover:text-navy" href="<?= e(page_url('kitaplar')) ?>">Kitaplar</a>
-        <a class="hover:text-navy" href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a>
-        <a class="hover:text-navy" href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a>
-        <a class="hover:text-navy" href="<?= e(page_url('kayit-magaza')) ?>">Mağaza kaydı</a>
-        <a class="hover:text-navy" href="<?= e(page_url('kayit-ders')) ?>">Ders kaydı</a>
+      <p class="site-footer-label">Mağaza &amp; Sistem</p>
+      <div class="site-footer-links">
+        <a href="<?= e(page_url('kitaplar')) ?>">Kitaplar</a>
+        <a href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a>
+        <a href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a>
+        <a href="<?= e(page_url('kayit-magaza')) ?>">Mağaza kaydı</a>
+        <a href="<?= e(page_url('kayit-ders')) ?>">Ders kaydı</a>
       </div>
     </div>
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-muted">Yasal</p>
-      <div class="mt-3 grid gap-2 text-sm">
-        <a class="hover:text-navy" href="<?= e(page_url('iletisim')) ?>">İletişim</a>
-        <a class="hover:text-navy" href="<?= e(page_url('gizlilik')) ?>">Gizlilik</a>
-        <a class="hover:text-navy" href="<?= e(page_url('kvkk')) ?>">KVKK</a>
-        <a class="hover:text-navy" href="<?= e(page_url('blog')) ?>">Duyurular</a>
+      <p class="site-footer-label">Yasal</p>
+      <div class="site-footer-links">
+        <a href="<?= e(page_url('iletisim')) ?>">İletişim</a>
+        <a href="<?= e(page_url('gizlilik')) ?>">Gizlilik</a>
+        <a href="<?= e(page_url('kvkk')) ?>">KVKK</a>
+        <a href="<?= e(page_url('blog')) ?>">Duyurular</a>
       </div>
     </div>
   </div>
-  <p class="border-t border-[#e5e5e7] py-4 text-center text-xs text-muted">© <?= date('Y') ?> Online İlahiyat. Tüm hakları saklıdır.</p>
+  <p class="site-footer-copy">© <?= date('Y') ?> Online İlahiyat. Tüm hakları saklıdır.</p>
 </footer>
 <div id="call-modal" class="modal">
   <div class="card w-full max-w-md p-6">
@@ -416,7 +416,7 @@ function panel_head(string $role, string $page, string $title, array $user): voi
   <aside class="side" id="panel-side">
     <div class="side-brand">
       <a href="<?= e(page_url('home')) ?>" class="side-logo">
-        <img src="<?= e(brand_logo_url()) ?>" alt="Online İlahiyat">
+        <img src="<?= e(brand_logo_url('logo_footer.png')) ?>" alt="Online İlahiyat">
       </a>
       <button type="button" class="side-close" id="panel-close" aria-label="Menüyü kapat"><?= panel_icon('close') ?></button>
     </div>

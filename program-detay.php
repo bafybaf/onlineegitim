@@ -26,11 +26,6 @@ $groups = $groups->fetchAll();
 $u = current_user();
 $body = catalog_body('program', (string) $p['slug'], (string) $p['description']);
 $paras = catalog_paragraphs($body);
-$cap = 10;
-if ($groups) {
-    $caps = array_map(static fn (array $g): int => (int) $g['cap'], $groups);
-    $cap = min($caps);
-}
 $relatedSlug = catalog_related_book_slug((string) $p['slug']);
 $related = null;
 if ($relatedSlug !== '') {
@@ -75,17 +70,20 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
       <section>
         <h2 class="font-display text-3xl">Neler dahil?</h2>
         <div class="mt-5 grid gap-4 sm:grid-cols-2">
-          <div class="card p-5"><h3 class="font-extrabold">Canlı ders</h3><p class="mt-1 text-sm text-muted">Haftalık <?= e($p['hours']) ?>. Kamera açık küçük sınıf, hocayla birebir söz hakkı.</p></div>
-          <div class="card p-5"><h3 class="font-extrabold">Ders kaydı</h3><p class="mt-1 text-sm text-muted">Kaçırdığınız ders öğrenci paneline düşer; tekrar izleme açıktır.</p></div>
-          <div class="card p-5"><h3 class="font-extrabold">Koçluk</h3><p class="mt-1 text-sm text-muted">Ezber, okuma ve takıldığınız yer haftalık birebir takip edilir.</p></div>
-          <div class="card p-5"><h3 class="font-extrabold">Ödev</h3><p class="mt-1 text-sm text-muted">Kısa yazılı veya okuma ödevi; teslim ve geri bildirim panelden yürür.</p></div>
-          <div class="card p-5 sm:col-span-2"><h3 class="font-extrabold">Küçük grup</h3><p class="mt-1 text-sm text-muted">En fazla <?= (int) $cap ?> kişilik sınıf. Kalabalık webinar değil, gerçek takip.</p></div>
+          <?php foreach (program_include_items($p) as $item): ?>
+          <div class="card p-5"><h3 class="font-extrabold"><?= e($item['title']) ?></h3><p class="mt-1 text-sm text-muted"><?= e($item['body']) ?></p></div>
+          <?php endforeach; ?>
         </div>
       </section>
 
       <section class="card p-6">
         <h2 class="font-display text-2xl">Eğitim ve kontenjan</h2>
-        <p class="mt-2 text-sm text-muted">Haftalık tempo: <b class="text-ink"><?= e($p['hours']) ?></b> · Grup üst sınırı: <b class="text-ink"><?= (int) $cap ?> kişi</b></p>
+        <?php $kontenjan = program_kontenjan_text($p); ?>
+        <?php if ($kontenjan !== ''): ?>
+        <p class="mt-2 text-sm leading-relaxed text-muted"><?= e($kontenjan) ?></p>
+        <?php else: ?>
+        <p class="mt-2 text-sm text-muted">Kayıt sonrası grup açılınca panelden haberdar edilirsiniz.</p>
+        <?php endif; ?>
         <?php if ($groups): ?>
           <table class="table mt-4">
             <thead><tr><th>Grup</th><th>Hoca</th><th>Gün</th><th>Kontenjan</th></tr></thead>
