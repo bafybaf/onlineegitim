@@ -227,37 +227,6 @@ function catalog_book_copy(): array
     ];
 }
 
-/** @return list<array{title:string,body:string}> */
-function program_include_items(array $p): array
-{
-    $slug = (string) ($p['slug'] ?? '');
-    $kayit = 'Kaçırdığınız ders öğrenci paneline düşer; tekrar izleme açıktır.';
-    return match ($slug) {
-        'dkab-2027' => [
-            ['title' => 'Canlı ders', 'body' => 'DKAB-ÖABT Canlı DETAYLI KONU ANLATIMI ve DETAYLI SORU ÇÖZÜM dersleri + video kayıt dersleri'],
-            ['title' => 'Ders kaydı', 'body' => $kayit],
-            ['title' => 'Online deneme', 'body' => 'Aylık düzenlenecek 10 online aşamalı DKAB denemesine ücretsiz katılım.'],
-            ['title' => 'Genel tekrar kampı', 'body' => 'Sınavdan bir ay önce başlayacak genel tekrar kampı.'],
-        ],
-        'mbsts-2027' => [
-            ['title' => 'Canlı ders', 'body' => 'MBSTS Canlı DETAYLI KONU ANLATIMI ve DETAYLI SORU ÇÖZÜM dersleri + video kayıt dersleri'],
-            ['title' => 'Ders kaydı', 'body' => $kayit],
-            ['title' => 'Online deneme', 'body' => 'Aylık düzenlenecek 5 online denemelere ücretsiz katılım.'],
-            ['title' => 'Genel tekrar kampı', 'body' => 'Soru çözüm ve genel tekrar kampına ücretsiz erişim.'],
-        ],
-        'arapca-yokdil' => [
-            ['title' => 'Canlı ders', 'body' => 'ARAPÇA YÖKDİL-YDS Canlı konu ve uygulamalı soru çözüm dersleri + video kayıt dersleri'],
-            ['title' => 'Ders kaydı', 'body' => $kayit],
-            ['title' => 'Online deneme', 'body' => 'Aylık düzenlenecek 5 online denemelere ücretsiz katılım.'],
-            ['title' => 'Genel tekrar kampı', 'body' => 'Soru çözüm ve tekrar kampına ücretsiz erişim.'],
-        ],
-        default => [
-            ['title' => 'Canlı ders', 'body' => 'Canlı derslerle interaktif çalışma. Ders kaydı öğrenci paneline düşer.'],
-            ['title' => 'Ders kaydı', 'body' => $kayit],
-        ],
-    };
-}
-
 function program_kontenjan_text(array $p): string
 {
     return match ((string) ($p['slug'] ?? '')) {

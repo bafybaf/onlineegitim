@@ -67,15 +67,6 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
         <?= program_body_gallery_html($p) ?>
       </section>
 
-      <section>
-        <h2 class="font-display text-3xl">Neler dahil?</h2>
-        <div class="mt-5 grid gap-4 sm:grid-cols-2">
-          <?php foreach (program_include_items($p) as $item): ?>
-          <div class="card p-5"><h3 class="font-extrabold"><?= e($item['title']) ?></h3><p class="mt-1 text-sm text-muted"><?= e($item['body']) ?></p></div>
-          <?php endforeach; ?>
-        </div>
-      </section>
-
       <section class="card p-6">
         <h2 class="font-display text-2xl">Eğitim ve kontenjan</h2>
         <?php $kontenjan = program_kontenjan_text($p); ?>
