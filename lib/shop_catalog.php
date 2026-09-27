@@ -267,7 +267,7 @@ function shop_seed_campaigns(): void
             'INSERT INTO campaigns (title, slug, description, type, discount_value, code, applies_to, starts_at, ends_at, active)
              VALUES (?,?,?,?,?,NULL,?,?,?,1)'
         )->execute([
-            'Tüm alan kitaplarından %20 indirim',
+            'Evinizdeki dershane',
             'erken-kayit-kitap',
             '',
             'yuzde',

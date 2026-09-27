@@ -74,8 +74,6 @@ public_head($b['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
         </table>
       </section>
 
-      <?php render_installment_table((int) $b['price']); ?>
-
       <div class="card p-6">
         <h2 class="font-display text-2xl">Kargo</h2>
         <?php if ($digital): ?>

@@ -1,29 +1,5 @@
 <?php
 
-function installment_max(): int
-{
-    $max = (int) setting('paytr_max_installment', '0');
-    return $max > 0 ? $max : 12;
-}
-
-/** @return list<array{n:int,label:string,monthly:int}> */
-function installment_rows(int $price): array
-{
-    $cap = installment_max();
-    $out = [];
-    foreach ([1, 3, 6, 9, 12] as $n) {
-        if ($n > 1 && $n > $cap) {
-            continue;
-        }
-        $out[] = [
-            'n' => $n,
-            'label' => $n === 1 ? 'Peşin' : $n . ' taksit',
-            'monthly' => (int) ceil($price / max(1, $n)),
-        ];
-    }
-    return $out;
-}
-
 function catalog_paragraphs(string $text): array
 {
     $parts = preg_split('/\n\s*\n/u', trim($text)) ?: [];
@@ -248,35 +224,4 @@ function program_price_html(array $p, string $nowClass = 'price-now'): string
     $label = $now <= 0 ? 'Ücretsiz' : (money($now) . ' / yıl');
     $html .= '<span class="' . e($nowClass) . '">' . e($label) . '</span>';
     return $html;
-}
-
-function render_installment_table(int $price): void
-{
-    if ($price < 1) {
-        return;
-    }
-    $rows = installment_rows($price);
-    ?>
-    <div class="card overflow-hidden">
-      <div class="bg-soft px-6 py-5">
-        <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Ödeme planı</p>
-        <h2 class="font-display mt-1 text-2xl">Taksit seçenekleri</h2>
-        <p class="mt-2 text-sm text-muted">Örnek taksit; kesin tutar banka kampanyasına göredir.</p>
-      </div>
-      <table class="table">
-        <thead>
-          <tr><th>Plan</th><th>Aylık</th><th>Toplam</th></tr>
-        </thead>
-        <tbody>
-          <?php foreach ($rows as $row): ?>
-          <tr>
-            <td class="font-extrabold"><?= e($row['label']) ?></td>
-            <td><?= $row['n'] === 1 ? '—' : money($row['monthly']) ?></td>
-            <td class="price-now"><?= money($price) ?></td>
-          </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-    <?php
 }

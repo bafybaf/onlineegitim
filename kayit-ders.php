@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = post('email');
     $phone = post('phone');
     $pass = post('password');
-    $interest = post('interest');
+    $interest = $ilgiSel;
     if (!$pkg || $pkg['kind'] !== 'ders' || !(int) $pkg['active']) {
         $err = 'Program / grup paketi seçin.';
     } elseif (security_honeypot_filled()) {
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $nu = register_membership_user($name, $email, $pass, 'ogrenci', $phone);
             db()->prepare('INSERT INTO leads (name, phone, interest) VALUES (?,?,?)')->execute([$name, $phone, $interest]);
-            $html = mail_wrap('Yeni öğrenci kaydı', '<p><b>Ad:</b> ' . e($name) . '<br><b>E-posta:</b> ' . e($email) . '<br><b>Telefon:</b> ' . e($phone) . '<br><b>İlgi:</b> ' . e($interest) . '<br><b>Paket:</b> ' . e($pkg['name']) . '</p>');
+            $html = mail_wrap('Yeni öğrenci kaydı', '<p><b>Ad:</b> ' . e($name) . '<br><b>E-posta:</b> ' . e($email) . '<br><b>Telefon:</b> ' . e($phone) . '<br><b>Paket:</b> ' . e($pkg['name']) . '</p>');
             notify_admin('Yeni kayıt · ' . $name, $html, $name . "\n" . $email . "\n" . $phone, $email);
             login_user($nu);
             $payment = membership_start_checkout($nu, $pkg);
@@ -63,7 +63,6 @@ if ($sel < 1) {
         $sel = (int) $packages[0]['id'];
     }
 }
-$ilgiOpts = ['Tefsir', 'Hadis', 'Fıkıh', 'Akaid', 'Arapça', 'Kıraat', 'Hafızlık', 'Vaizlik'];
 public_head('Ders kaydı | Online İlahiyat');
 ?>
 <main class="mx-auto grid max-w-6xl gap-10 px-4 py-14 lg:grid-cols-2 lg:px-8">
@@ -81,13 +80,6 @@ public_head('Ders kaydı | Online İlahiyat');
     <label class="mt-3 block text-sm font-bold">Telefon<input required name="phone" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="tel"></label>
     <label class="mt-3 block text-sm font-bold">E-posta<input type="email" required name="email" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="email"></label>
     <label class="mt-3 block text-sm font-bold">Şifre<input type="password" required minlength="8" name="password" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="En az 8 karakter" autocomplete="new-password"></label>
-    <label class="mt-3 block text-sm font-bold">İlgilendiğiniz alan
-      <select name="interest" class="mt-1 w-full rounded-xl border px-3 py-2">
-        <?php foreach ($ilgiOpts as $opt): ?>
-          <option<?= $ilgiSel === $opt ? ' selected' : '' ?>><?= e($opt) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </label>
     <?php if (!$packages): ?>
       <p class="mt-2 text-sm text-muted">Satışa açık paket henüz yok. Yönetim panelinden grup ve üyelik paketi ekleyin.</p>
     <?php else: ?>
@@ -97,7 +89,7 @@ public_head('Ders kaydı | Online İlahiyat');
           <input type="radio" name="package_id" value="<?= (int) $pkg['id'] ?>" <?= $sel === (int) $pkg['id'] ? 'checked' : '' ?> class="mt-1">
           <span>
             <span class="block font-extrabold"><?= e($pkg['name']) ?></span>
-            <span class="text-sm text-muted"><?= e(money_or_free((int) $pkg['price'])) ?> - <?= (int) $pkg['duration_days'] ?> gün<?= !empty($pkg['group_name']) ? ' - ' . e($pkg['group_name']) : (!empty($pkg['program_title']) ? ' · ' . e($pkg['program_title']) : '') ?> · <?= e(package_access_label($pkg)) ?></span>
+            <span class="text-sm text-muted"><?= e(money_or_free((int) $pkg['price'])) ?><?= (int) $pkg['duration_days'] !== 40 ? ' · ' . (int) $pkg['duration_days'] . ' gün' : '' ?></span>
           </span>
         </label>
       <?php endforeach; ?>

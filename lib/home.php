@@ -52,18 +52,9 @@ function home_seed_if_empty(): void
         return;
     }
     if ($n < 1) {
-        $ins = db()->prepare(
-            'INSERT INTO home_slides (badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)'
-        );
-        $ins->execute([
-            '', 'Hero', '', 'accent', '', '', 'kayit-ders', '', '', 'link',
-            'assets/img/hero-1.jpg', 'Online İlahiyat Canlı Dersler', 10,
-        ]);
-        $ins->execute([
-            '', 'Hero', '', 'accent', '', '', 'kitaplar', '', '', 'link',
-            'assets/img/hero-2.jpg', 'Online İlahiyat Kitaplar', 20,
-        ]);
+        home_insert_banner_slides();
     }
+    home_sync_banner_slide();
     try {
         $h = (int) db()->query('SELECT COUNT(*) FROM home_highlights')->fetchColumn();
     } catch (Throwable) {
@@ -75,6 +66,34 @@ function home_seed_if_empty(): void
         $insH->execute(['🎥', 'Canlı Dersler + Video Dersler', 20]);
         $insH->execute(['📝', 'Deneme Sınavları', 30]);
         $insH->execute(['📚', 'Alan Kitapları', 40]);
+    }
+}
+
+function home_insert_banner_slides(): void
+{
+    $ins = db()->prepare(
+        'INSERT INTO home_slides (badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)'
+    );
+    $ins->execute([
+        '', 'DHBT 2026', '', 'accent', '', '', 'program/dhbt-2026', '', '', 'link',
+        'assets/img/slider.png', '2026 DHBT ücretsiz soru çözüm kampı', 10,
+    ]);
+    $ins->execute([
+        '', 'Canlı ders', '', 'accent', '', '', 'uyelik-ders', '', '', 'link',
+        'assets/img/slider2.png', 'Ücretsiz online canlı ve video kayıt dersler', 20,
+    ]);
+}
+
+function home_sync_banner_slide(): void
+{
+    try {
+        if (setting('home_banner_rev') === 'slider-png-v2') {
+            return;
+        }
+        db()->exec('DELETE FROM home_slides');
+        home_insert_banner_slides();
+        setting_set('home_banner_rev', 'slider-png-v2');
+    } catch (Throwable) {
     }
 }
 

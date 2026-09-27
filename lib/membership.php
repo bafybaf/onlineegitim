@@ -93,6 +93,41 @@ function package_by_id(int $id): ?array
     return $row;
 }
 
+/** @return list<array{slug:string,name:string,days:int,price:int,sort:int}> */
+function featured_ders_package_defs(): array
+{
+    return [
+        [
+            'slug' => 'dhbt-2026',
+            'name' => 'DHBT ücretsiz Soru Çözüm Kampı - Canlı + Kayıt (40 günlük)',
+            'days' => 40,
+            'price' => 0,
+            'sort' => 10,
+        ],
+        [
+            'slug' => 'dkab-2027',
+            'name' => '2027 DKAB Kursu - Full Paket - Canlı + Kayıt',
+            'days' => 365,
+            'price' => 3499,
+            'sort' => 20,
+        ],
+        [
+            'slug' => 'mbsts-2027',
+            'name' => '2027 MBSTS Kursu - Full Paket - Canlı + Kayıt',
+            'days' => 365,
+            'price' => 2799,
+            'sort' => 30,
+        ],
+        [
+            'slug' => 'arapca-yokdil',
+            'name' => '2027 Arapça YDS-YÖKDİL Kursu - Full Paket - Canlı + Kayıt',
+            'days' => 365,
+            'price' => 4999,
+            'sort' => 40,
+        ],
+    ];
+}
+
 function ensure_ders_packages_from_catalog(): void
 {
     static $done = false;
@@ -101,26 +136,62 @@ function ensure_ders_packages_from_catalog(): void
     }
     $done = true;
     try {
-        db()->exec(
-            "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active)
-             SELECT 'ders', g.program_id, g.id, CONCAT(g.name, ' — yıllık'), 365, GREATEST(0, COALESCE(pr.price_now, 0)), 0, 1
-             FROM class_groups g
-             JOIN programs pr ON pr.id = g.program_id
-             WHERE NOT EXISTS (
-               SELECT 1 FROM packages x WHERE x.kind = 'ders' AND x.default_group_id = g.id
-             )"
-        );
-        db()->exec(
-            "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active)
-             SELECT 'ders', pr.id, NULL, CONCAT(pr.title, ' — yıllık'), 365, GREATEST(0, COALESCE(pr.price_now, 0)), 0, 1
-             FROM programs pr
-             WHERE NOT EXISTS (
-               SELECT 1 FROM packages x WHERE x.kind = 'ders' AND x.program_id = pr.id
-             )"
-        );
+        sync_featured_ders_packages();
     } catch (Throwable $e) {
         $done = false;
     }
+}
+
+function sync_featured_ders_packages(): void
+{
+    $keep = [];
+    foreach (featured_ders_package_defs() as $def) {
+        $st = db()->prepare('SELECT id FROM programs WHERE slug = ? LIMIT 1');
+        $st->execute([$def['slug']]);
+        $prog = $st->fetch();
+        if (!$prog) {
+            continue;
+        }
+        $pid = (int) $prog['id'];
+        $ex = db()->prepare("SELECT id FROM packages WHERE kind = 'ders' AND program_id = ? ORDER BY id ASC LIMIT 1");
+        $ex->execute([$pid]);
+        $row = $ex->fetch();
+        $grp = db()->prepare('SELECT id FROM class_groups WHERE program_id = ? ORDER BY id ASC LIMIT 1');
+        $grp->execute([$pid]);
+        $gid = $grp->fetchColumn();
+        $gid = $gid !== false && $gid !== null ? (int) $gid : null;
+        if ($row) {
+            $id = (int) $row['id'];
+            try {
+                db()->prepare(
+                    "UPDATE packages SET name=?, duration_days=?, price=?, active=1, access_type='canli_video', default_group_id=COALESCE(default_group_id, ?), sort=? WHERE id=?"
+                )->execute([$def['name'], $def['days'], $def['price'], $gid, $def['sort'], $id]);
+            } catch (Throwable) {
+                db()->prepare(
+                    "UPDATE packages SET name=?, duration_days=?, price=?, active=1, access_type='canli_video' WHERE id=?"
+                )->execute([$def['name'], $def['days'], $def['price'], $id]);
+            }
+            $keep[] = $id;
+            continue;
+        }
+        try {
+            db()->prepare(
+                "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active, access_type, sort)
+                 VALUES ('ders',?,?,?,?,?,0,1,'canli_video',?)"
+            )->execute([$pid, $gid, $def['name'], $def['days'], $def['price'], $def['sort']]);
+        } catch (Throwable) {
+            db()->prepare(
+                "INSERT INTO packages (kind, program_id, default_group_id, name, duration_days, price, auto_delete, active, access_type)
+                 VALUES ('ders',?,?,?,?,?,0,1,'canli_video')"
+            )->execute([$pid, $gid, $def['name'], $def['days'], $def['price']]);
+        }
+        $keep[] = (int) db()->lastInsertId();
+    }
+    if ($keep === []) {
+        return;
+    }
+    $in = implode(',', array_map('intval', $keep));
+    db()->exec("UPDATE packages SET active = 0 WHERE kind = 'ders' AND id NOT IN ($in)");
 }
 
 function packages_active(string $kind): array

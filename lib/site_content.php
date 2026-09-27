@@ -144,13 +144,13 @@ function ensure_public_site_content(): void
     }
     $done = true;
     try {
-        if (setting('public_copy_rev') !== 'kurs-2026-v2') {
+        if (setting('public_copy_rev') !== 'kurs-2026-v3') {
             site_sync_categories();
             site_sync_programs();
             site_sync_highlights();
             site_sync_campaign();
             site_sync_announcement();
-            setting_set('public_copy_rev', 'kurs-2026-v2');
+            setting_set('public_copy_rev', 'kurs-2026-v3');
         }
         site_sync_program_posters();
         site_sync_brand_colors();
@@ -324,7 +324,7 @@ function site_sync_highlights(): void
 
 function site_sync_campaign(): void
 {
-    $title = 'Tüm alan kitaplarından %20 indirim';
+    $title = 'Evinizdeki dershane';
     $st = db()->prepare('SELECT id FROM campaigns WHERE slug = ? LIMIT 1');
     $st->execute(['erken-kayit-kitap']);
     $id = (int) ($st->fetchColumn() ?: 0);

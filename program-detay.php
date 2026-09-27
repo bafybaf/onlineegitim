@@ -94,9 +94,8 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
         <?php endif; ?>
       </section>
 
-      <?php render_installment_table((int) $p['price_now']); ?>
       <?php if (!$isFree): ?>
-      <p class="text-sm text-muted">Taksit tablosu bilgilendirme içindir. Ödeme bu sayfada alınmaz; sepete ekleyip <a class="font-extrabold text-navy" href="<?= e(page_url('sepet')) ?>">mağaza hesabıyla</a> güvenli kart ödemesiyle tamamlanır.</p>
+      <p class="text-sm text-muted">Ödeme bu sayfada alınmaz; sepete ekleyip <a class="font-extrabold text-navy" href="<?= e(page_url('sepet')) ?>">mağaza hesabıyla</a> güvenli kart ödemesiyle tamamlanır.</p>
       <?php endif; ?>
     </div>
 
