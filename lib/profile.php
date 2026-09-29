@@ -73,7 +73,7 @@ function user_role_label(string $role): string
 {
     return match ($role) {
         'ogrenci' => 'Öğrenci',
-        'ogretmen' => 'Öğretmen',
+        'ogretmen' => 'Hoca',
         'admin' => 'Yönetici',
         'musteri' => 'Müşteri',
         default => $role,
@@ -263,7 +263,7 @@ function admin_user_roles(): array
 {
     return [
         'ogrenci' => 'Öğrenci',
-        'ogretmen' => 'Öğretmen',
+        'ogretmen' => 'Hoca',
         'musteri' => 'Mağaza müşterisi',
         'admin' => 'Yönetici',
     ];

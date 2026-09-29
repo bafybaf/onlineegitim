@@ -293,7 +293,7 @@ if ($action === 'board') {
         if (!$stroke) {
             json_out(['ok' => false], 400);
         }
-        if (count($strokes[$pageKey]) >= 500) {
+        if (count($strokes[$pageKey]) >= 800) {
             array_shift($strokes[$pageKey]);
         }
         $strokes[$pageKey][] = $stroke;

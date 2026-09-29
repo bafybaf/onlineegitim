@@ -152,11 +152,26 @@ function ensure_public_site_content(): void
             site_sync_announcement();
             setting_set('public_copy_rev', 'kurs-2026-v3');
         }
+        if (setting('seo_serp_rev') !== 'exams-v1') {
+            site_sync_seo();
+            setting_set('seo_serp_rev', 'exams-v1');
+        }
         site_sync_program_posters();
         site_sync_brand_colors();
     } catch (Throwable) {
         // İçerik senkronu başarısız olursa sayfa yine açılsın.
     }
+}
+
+function site_sync_seo(): void
+{
+    $title = 'Online İlahiyat | ÖABT, DKAB, İHL, DHBT, MEB-AGS, MBSTS, Arapça YDS-YÖKDİL';
+    $desc = 'Online İlahiyat; ÖABT, DKAB, İHL, DHBT, MEB-AGS, MBSTS ve Arapça YDS-YÖKDİL sınavlarına hazırlık için profesyonel online eğitim platformudur. Canlı dersler, video eğitimler.';
+    $keys = 'online ilahiyat, öabt, dkab, ihl, dhbt, meb-ags, mbsts, arapça yds, yokdil, canlı ders';
+    setting_set('seo_home_title', $title);
+    setting_set('seo_home_description', $desc);
+    setting_set('seo_default_description', $desc);
+    setting_set('seo_keywords', $keys);
 }
 
 function site_sync_categories(): void

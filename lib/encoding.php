@@ -65,8 +65,8 @@ function utf8_label_defaults(): array
     return [
         'seo_site_title' => 'Online İlahiyat',
         'seo_title_suffix' => ' | Online İlahiyat',
-        'seo_default_description' => 'Tefsir, hadis, fıkıh, Arapça canlı dersleri ve kitap mağazası.',
-        'seo_keywords' => 'online ilahiyat, tefsir, hadis, fıkıh, arapça, canlı ders',
+        'seo_default_description' => 'Online İlahiyat; ÖABT, DKAB, İHL, DHBT, MEB-AGS, MBSTS ve Arapça YDS-YÖKDİL sınavlarına hazırlık için profesyonel online eğitim platformudur. Canlı dersler, video eğitimler.',
+        'seo_keywords' => 'online ilahiyat, öabt, dkab, ihl, dhbt, meb-ags, mbsts, arapça yds, yokdil, canlı ders',
         'smtp_from_name' => 'Online İlahiyat',
     ];
 }

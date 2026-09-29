@@ -417,6 +417,10 @@ function group_save(array $data, int $id = 0, bool $admin = true): int
         } else {
             $sql = 'UPDATE class_groups SET name = ?, days = ?, cap = ?';
             $args = [$data['name'], $data['days'], $data['cap']];
+            if ((int) ($data['program_id'] ?? 0) > 0) {
+                $sql .= ', program_id = ?';
+                $args[] = (int) $data['program_id'];
+            }
         }
         if (isset($cols['description'])) {
             $sql .= ', description = ?';
@@ -624,19 +628,22 @@ function group_handle_admin_post(int $id = 0): int
     return $id;
 }
 
-function group_handle_teacher_post(int $id, int $teacherId): void
+function group_validate_teacher(array $data): string
 {
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-        return;
+    $err = group_validate($data, false);
+    if ($err !== '') {
+        return $err;
     }
-    if (post('action') !== 'save') {
-        return;
+    $p = db()->prepare('SELECT id FROM programs WHERE id = ?');
+    $p->execute([(int) ($data['program_id'] ?? 0)]);
+    if (!$p->fetch()) {
+        return 'Program seçin.';
     }
-    $g = group_by_id($id, $teacherId);
-    if (!$g) {
-        groups_error('Bu grup size ait değil.');
-        redirect(url('ogretmen/siniflar'));
-    }
+    return '';
+}
+
+function group_teacher_payload(int $teacherId): array
+{
     $data = group_normalize([
         'name' => post('name'),
         'days' => post('days'),
@@ -644,7 +651,51 @@ function group_handle_teacher_post(int $id, int $teacherId): void
         'whatsapp_url' => post('whatsapp_url'),
         'cap' => post('cap'),
     ], false);
-    $err = group_validate($data, false);
+    $data['program_id'] = (int) post('program_id');
+    $data['teacher_id'] = $teacherId;
+    return $data;
+}
+
+function group_handle_teacher_post(int $id, int $teacherId): void
+{
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        return;
+    }
+    $action = post('action');
+    if ($action === 'create') {
+        $data = group_teacher_payload($teacherId);
+        $err = group_validate_teacher($data);
+        if ($err !== '') {
+            groups_error($err);
+            redirect('ogretmen/siniflar');
+        }
+        $saved = group_save($data, 0, false);
+        groups_notice('Grup oluşturuldu.');
+        redirect(ogretmen_grup_url($saved));
+    }
+    if ($id < 1) {
+        return;
+    }
+    $g = group_by_id($id, $teacherId);
+    if (!$g) {
+        groups_error('Bu grup size ait değil.');
+        redirect('ogretmen/siniflar');
+    }
+    if ($action === 'delete') {
+        try {
+            group_delete($id);
+            groups_notice('Grup silindi.');
+            redirect('ogretmen/siniflar');
+        } catch (Throwable $e) {
+            groups_error($e->getMessage());
+            redirect(ogretmen_grup_url($id));
+        }
+    }
+    if ($action !== 'save') {
+        return;
+    }
+    $data = group_teacher_payload($teacherId);
+    $err = group_validate_teacher($data);
     if ($err !== '') {
         groups_error($err);
         redirect(ogretmen_grup_url($id));

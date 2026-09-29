@@ -8,6 +8,7 @@ if ($id < 1) {
 }
 group_handle_teacher_post($id, (int) $u['id']);
 $g = group_by_id($id, (int) $u['id']);
+$programs = group_programs();
 if (!$g) {
     groups_error('Bu sınıf size ait değil.');
     redirect('ogretmen/siniflar');
@@ -83,8 +84,8 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
 
 <section class="card mt-6 p-5">
   <p class="stat-label">Düzenle</p>
-  <h3 class="font-display mt-1 text-xl">Ad, günler ve kontenjan</h3>
-  <p class="mt-1 text-sm text-muted">Program ve hoca atamasını yönetim yapar.</p>
+  <h3 class="font-display mt-1 text-xl">Grup bilgileri</h3>
+  <p class="mt-1 text-sm text-muted">Ad, program, günler ve kontenjanı buradan değiştirirsiniz. Hoca ataması sizde kalır.</p>
   <form method="post" class="mt-4 grid gap-3 md:grid-cols-2">
     <input type="hidden" name="action" value="save">
     <label class="text-sm font-bold">Grup adı
@@ -92,6 +93,13 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
     </label>
     <label class="text-sm font-bold">Ders günleri
       <input name="days" required maxlength="80" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e((string) $g['days']) ?>">
+    </label>
+    <label class="text-sm font-bold">Program
+      <select name="program_id" required class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
+        <?php foreach ($programs as $p): ?>
+          <option value="<?= (int) $p['id'] ?>" <?= (int) $p['id'] === (int) $g['program_id'] ? 'selected' : '' ?>><?= e((string) $p['title']) ?></option>
+        <?php endforeach; ?>
+      </select>
     </label>
     <label class="text-sm font-bold">Kontenjan
       <input type="number" name="cap" min="1" max="80" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) $g['cap'] ?>">
@@ -106,6 +114,9 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
       <button class="btn-primary">Kaydet</button>
     </div>
   </form>
+  <div class="mt-3">
+    <?= panel_delete_form(ogretmen_grup_url($id), ['action' => 'delete'], 'Grup silinsin mi? Öğrenciler, ödevler, testler ve takvim saatleri de silinir.', 'Grubu sil', 'btn-outline') ?>
+  </div>
 </section>
 
 <section class="card mt-6 overflow-hidden">

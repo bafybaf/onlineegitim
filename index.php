@@ -14,8 +14,8 @@ $heroSlides = home_slides(true);
 $heroStrip = home_highlights(true);
 $campBanner = campaign_banner();
 public_head(
-    $homeTitle !== '' ? $homeTitle : 'Online İlahiyat — Canlı Ders, Program ve Kitap',
-    $homeDesc !== '' ? $homeDesc : 'ÖABT-DKAB, DHBT, MBSTS ve Arapça YÖKDİL-YDS canlı dersleri ile kitap mağazası.'
+    $homeTitle !== '' ? $homeTitle : 'Online İlahiyat | ÖABT, DKAB, İHL, DHBT, MEB-AGS, MBSTS, Arapça YDS-YÖKDİL',
+    $homeDesc !== '' ? $homeDesc : 'Online İlahiyat; ÖABT, DKAB, İHL, DHBT, MEB-AGS, MBSTS ve Arapça YDS-YÖKDİL sınavlarına hazırlık için profesyonel online eğitim platformudur. Canlı dersler, video eğitimler.'
 );
 if (!empty($_SESSION['flash'])) {
     echo '<p class="mx-auto max-w-7xl px-4 pt-4 font-bold text-accent lg:px-8">' . e($_SESSION['flash']) . '</p>';

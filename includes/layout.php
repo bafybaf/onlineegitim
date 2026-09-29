@@ -46,7 +46,7 @@ function public_head(string $title, string $desc = ''): void
   <?php if ($metaDesc): ?><meta name="twitter:description" content="<?= e($metaDesc) ?>" /><?php endif; ?>
   <?php if ($ogImage): ?><meta name="twitter:image" content="<?= e($ogImage) ?>" /><?php endif; ?>
   <?php if ($verify): ?><meta name="google-site-verification" content="<?= e($verify) ?>" /><?php endif; ?>
-  <link rel="icon" href="<?= e(brand_logo_url('logoyeni.png')) ?>" type="image/png" />
+  <link rel="icon" href="<?= e(brand_logo_url('favicon.png')) ?>" type="image/png" />
   <?php if ($ga !== ''): ?>
   <script async src="https://www.googletagmanager.com/gtag/js?id=<?= e($ga) ?>"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',<?= json_encode($ga, JSON_UNESCAPED_UNICODE) ?>);</script>
@@ -188,7 +188,16 @@ function public_foot(): void
       </div>
     </div>
   </div>
-  <p class="site-footer-copy">© <?= date('Y') ?> Online İlahiyat. Tüm hakları saklıdır.</p>
+  <div class="site-footer-bottom">
+    <p class="site-footer-copy">© <?= date('Y') ?> Online İlahiyat. Tüm hakları saklıdır.</p>
+    <div class="site-footer-pay" aria-label="Güvenli ödeme">
+      <img src="<?= e(url('assets/img/pay/iyzico-ile-ode.svg')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/img/pay/iyzico-ile-ode.svg') ?>" alt="iyzico ile Öde" class="pay-logo pay-logo-iyzico">
+      <span class="pay-cards">
+        <img src="<?= e(url('assets/img/pay/visa.svg')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/img/pay/visa.svg') ?>" alt="Visa" class="pay-logo pay-logo-card">
+        <img src="<?= e(url('assets/img/pay/mastercard.svg')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/img/pay/mastercard.svg') ?>" alt="Mastercard" class="pay-logo pay-logo-mc">
+      </span>
+    </div>
+  </div>
 </footer>
 <div id="call-modal" class="modal">
   <div class="card w-full max-w-md p-6">
@@ -331,7 +340,7 @@ function panel_role_label(string $role): string
 {
     return match ($role) {
         'ogrenci' => 'Öğrenci',
-        'ogretmen' => 'Öğretmen',
+        'ogretmen' => 'Hoca',
         'admin' => 'Yönetici',
         'musteri' => 'Mağaza',
         default => 'Panel',
@@ -392,7 +401,7 @@ function panel_head(string $role, string $page, string $title, array $user): voi
         header('Content-Type: text/html; charset=utf-8');
     }
     $titles = ['ogrenci' => 'Öğrenci Paneli', 'ogretmen' => 'Öğretmen Paneli', 'admin' => 'Yönetim Paneli', 'musteri' => 'Mağaza Hesabım'];
-    $chips = ['ogrenci' => 'Öğrenci', 'ogretmen' => 'Öğretmen', 'admin' => 'Yönetici', 'musteri' => 'Mağaza'];
+    $chips = ['ogrenci' => 'Öğrenci', 'ogretmen' => 'Hoca', 'admin' => 'Yönetici', 'musteri' => 'Mağaza'];
     $liveN = (int) db()->query("SELECT COUNT(*) FROM live_rooms WHERE status='live'")->fetchColumn();
     $nav = panel_nav($role, $page);
     $pageTitle = trim(explode('|', $title)[0]);
@@ -404,7 +413,7 @@ function panel_head(string $role, string $page, string $title, array $user): voi
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <?php security_html_head(); ?>
   <title><?= e($title) ?></title>
-  <link rel="icon" href="<?= e(brand_logo_url('logoyeni.png')) ?>" type="image/png" />
+  <link rel="icon" href="<?= e(brand_logo_url('favicon.png')) ?>" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={theme:{extend:{colors:{navy:'#111111',navy3:'#0a0a0a',accent:'#e8232a',muted:'#6e6e73',soft:'#f5f5f7'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>

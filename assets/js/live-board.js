@@ -110,8 +110,7 @@
     const r = draw.getBoundingClientRect();
     const sx = (ev.clientX - r.left) / Math.max(1, r.width);
     const sy = (ev.clientY - r.top) / Math.max(1, r.height);
-    const ch = Math.max(0.01, contentH());
-    return [viewDocX(sx), viewDocY(sy) / ch];
+    return [viewDocX(sx), viewDocY(sy)];
   }
 
   function pos(ev) {
@@ -144,14 +143,18 @@
 
   function fit() {
     const r = stage.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const nw = Math.max(1, Math.floor(r.width * dpr));
+    const nh = Math.max(1, Math.floor(r.height * dpr));
+    const changed = bg.width !== nw || bg.height !== nh;
     [bg, draw].forEach((c) => {
-      c.width = Math.max(1, Math.floor(r.width * dpr));
-      c.height = Math.max(1, Math.floor(r.height * dpr));
+      if (c.width !== nw) c.width = nw;
+      if (c.height !== nh) c.height = nh;
       c.style.width = r.width + 'px';
       c.style.height = r.height + 'px';
     });
-    pageCache = {};
+    if (changed) pageCache = {};
     if (!layouts.length) {
       docH = aspect();
     }
@@ -174,15 +177,17 @@
     const d = destSize();
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, d.w, d.h);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
     layouts.forEach((lay) => {
-      const y = (lay.y / Math.max(0.01, contentH())) * d.h;
-      const h = (lay.h / Math.max(0.01, contentH())) * d.h;
+      const y = lay.y * d.w;
+      const h = lay.h * d.w;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, y, d.w, h);
       const cached = pageCache[lay.n];
       if (cached && cached.canvas) {
+        const sw = cached.canvas.width || 1;
+        const scale = d.w / sw;
+        ctx.imageSmoothingEnabled = scale < 0.94 || scale > 1.06;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(cached.canvas, 0, y, d.w, h);
       }
     });
@@ -198,7 +203,7 @@
     if (!pdfDoc || gen !== pageGen) return;
     const cssW = bg.clientWidth || bg.width || 1;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const targetW = Math.min(2200, Math.max(280, Math.floor(cssW * Math.min(zoom, 8) * dpr)));
+    const targetW = Math.min(3600, Math.max(360, Math.floor(cssW * Math.min(zoom, 12) * dpr)));
     const key = targetW;
     const cached = pageCache[lay.n];
     if (cached && cached.key === key) return;
@@ -214,7 +219,7 @@
       const octx = off.getContext('2d', { alpha: false });
       octx.fillStyle = '#ffffff';
       octx.fillRect(0, 0, off.width, off.height);
-      return pg.render({ canvasContext: octx, viewport: vp }).promise.then(() => {
+      return pg.render({ canvasContext: octx, viewport: vp, intent: 'print' }).promise.then(() => {
         if (gen !== pageGen) return;
         pageCache[lay.n] = { canvas: off, key: key };
         const keep = {};
@@ -247,25 +252,43 @@
     return Math.max(1, w * pr);
   }
 
+  function strokeXY(s, p, destW, destH) {
+    if ((Number(s.v) || 0) >= 2) {
+      return [p[0] * destW, p[1] * destW];
+    }
+    return [p[0] * destW, p[1] * destH];
+  }
+
   function paintStroke(ctx, s, destW, destH, px) {
     const pts = s && s.p;
     if (!pts || !pts.length) return;
+    const xy = pts.map((p) => strokeXY(s, p, destW, destH));
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.miterLimit = 2;
     ctx.globalCompositeOperation = s.t === 'erase' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = s.c || '#111827';
+    ctx.lineWidth = Math.max(1.2, strokeWidth(s, pts[0]) * px);
     ctx.beginPath();
-    pts.forEach((p, i) => {
-      const x = p[0] * destW;
-      const y = p[1] * destH;
-      ctx.lineWidth = strokeWidth(s, p) * px;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    if (pts.length === 1) {
-      const p = pts[0];
-      ctx.lineTo(p[0] * destW + 0.1, p[1] * destH);
+    if (xy.length === 1) {
+      ctx.moveTo(xy[0][0], xy[0][1]);
+      ctx.lineTo(xy[0][0] + 0.15, xy[0][1]);
+    } else if (xy.length === 2) {
+      ctx.moveTo(xy[0][0], xy[0][1]);
+      ctx.lineTo(xy[1][0], xy[1][1]);
+    } else {
+      ctx.moveTo(xy[0][0], xy[0][1]);
+      for (let i = 1; i < xy.length - 1; i++) {
+        ctx.quadraticCurveTo(
+          xy[i][0],
+          xy[i][1],
+          (xy[i][0] + xy[i + 1][0]) / 2,
+          (xy[i][1] + xy[i + 1][1]) / 2
+        );
+      }
+      const last = xy[xy.length - 1];
+      ctx.lineTo(last[0], last[1]);
     }
     ctx.stroke();
     ctx.restore();
@@ -544,7 +567,7 @@
       ev.preventDefault();
       draw.setPointerCapture(ev.pointerId);
       drawing = true;
-      current = { t: tool === 'erase' ? 'erase' : 'pen', c: color, w: size, p: [pos(ev)] };
+      current = { t: tool === 'erase' ? 'erase' : 'pen', c: color, w: size, v: 2, p: [pos(ev)] };
       paintDraw();
     });
     draw.addEventListener('pointermove', (ev) => {
@@ -564,7 +587,7 @@
       const last = current.p[current.p.length - 1];
       const dx = p[0] - last[0];
       const dy = p[1] - last[1];
-      if ((dx * dx + dy * dy) < 0.0000004 && current.p.length > 1) return;
+      if ((dx * dx + dy * dy) < 0.00000018 && current.p.length > 1) return;
       current.p.push(p);
       paintDraw();
     });

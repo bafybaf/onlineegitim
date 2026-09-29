@@ -341,26 +341,36 @@ function live_board_parse_stroke($raw): ?array
     $width = (float) ($raw['w'] ?? 3);
     $width = max(1, min(28, $width));
     $pts = $raw['p'] ?? [];
-    if (!is_array($pts) || count($pts) < 1 || count($pts) > 400) {
+    if (!is_array($pts) || count($pts) < 1 || count($pts) > 2500) {
         return null;
     }
+    $ver = (int) ($raw['v'] ?? 1);
     $out = [];
     foreach ($pts as $pt) {
         if (!is_array($pt) || !isset($pt[0], $pt[1])) {
             continue;
         }
-        $x = max(0, min(1, (float) $pt[0]));
-        $y = max(0, min(1, (float) $pt[1]));
+        if ($ver >= 2) {
+            $x = max(-0.25, min(1.25, (float) $pt[0]));
+            $y = max(-4, min(160, (float) $pt[1]));
+        } else {
+            $x = max(0, min(1, (float) $pt[0]));
+            $y = max(0, min(1, (float) $pt[1]));
+        }
         $pr = isset($pt[2]) ? max(0.05, min(1, (float) $pt[2])) : 1;
-        $out[] = [round($x, 4), round($y, 4), round($pr, 3)];
-        if (count($out) >= 400) {
+        $out[] = [round($x, 5), round($y, 5), round($pr, 3)];
+        if (count($out) >= 2500) {
             break;
         }
     }
     if ($out === []) {
         return null;
     }
-    return ['t' => $type, 'c' => $color, 'w' => $width, 'p' => $out];
+    $stroke = ['t' => $type, 'c' => $color, 'w' => $width, 'p' => $out];
+    if ($ver >= 2) {
+        $stroke['v'] = 2;
+    }
+    return $stroke;
 }
 
 function live_play_mode_picker(string $name = 'play_mode', ?string $selected = null, string $layout = 'cards'): string
