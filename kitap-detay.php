@@ -42,7 +42,6 @@ public_head($b['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
       <p class="mt-2 text-lg text-muted"><?= e($b['author']) ?></p>
       <p class="mt-6"><span class="price-old mr-2 text-lg"><?= money((int) $b['price_old']) ?></span><span class="price-now text-3xl"><?= money((int) $b['price']) ?></span></p>
       <button data-add-book="<?= (int) $b['id'] ?>" class="btn-primary mt-6">Sepete ekle</button>
-      <p class="mt-3 text-sm text-muted">Ödeme sepet adımında güvenli kart ile alınır. Bu sayfada kart çekilmez.</p>
     </div>
   </div>
 

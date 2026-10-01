@@ -93,10 +93,6 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
           <p class="mt-4 text-sm text-muted">Bu programda henüz açık grup yok. <button type="button" class="font-extrabold text-navy" data-open-ask>Soru sorun</button>; kayıt sonrası grup açılınca panelden haberdar edilirsiniz.</p>
         <?php endif; ?>
       </section>
-
-      <?php if (!$isFree): ?>
-      <p class="text-sm text-muted">Ödeme bu sayfada alınmaz; sepete ekleyip <a class="font-extrabold text-navy" href="<?= e(page_url('sepet')) ?>">mağaza hesabıyla</a> güvenli kart ödemesiyle tamamlanır.</p>
-      <?php endif; ?>
     </div>
 
     <aside class="grid gap-4 lg:sticky lg:top-24">
@@ -114,11 +110,6 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
           <button type="button" class="btn-outline" data-open-ask>Soru sor</button>
           <?php if (!$u): ?>
             <a href="<?= e(url('giris-magaza.php?next=sepet')) ?>" class="text-center text-sm font-extrabold text-navy">Hesabınız varsa mağaza girişi</a>
-          <?php endif; ?>
-          <?php if ($isFree): ?>
-          <p class="text-xs text-muted">Bu eğitim ücretsizdir. Sepete ekleyip mağaza hesabıyla kaydı tamamlayın; kart çekilmez.</p>
-          <?php else: ?>
-          <p class="text-xs text-muted">Kart bu sayfada çekilmez. Eğitimi sepete ekleyin; ödeme mağaza hesabıyla sepette yapılır. Sınıfa admin yerleştirir.</p>
           <?php endif; ?>
         </div>
       </div>

@@ -1,5 +1,23 @@
 <?php
 
+function kayit_ders_image_src(): string
+{
+    $path = trim(setting('kayit_ders_image'));
+    if ($path !== '') {
+        $src = function_exists('home_image_src') ? home_image_src($path) : '';
+        if ($src === '' && function_exists('catalog_media_src')) {
+            $src = catalog_media_src($path);
+        }
+        if ($src === '') {
+            $src = url($path);
+        }
+        if ($src !== '') {
+            return $src;
+        }
+    }
+    return url('assets/img/sinif.jpg');
+}
+
 function paket_admin_url(int $id): string
 {
     if ($id < 1) {

@@ -2,6 +2,19 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'kayit_gorsel') {
+    try {
+        $uploaded = catalog_store_upload('image', 'kayit', 'ders');
+        if (!$uploaded) {
+            throw new RuntimeException('Görsel seçin (JPG, PNG veya WEBP).');
+        }
+        setting_set('kayit_ders_image', $uploaded);
+        flash_ok('Ders kaydı görseli güncellendi.');
+    } catch (Throwable $e) {
+        flash_error($e->getMessage());
+    }
+    redirect('admin/uyelikler');
+}
 $rows = packages_all();
 $ok = flash_ok();
 $err = flash_error();
@@ -13,6 +26,20 @@ panel_head('admin', 'uyelikler', 'Üyelik paketleri | Admin', $u);
 </div>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
+
+<form method="post" enctype="multipart/form-data" class="card mb-6 grid gap-3 p-5 md:grid-cols-[1fr_auto] md:items-end">
+  <?= csrf_field() ?>
+  <input type="hidden" name="action" value="kayit_gorsel">
+  <div>
+    <p class="stat-label">Ders kaydı sayfası</p>
+    <p class="mt-1 text-sm text-muted">/kayit-ders sol görseli. Yükleyince sitede değişir.</p>
+    <img src="<?= e(kayit_ders_image_src()) ?>" alt="" class="mt-3 h-28 w-full max-w-md rounded-xl object-cover">
+    <label class="mt-3 block text-sm font-bold">Yeni görsel
+      <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required class="mt-1 w-full text-sm">
+    </label>
+  </div>
+  <button class="btn-primary">Görseli kaydet</button>
+</form>
 
 <?php if (!$rows): ?>
   <div class="card"><p class="dash-empty px-5 py-10">Ders paketi yok. <a class="font-extrabold text-navy" href="<?= e(paket_admin_url(0)) ?>">İlk paketi ekleyin</a>.</p></div>

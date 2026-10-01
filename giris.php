@@ -17,7 +17,7 @@ public_head('Giriş | Online İlahiyat');
     <a href="<?= e(page_url('giris-magaza')) ?>" class="card p-6 hover:border-navy">
       <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Kitap mağazası</p>
       <h2 class="font-display mt-2 text-2xl">Mağaza girişi</h2>
-      <p class="mt-2 text-sm text-muted">Sipariş, güvenli kart ödemesi ve Kitaplarım. Canlı derse açılmaz.</p>
+      <p class="mt-2 text-sm text-muted">Sipariş ve Kitaplarım. Canlı derse açılmaz.</p>
     </a>
     <a href="<?= e(page_url('giris-ders')) ?>" class="card p-6 hover:border-navy">
       <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-navy">Canlı eğitim</p>

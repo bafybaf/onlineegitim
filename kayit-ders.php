@@ -70,7 +70,7 @@ public_head('Ders kaydı | Online İlahiyat');
     <p class="badge">Canlı eğitim</p>
     <h1 class="font-display mt-4 text-4xl md:text-5xl">Canlı ders üyeliği</h1>
     <p class="mt-3 text-muted">Formu doldurup grubu seçin. Satın alım hemen öğrenci hesabınıza düşer; canlı sınıf, test ve ödev açılır.</p>
-    <img src="<?= e(url('assets/img/sinif.jpg')) ?>" alt="" class="mt-8 h-72 w-full rounded-[22px] object-cover" />
+    <img src="<?= e(kayit_ders_image_src()) ?>" alt="" class="mt-8 h-72 w-full rounded-[22px] object-cover" />
   </div>
   <form method="post" class="card p-6">
     <?= csrf_field() ?>
@@ -94,7 +94,6 @@ public_head('Ders kaydı | Online İlahiyat');
         </label>
       <?php endforeach; ?>
     </div>
-    <p class="mt-3 text-xs text-muted">Program sayfasından kart çekilmez; paket seçince kayıt hesabınıza düşer.</p>
     <button id="submit-btn" class="btn-primary mt-5 w-full">Satın al</button>
     <script>
     (function(){

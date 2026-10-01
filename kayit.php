@@ -12,12 +12,12 @@ public_head('Kayıt Ol | Online İlahiyat');
     <a href="<?= e(page_url('kayit-magaza')) ?>" class="card p-6 hover:border-navy">
       <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Kitap mağazası</p>
       <h2 class="font-display mt-2 text-2xl">Mağaza kaydı</h2>
-      <p class="mt-2 text-sm text-muted">Ücretsiz hesap. Kitapları sepetten kart ile ödersiniz.</p>
+      <p class="mt-2 text-sm text-muted">Ücretsiz hesap. Kitap siparişi ve Kitaplarım.</p>
     </a>
     <a href="<?= e(page_url('kayit-ders') . $dersQs) ?>" class="card p-6 hover:border-navy">
       <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-navy">Canlı eğitim</p>
       <h2 class="font-display mt-2 text-2xl">Ders kaydı</h2>
-      <p class="mt-2 text-sm text-muted">Öğrenci paneli ve canlı sınıf. Üyelik kayıt formunda güvenli kart ödemesiyle alınır.</p>
+      <p class="mt-2 text-sm text-muted">Öğrenci paneli ve canlı sınıf.</p>
     </a>
   </div>
   <p class="mt-8 text-center text-sm text-muted">Hesabınız var mı?
