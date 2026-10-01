@@ -81,12 +81,20 @@ membership_panel_banner($u);
       <a class="btn-outline mt-4 h-10 px-4 text-sm" href="<?= e(url('ogrenci/canli')) ?>">Canlı dersler</a>
     <?php else: ?>
       <div class="mt-4 grid gap-4">
-        <?php foreach ($lives as $r): ?>
+        <?php foreach ($lives as $r):
+            $reason = live_student_watch_reason($r, (int) $u['id']);
+            $open = $reason === null;
+            ?>
           <div class="dash-next">
             <?= live_pill($r) ?>
             <p class="font-display text-xl"><?= e((string) $r['title']) ?><?= $r['topic'] ? ' — ' . e((string) $r['topic']) : '' ?></p>
             <p class="text-sm text-muted"><?= e((string) $r['teacher_name']) ?></p>
-            <a class="btn-primary mt-2 h-10 px-4 text-sm" href="<?= e(canli_url((int) $r['id'])) ?>">Bu sınıfa gir</a>
+            <?php if ($open): ?>
+              <a class="btn-primary mt-2 h-10 px-4 text-sm" href="<?= e(canli_url((int) $r['id'])) ?>">Bu sınıfa gir</a>
+            <?php else: ?>
+              <p class="mt-2 text-sm font-bold text-accent"><?= e($reason) ?></p>
+              <a class="btn-outline mt-2 h-10 px-4 text-sm" href="<?= e(live_watch_recordings_url((int) $r['group_id'])) ?>">Kayıtlardan izle</a>
+            <?php endif; ?>
           </div>
         <?php endforeach; ?>
       </div>
@@ -114,9 +122,14 @@ membership_panel_banner($u);
         <p class="font-display text-xl"><?= e((string) $nextCal['title']) ?><?= !empty($nextCal['topic']) ? ' — ' . e((string) $nextCal['topic']) : '' ?></p>
         <p class="text-sm text-muted"><?= e((string) $nextCal['group_name']) ?> · <?= e((string) $nextCal['teacher_name']) ?></p>
         <div class="mt-3 flex flex-wrap gap-2">
-          <?php if (!empty($nextCal['can_join']) && !empty($nextCal['live_room'])): ?>
+          <?php if (!empty($nextCal['can_join']) && !empty($nextCal['live_room'])):
+              $calReason = live_student_watch_reason($nextCal['live_room'], (int) $u['id']);
+              if ($calReason === null): ?>
             <a class="btn-primary h-10 px-4 text-sm" href="<?= e(canli_url((int) $nextCal['live_room']['id'])) ?>">Katıl</a>
-          <?php endif; ?>
+          <?php else: ?>
+            <p class="w-full text-sm font-bold text-accent"><?= e($calReason) ?></p>
+            <a class="btn-outline h-10 px-4 text-sm" href="<?= e(live_watch_recordings_url((int) $nextCal['group_id'])) ?>">Kayıtlardan izle</a>
+          <?php endif; endif; ?>
           <a class="btn-outline h-10 px-4 text-sm" href="<?= e(url('ogrenci/takvim')) ?>">Takvime git</a>
         </div>
       </div>

@@ -38,6 +38,7 @@ $st->execute($params);
 $rows = $st->fetchAll();
 
 $current = $gid ? $allowed[$gid] : null;
+$err = flash_error();
 panel_head('ogrenci', 'kayitlar', $current ? ((string) $current['name'] . ' kayıtları | Öğrenci Paneli') : 'Ders kayıtları | Öğrenci Paneli', $u);
 
 function ogrenci_kayit_card(array $r, int $backGid): void
@@ -58,6 +59,7 @@ function ogrenci_kayit_card(array $r, int $backGid): void
     echo '</article>';
 }
 ?>
+<?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <?php if ($current): ?>
   <p class="mb-2"><a class="text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/derslerim')) ?>">← Derslerim</a></p>
   <h2 class="font-display text-2xl"><?= e($current['name']) ?></h2>

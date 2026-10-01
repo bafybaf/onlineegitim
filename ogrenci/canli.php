@@ -10,17 +10,20 @@ $others = db()->query("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN us
 panel_head('ogrenci', 'canli', 'Canlı dersler | Öğrenci Paneli', $u);
 membership_panel_banner($u);
 ?>
-<p class="mb-4 text-sm text-muted">Aynı anda birden çok oda açık kalır. Sadece kayıtlı olduğunuz gruplara girebilirsiniz.</p>
+<p class="mb-4 text-sm text-muted">Aynı anda birden çok oda açık kalır. Sadece kayıtlı olduğunuz gruplara girebilirsiniz. Kontenjan dolunca kayıtlardan izlersiniz.</p>
 <h2 class="font-display text-2xl">Sizin açık odalarınız</h2>
 <div class="mt-3 grid gap-3">
 <?php foreach ($mine as $r):
-    $can = !function_exists('student_can_join_live') || student_can_join_live((int) $u['id'], (int) $r['group_id']);
+    $reason = live_student_watch_reason($r, (int) $u['id']);
+    $open = $reason === null;
     ?>
-  <div class="card flex flex-wrap items-center justify-between gap-3 p-5"><?= live_pill($r) ?><div><p class="font-extrabold"><?= e($r['title']) ?> — <?= e($r['topic']) ?></p><p class="text-sm text-muted"><?= e($r['teacher_name']) ?></p></div>
-  <?php if ($can): ?>
+  <div class="card flex flex-wrap items-center justify-between gap-3 p-5"><?= live_pill($r) ?><div><p class="font-extrabold"><?= e($r['title']) ?> — <?= e($r['topic']) ?></p><p class="text-sm text-muted"><?= e($r['teacher_name']) ?></p>
+  <?php if (!$open): ?><p class="mt-1 text-sm font-bold text-accent"><?= e($reason) ?></p><?php endif; ?>
+  </div>
+  <?php if ($open): ?>
   <a class="btn-primary" href="<?= e(canli_url((int) $r['id'])) ?>">Gir</a>
   <?php else: ?>
-  <a class="btn-outline" href="<?= e(url('ogrenci/kayitlar.php?grup=' . (int) $r['group_id'])) ?>">Kayıttan izle</a>
+  <a class="btn-outline" href="<?= e(live_watch_recordings_url((int) $r['group_id'])) ?>">Kayıttan izle</a>
   <?php endif; ?>
   </div>
 <?php endforeach; if (!$mine) echo '<p class="text-muted">Açık oda yok.</p>'; ?>

@@ -169,8 +169,13 @@ if ($action === 'join' && $u['role'] === 'ogrenci') {
     if (!$room || !live_user_can_access($u, $room)) {
         json_out(['ok' => false], 403);
     }
-    $pdo->prepare('UPDATE attendance SET present = 1 WHERE room_id = ? AND student_id = ?')
-        ->execute([$id, $u['id']]);
+    $reason = live_student_watch_reason($room, (int) $u['id']);
+    if ($reason !== null) {
+        json_out(['ok' => false, 'error' => 'full', 'message' => $reason], 403);
+    }
+    if (!live_student_try_enter($room, (int) $u['id'])) {
+        json_out(['ok' => false, 'error' => 'full', 'message' => live_full_watch_message()], 403);
+    }
     json_out(['ok' => true]);
 }
 

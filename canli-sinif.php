@@ -18,12 +18,16 @@ if (!$room) {
 if (!live_user_can_access($u, $room)) {
     redirect(panel_home($u['role']));
 }
-if ($u['role'] === 'ogrenci' && function_exists('student_can_join_live') && !student_can_join_live((int) $u['id'], (int) $room['group_id'])) {
-    flash_error('Bu paket yalnızca kayıt izleme içindir.');
-    redirect('ogrenci/kayitlar');
-}
 if ($u['role'] === 'ogrenci') {
-    db()->prepare('UPDATE attendance SET present = 1 WHERE room_id = ? AND student_id = ?')->execute([$id, $u['id']]);
+    $watchReason = live_student_watch_reason($room, (int) $u['id']);
+    if ($watchReason !== null) {
+        flash_error($watchReason);
+        redirect('ogrenci/kayitlar.php?grup=' . (int) $room['group_id']);
+    }
+    if (!live_student_try_enter($room, (int) $u['id'])) {
+        flash_error(live_full_watch_message());
+        redirect('ogrenci/kayitlar.php?grup=' . (int) $room['group_id']);
+    }
 }
 $back = panel_home($u['role']);
 if ($u['role'] === 'ogrenci') {

@@ -458,6 +458,132 @@ function live_user_can_publish(array $u, array $room): bool
     return $u['role'] === 'admin' || (int) $room['teacher_id'] === (int) $u['id'];
 }
 
+function live_full_watch_message(): string
+{
+    return 'Kontenjan dolmuştur. Kayıtlardan izleyebilirsiniz.';
+}
+
+function live_group_cap(int $groupId): int
+{
+    if ($groupId < 1) {
+        return 1;
+    }
+    $st = db()->prepare('SELECT cap FROM class_groups WHERE id = ?');
+    $st->execute([$groupId]);
+    return max(1, (int) $st->fetchColumn());
+}
+
+function live_present_count(int $roomId): int
+{
+    try {
+        $st = db()->prepare('SELECT COUNT(*) FROM attendance WHERE room_id = ? AND present = 1');
+        $st->execute([$roomId]);
+        return (int) $st->fetchColumn();
+    } catch (Throwable) {
+        return 0;
+    }
+}
+
+function live_student_has_seat(int $roomId, int $studentId): bool
+{
+    try {
+        $st = db()->prepare('SELECT present FROM attendance WHERE room_id = ? AND student_id = ?');
+        $st->execute([$roomId, $studentId]);
+        $row = $st->fetch();
+        return $row && (int) $row['present'] === 1;
+    } catch (Throwable) {
+        return false;
+    }
+}
+
+function live_video_only_message(): string
+{
+    return 'Bu paket yalnızca kayıt izleme içindir. Kayıtlardan izleyebilirsiniz.';
+}
+
+function live_student_watch_reason(array $room, int $studentId): ?string
+{
+    $groupId = (int) ($room['group_id'] ?? 0);
+    if ($studentId < 1 || $groupId < 1) {
+        return live_full_watch_message();
+    }
+    if (function_exists('student_can_join_live') && !student_can_join_live($studentId, $groupId)) {
+        return live_video_only_message();
+    }
+    if (!live_student_room_open($room, $studentId)) {
+        return live_full_watch_message();
+    }
+    return null;
+}
+
+function live_student_room_open(array $room, int $studentId): bool
+{
+    $roomId = (int) ($room['id'] ?? 0);
+    $groupId = (int) ($room['group_id'] ?? 0);
+    if ($roomId < 1 || $studentId < 1) {
+        return false;
+    }
+    if (live_student_has_seat($roomId, $studentId)) {
+        return true;
+    }
+    return live_present_count($roomId) < live_group_cap($groupId);
+}
+
+function live_mark_student_present(int $roomId, int $studentId): void
+{
+    db()->prepare(
+        'INSERT INTO attendance (room_id, student_id, present) VALUES (?,?,1)
+         ON DUPLICATE KEY UPDATE present = 1'
+    )->execute([$roomId, $studentId]);
+}
+
+function live_student_try_enter(array $room, int $studentId): bool
+{
+    $roomId = (int) ($room['id'] ?? 0);
+    $groupId = (int) ($room['group_id'] ?? 0);
+    if ($roomId < 1 || $groupId < 1 || $studentId < 1) {
+        return false;
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $lock = $pdo->prepare('SELECT cap FROM class_groups WHERE id = ? FOR UPDATE');
+        $lock->execute([$groupId]);
+        if ($lock->fetch() === false) {
+            $pdo->rollBack();
+            return false;
+        }
+        if (live_student_has_seat($roomId, $studentId)) {
+            $pdo->commit();
+            return true;
+        }
+        if (live_present_count($roomId) >= live_group_cap($groupId)) {
+            $pdo->rollBack();
+            return false;
+        }
+        live_mark_student_present($roomId, $studentId);
+        $pdo->commit();
+        return true;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        return false;
+    }
+}
+
+function live_watch_recordings_url(int $groupId): string
+{
+    return url('ogrenci/kayitlar.php' . ($groupId > 0 ? '?grup=' . $groupId : ''));
+}
+
+function live_full_watch_html(int $groupId, string $extraClass = ''): string
+{
+    $cls = trim('mt-2 text-sm font-bold text-accent ' . $extraClass);
+    return '<p class="' . e($cls) . '">' . e(live_full_watch_message()) . '</p>'
+        . '<a class="btn-outline mt-2 inline-flex text-sm" href="' . e(live_watch_recordings_url($groupId)) . '">Kayıtlara git</a>';
+}
+
 function live_public_room(array $room): array
 {
     $pause = live_room_pause_state($room);

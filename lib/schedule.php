@@ -354,7 +354,20 @@ function schedule_actions(array $row, string $role, string $pageBase): string
 {
     $html = '';
     if (!empty($row['can_join']) && $row['live_room']) {
-        $html .= '<a class="btn-primary h-8 px-3 text-xs" href="' . e(canli_url((int) $row['live_room']['id'])) . '">' . ($role === 'ogrenci' ? 'Katıl' : 'Sınıfa gir') . '</a>';
+        $joinOk = true;
+        $watchReason = null;
+        if ($role === 'ogrenci') {
+            $cu = function_exists('current_user') ? current_user() : null;
+            $sid = (int) ($cu['id'] ?? 0);
+            $watchReason = $sid ? live_student_watch_reason($row['live_room'], $sid) : live_full_watch_message();
+            $joinOk = $watchReason === null;
+        }
+        if ($joinOk) {
+            $html .= '<a class="btn-primary h-8 px-3 text-xs" href="' . e(canli_url((int) $row['live_room']['id'])) . '">' . ($role === 'ogrenci' ? 'Katıl' : 'Sınıfa gir') . '</a>';
+        } elseif ($role === 'ogrenci') {
+            $html .= '<span class="text-xs font-extrabold text-accent">' . e((string) $watchReason) . '</span>';
+            $html .= '<a class="btn-outline h-8 px-3 text-xs" href="' . e(live_watch_recordings_url((int) $row['group_id'])) . '">Kayıtlardan izle</a>';
+        }
     } elseif ($role === 'ogretmen' && !empty($row['can_open'])) {
         $html .= '<form method="post" action="' . e(url('api/live.php')) . '" class="inline">'
             . '<input type="hidden" name="action" value="start">'
