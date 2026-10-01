@@ -97,6 +97,9 @@ function schedule_student_group_ids(int $studentId): array
 
 function schedule_teacher_groups(int $teacherId): array
 {
+    if (function_exists('group_owned_in_sql')) {
+        return db()->query('SELECT * FROM class_groups WHERE id IN (' . group_owned_in_sql($teacherId) . ') ORDER BY name')->fetchAll();
+    }
     $st = db()->prepare('SELECT * FROM class_groups WHERE teacher_id = ? ORDER BY name');
     $st->execute([$teacherId]);
     return $st->fetchAll();
@@ -104,7 +107,8 @@ function schedule_teacher_groups(int $teacherId): array
 
 function schedule_all_groups(): array
 {
-    return db()->query('SELECT g.*, t.name teacher_name FROM class_groups g JOIN users t ON t.id = g.teacher_id ORDER BY g.name')->fetchAll();
+    $rows = db()->query('SELECT g.*, t.name teacher_name FROM class_groups g JOIN users t ON t.id = g.teacher_id ORDER BY g.name')->fetchAll();
+    return function_exists('group_apply_teacher_labels') ? group_apply_teacher_labels($rows) : $rows;
 }
 
 function schedule_live_by_group(): array
@@ -200,8 +204,13 @@ function schedule_fetch(DateTimeImmutable $from, DateTimeImmutable $to, array $o
             WHERE s.starts_at >= ? AND s.starts_at < ?";
     $args = [$from->format('Y-m-d H:i:s'), $to->format('Y-m-d H:i:s')];
     if (!empty($opts['teacher_id'])) {
-        $sql .= ' AND s.teacher_id = ?';
-        $args[] = (int) $opts['teacher_id'];
+        $tid = (int) $opts['teacher_id'];
+        if (function_exists('group_owned_in_sql')) {
+            $sql .= ' AND s.group_id IN (' . group_owned_in_sql($tid) . ')';
+        } else {
+            $sql .= ' AND s.teacher_id = ?';
+            $args[] = $tid;
+        }
     }
     if (!empty($opts['group_ids']) && is_array($opts['group_ids'])) {
         $ids = array_values(array_filter(array_map('intval', $opts['group_ids'])));
@@ -244,6 +253,12 @@ function schedule_group_row(int $groupId): ?array
     $st = db()->prepare('SELECT * FROM class_groups WHERE id = ?');
     $st->execute([$groupId]);
     return $st->fetch() ?: null;
+}
+
+function schedule_teacher_may(int $sessionId, int $teacherId): bool
+{
+    $ex = schedule_by_id($sessionId);
+    return $ex && group_has_teacher((int) $ex['group_id'], $teacherId);
 }
 
 function schedule_save(array $data): int
@@ -444,10 +459,18 @@ function schedule_handle_post(array $u, bool $admin): string
     $action = post('action');
     $teacherId = $admin ? null : (int) $u['id'];
     if ($action === 'cancel') {
-        return schedule_cancel((int) post('id'), $teacherId) ? 'Ders saati iptal edildi.' : 'İptal edilemedi.';
+        $sid = (int) post('id');
+        if (!$admin && !schedule_teacher_may($sid, (int) $u['id'])) {
+            return 'İptal edilemedi.';
+        }
+        return schedule_cancel($sid, null) ? 'Ders saati iptal edildi.' : 'İptal edilemedi.';
     }
     if ($action === 'delete') {
-        return schedule_delete((int) post('id'), $teacherId) ? 'Ders saati silindi.' : 'Silinemedi.';
+        $sid = (int) post('id');
+        if (!$admin && !schedule_teacher_may($sid, (int) $u['id'])) {
+            return 'Silinemedi.';
+        }
+        return schedule_delete($sid, null) ? 'Ders saati silindi.' : 'Silinemedi.';
     }
     if ($action !== 'create' && $action !== 'update') {
         return '';
@@ -457,7 +480,7 @@ function schedule_handle_post(array $u, bool $admin): string
     if (!$g) {
         return 'Grup bulunamadı.';
     }
-    if (!$admin && (int) $g['teacher_id'] !== (int) $u['id']) {
+    if (!$admin && !group_has_teacher($gid, (int) $u['id'])) {
         return 'Bu grup size ait değil.';
     }
     $start = schedule_parse_datetime(post('starts_at'));
@@ -467,7 +490,7 @@ function schedule_handle_post(array $u, bool $admin): string
     $id = $action === 'update' ? (int) post('id') : 0;
     if ($id > 0) {
         $ex = schedule_by_id($id);
-        if (!$ex || (!$admin && (int) $ex['teacher_id'] !== (int) $u['id'])) {
+        if (!$ex || (!$admin && !group_has_teacher((int) $ex['group_id'], (int) $u['id']))) {
             return 'Kayıt bulunamadı.';
         }
     }

@@ -34,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update') {
         $dur = post('duration_min');
         $duration = $dur !== '' ? max(1, min(180, (int) $dur)) : null;
-        db()->prepare('UPDATE tests SET title=?, description=?, duration_min=? WHERE id=? AND teacher_id=?')
-            ->execute([post('title'), post('description'), $duration, $tid, $u['id']]);
+        db()->prepare('UPDATE tests SET title=?, description=?, duration_min=? WHERE id=?')
+            ->execute([post('title'), post('description'), $duration, $tid]);
         test_redirect($tid);
     }
 
@@ -45,12 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($next === 'yayinda' && $qn < 1) {
             test_redirect($tid);
         }
-        db()->prepare('UPDATE tests SET status=? WHERE id=? AND teacher_id=?')->execute([$next, $tid, $u['id']]);
+        db()->prepare('UPDATE tests SET status=? WHERE id=?')->execute([$next, $tid]);
         test_redirect($tid);
     }
 
     if ($action === 'delete') {
-        db()->prepare('DELETE FROM tests WHERE id=? AND teacher_id=?')->execute([$tid, $u['id']]);
+        db()->prepare('DELETE FROM tests WHERE id=?')->execute([$tid]);
         test_redirect();
     }
 
@@ -71,8 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'edit_q' || $action === 'del_q') {
         $qid = (int) post('qid');
-        $own = db()->prepare('SELECT q.id FROM test_questions q JOIN tests t ON t.id=q.test_id WHERE q.id=? AND t.teacher_id=?');
-        $own->execute([$qid, $u['id']]);
+        $own = db()->prepare('SELECT q.id FROM test_questions q JOIN tests t ON t.id=q.test_id WHERE q.id=? AND t.id=?');
+        $own->execute([$qid, $tid]);
         if (!$own->fetch()) {
             test_redirect($tid);
         }
@@ -88,9 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     test_redirect($tid);
 }
 
-$groups = db()->prepare('SELECT * FROM class_groups WHERE teacher_id=?');
-$groups->execute([$u['id']]);
-$groups = $groups->fetchAll();
+$groups = teacher_groups((int) $u['id']);
 $gids = array_column($groups, 'id') ?: [0];
 $tests = db()->query('SELECT t.*, g.name gname,
   (SELECT COUNT(*) FROM test_questions q WHERE q.test_id=t.id) qn,

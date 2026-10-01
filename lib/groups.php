@@ -45,6 +45,205 @@ function ensure_class_groups_schema(): void
         } catch (Throwable) {
         }
     }
+    ensure_group_teachers_schema();
+}
+
+function ensure_group_teachers_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec(
+            'CREATE TABLE IF NOT EXISTS class_group_teachers (
+                group_id INT UNSIGNED NOT NULL,
+                teacher_id INT UNSIGNED NOT NULL,
+                PRIMARY KEY (group_id, teacher_id),
+                KEY idx_cgt_teacher (teacher_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+        db()->exec(
+            'INSERT IGNORE INTO class_group_teachers (group_id, teacher_id)
+             SELECT id, teacher_id FROM class_groups WHERE teacher_id IS NOT NULL AND teacher_id > 0'
+        );
+    } catch (Throwable) {
+    }
+}
+
+function group_owned_ids(int $teacherId): array
+{
+    ensure_group_teachers_schema();
+    $ids = [];
+    try {
+        $st = db()->prepare('SELECT group_id FROM class_group_teachers WHERE teacher_id = ?');
+        $st->execute([$teacherId]);
+        $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    } catch (Throwable) {
+    }
+    try {
+        $st = db()->prepare('SELECT id FROM class_groups WHERE teacher_id = ?');
+        $st->execute([$teacherId]);
+        foreach ($st as $row) {
+            $ids[] = (int) $row['id'];
+        }
+    } catch (Throwable) {
+    }
+    return array_values(array_unique(array_filter($ids)));
+}
+
+function group_owned_in_sql(int $teacherId): string
+{
+    $ids = group_owned_ids($teacherId);
+    return $ids ? implode(',', $ids) : '0';
+}
+
+function group_has_teacher(int $groupId, int $teacherId): bool
+{
+    if ($groupId < 1 || $teacherId < 1) {
+        return false;
+    }
+    return in_array($groupId, group_owned_ids($teacherId), true);
+}
+
+function group_teacher_ids(int $groupId): array
+{
+    ensure_group_teachers_schema();
+    try {
+        $st = db()->prepare('SELECT teacher_id FROM class_group_teachers WHERE group_id = ? ORDER BY teacher_id');
+        $st->execute([$groupId]);
+        $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+        if ($ids) {
+            return $ids;
+        }
+    } catch (Throwable) {
+    }
+    $st = db()->prepare('SELECT teacher_id FROM class_groups WHERE id = ?');
+    $st->execute([$groupId]);
+    $one = (int) $st->fetchColumn();
+    return $one > 0 ? [$one] : [];
+}
+
+function group_teachers_label_map(array $groupIds): array
+{
+    $groupIds = array_values(array_unique(array_filter(array_map('intval', $groupIds))));
+    if (!$groupIds) {
+        return [];
+    }
+    ensure_group_teachers_schema();
+    $in = implode(',', $groupIds);
+    $map = [];
+    try {
+        $rows = db()->query(
+            "SELECT cgt.group_id, u.name
+             FROM class_group_teachers cgt
+             JOIN users u ON u.id = cgt.teacher_id
+             WHERE cgt.group_id IN ($in)
+             ORDER BY u.name"
+        )->fetchAll();
+        foreach ($rows as $row) {
+            $gid = (int) $row['group_id'];
+            $map[$gid][] = (string) $row['name'];
+        }
+    } catch (Throwable) {
+    }
+    foreach ($map as $gid => $names) {
+        $map[$gid] = implode(', ', $names);
+    }
+    return $map;
+}
+
+function group_apply_teacher_labels(array $rows, string $idKey = 'id'): array
+{
+    $map = group_teachers_label_map(array_map(static fn(array $r): int => (int) ($r[$idKey] ?? 0), $rows));
+    foreach ($rows as &$r) {
+        $gid = (int) ($r[$idKey] ?? 0);
+        if ($gid > 0 && isset($map[$gid]) && $map[$gid] !== '') {
+            $r['teacher_name'] = $map[$gid];
+            $r['teacher_names'] = $map[$gid];
+            if (array_key_exists('teacher', $r)) {
+                $r['teacher'] = $map[$gid];
+            }
+        }
+    }
+    unset($r);
+    return $rows;
+}
+
+function group_posted_teacher_ids(): array
+{
+    $raw = $_POST['teacher_ids'] ?? $_POST['teacher_id'] ?? [];
+    if (!is_array($raw)) {
+        $raw = $raw !== '' && $raw !== null ? [$raw] : [];
+    }
+    $ids = [];
+    foreach ($raw as $v) {
+        $id = (int) $v;
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+    return array_values($ids);
+}
+
+function group_normalize_teacher_ids(array $ids): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    if (!$ids) {
+        return [];
+    }
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $st = db()->prepare("SELECT id FROM users WHERE role = 'ogretmen' AND id IN ($in)");
+    $st->execute($ids);
+    $ok = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    $order = array_flip($ids);
+    usort($ok, static fn(int $a, int $b): int => ($order[$a] ?? 99) <=> ($order[$b] ?? 99));
+    return $ok;
+}
+
+function group_set_teachers(int $groupId, array $ids, ?int $preferPrimary = null): void
+{
+    ensure_group_teachers_schema();
+    $ids = group_normalize_teacher_ids($ids);
+    if ($ids === []) {
+        throw new RuntimeException('En az bir hoca seçin.');
+    }
+    if ($preferPrimary && in_array($preferPrimary, $ids, true)) {
+        $ids = array_values(array_unique(array_merge([$preferPrimary], $ids)));
+    }
+    db()->prepare('DELETE FROM class_group_teachers WHERE group_id = ?')->execute([$groupId]);
+    $ins = db()->prepare('INSERT INTO class_group_teachers (group_id, teacher_id) VALUES (?,?)');
+    foreach ($ids as $tid) {
+        $ins->execute([$groupId, $tid]);
+    }
+    db()->prepare('UPDATE class_groups SET teacher_id = ? WHERE id = ?')->execute([$ids[0], $groupId]);
+}
+
+function group_teachers_field(array $teachers, array $selectedIds, string $hint = '', ?int $lockedId = null): string
+{
+    $selected = array_map('intval', $selectedIds);
+    $lockedId = $lockedId !== null ? (int) $lockedId : 0;
+    $html = '<div class="md:col-span-2">';
+    $html .= '<p class="text-sm font-bold">Hocalar</p>';
+    $html .= '<p class="mt-1 text-xs font-normal text-muted">' . e($hint !== '' ? $hint : 'Birden fazla hoca seçebilirsiniz. Ctrl gerekmez; kutuları işaretleyin.') . '</p>';
+    $html .= '<div class="mt-2 grid gap-2 sm:grid-cols-2">';
+    foreach ($teachers as $t) {
+        $id = (int) $t['id'];
+        $on = in_array($id, $selected, true) || ($lockedId > 0 && $id === $lockedId);
+        $lock = $lockedId > 0 && $id === $lockedId;
+        $html .= '<label class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-normal">';
+        if ($lock) {
+            $html .= '<input type="hidden" name="teacher_ids[]" value="' . $id . '">';
+            $html .= '<input type="checkbox" checked disabled>';
+        } else {
+            $html .= '<input type="checkbox" name="teacher_ids[]" value="' . $id . '"' . ($on ? ' checked' : '') . '>';
+        }
+        $html .= e((string) $t['name']);
+        $html .= '</label>';
+    }
+    $html .= '</div></div>';
+    return $html;
 }
 
 function grup_url(int $id): string
@@ -128,13 +327,23 @@ function group_by_id(int $id, ?int $teacherId = null): ?array
             WHERE g.id = ?';
     $args = [$id];
     if ($teacherId !== null) {
-        $sql .= ' AND g.teacher_id = ?';
+        $sql .= ' AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))';
+        $args[] = $teacherId;
         $args[] = $teacherId;
     }
     $st = db()->prepare($sql);
     $st->execute($args);
     $row = $st->fetch();
-    return $row ?: null;
+    if (!$row) {
+        return null;
+    }
+    $row['teacher_ids'] = group_teacher_ids((int) $row['id']);
+    $labels = group_teachers_label_map([(int) $row['id']]);
+    if (!empty($labels[(int) $row['id']])) {
+        $row['teacher_name'] = $labels[(int) $row['id']];
+        $row['teacher_names'] = $labels[(int) $row['id']];
+    }
+    return $row;
 }
 
 function group_list(?int $teacherId = null): array
@@ -146,7 +355,8 @@ function group_list(?int $teacherId = null): array
             JOIN users t ON t.id = g.teacher_id';
     $args = [];
     if ($teacherId !== null) {
-        $sql .= ' WHERE g.teacher_id = ?';
+        $sql .= ' WHERE (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))';
+        $args[] = $teacherId;
         $args[] = $teacherId;
     }
     $sql .= ' ORDER BY ' . catalog_order_sql('g', 'class_groups');
@@ -169,7 +379,7 @@ function group_list(?int $teacherId = null): array
         $r['next_session'] = $next[$gid] ?? null;
     }
     unset($r);
-    return $rows;
+    return group_apply_teacher_labels($rows);
 }
 
 function group_side_counts(array $ids): array
@@ -381,6 +591,12 @@ function group_normalize(array $in, bool $admin): array
         $out['program_id'] = (int) ($in['program_id'] ?? 0);
         $out['teacher_id'] = (int) ($in['teacher_id'] ?? 0);
     }
+    if (isset($in['teacher_ids']) && is_array($in['teacher_ids'])) {
+        $out['teacher_ids'] = group_normalize_teacher_ids($in['teacher_ids']);
+        if ($out['teacher_ids'] !== []) {
+            $out['teacher_id'] = (int) $out['teacher_ids'][0];
+        }
+    }
     return $out;
 }
 
@@ -398,10 +614,9 @@ function group_validate(array $data, bool $admin): string
         if (!$p->fetch()) {
             return 'Program seçin.';
         }
-        $t = db()->prepare("SELECT id FROM users WHERE id = ? AND role = 'ogretmen'");
-        $t->execute([(int) $data['teacher_id']]);
-        if (!$t->fetch()) {
-            return 'Hoca seçin.';
+        $ids = group_normalize_teacher_ids($data['teacher_ids'] ?? [(int) ($data['teacher_id'] ?? 0)]);
+        if ($ids === []) {
+            return 'En az bir hoca seçin.';
         }
     }
     return '';
@@ -433,6 +648,7 @@ function group_save(array $data, int $id = 0, bool $admin = true): int
         $sql .= ' WHERE id = ?';
         $args[] = $id;
         db()->prepare($sql)->execute($args);
+        group_save_teachers($id, $data);
         return $id;
     }
     $fields = ['program_id', 'teacher_id', 'name', 'days', 'cap'];
@@ -447,7 +663,23 @@ function group_save(array $data, int $id = 0, bool $admin = true): int
     }
     $sql = 'INSERT INTO class_groups (' . implode(', ', $fields) . ') VALUES (' . implode(', ', array_fill(0, count($fields), '?')) . ')';
     db()->prepare($sql)->execute($vals);
-    return (int) db()->lastInsertId();
+    $id = (int) db()->lastInsertId();
+    group_save_teachers($id, $data);
+    return $id;
+}
+
+function group_save_teachers(int $id, array $data): void
+{
+    $ids = $data['teacher_ids'] ?? [];
+    if (!is_array($ids) || $ids === []) {
+        $one = (int) ($data['teacher_id'] ?? 0);
+        $ids = $one > 0 ? [$one] : [];
+    }
+    if ($ids === []) {
+        return;
+    }
+    $prefer = (int) ($data['teacher_id'] ?? 0);
+    group_set_teachers($id, $ids, $prefer > 0 ? $prefer : null);
 }
 
 function group_add_student(int $groupId, int $studentId): string
@@ -551,6 +783,7 @@ function group_delete(int $id): void
         }
         db_try_exec('DELETE FROM certificates WHERE group_id = ?', [$id]);
         db_try_exec('UPDATE student_questions SET group_id = NULL WHERE group_id = ?', [$id]);
+        db_try_exec('DELETE FROM class_group_teachers WHERE group_id = ?', [$id]);
         $pdo->prepare('DELETE FROM class_groups WHERE id = ?')->execute([$id]);
         $pdo->commit();
     } catch (Throwable $e) {
@@ -584,6 +817,7 @@ function group_handle_admin_post(int $id = 0): int
             'cap' => post('cap'),
             'program_id' => post('program_id'),
             'teacher_id' => post('teacher_id'),
+            'teacher_ids' => group_posted_teacher_ids(),
         ], $admin);
         $err = group_validate($data, $admin);
         if ($err !== '') {
@@ -653,6 +887,9 @@ function group_teacher_payload(int $teacherId): array
     ], false);
     $data['program_id'] = (int) post('program_id');
     $data['teacher_id'] = $teacherId;
+    $ids = group_posted_teacher_ids();
+    $ids[] = $teacherId;
+    $data['teacher_ids'] = $ids;
     return $data;
 }
 

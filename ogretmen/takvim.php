@@ -11,7 +11,7 @@ $cursor = schedule_parse_day($_GET['t'] ?? null);
 $groups = schedule_teacher_groups((int) $u['id']);
 $editId = (int) ($_GET['duzenle'] ?? 0);
 $edit = $editId ? schedule_by_id($editId) : null;
-if ($edit && (int) $edit['teacher_id'] !== (int) $u['id']) {
+if ($edit && !group_has_teacher((int) $edit['group_id'], (int) $u['id'])) {
     $edit = null;
 }
 

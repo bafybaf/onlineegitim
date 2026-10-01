@@ -5,6 +5,7 @@ $u = require_role('ogretmen');
 group_handle_teacher_post(0, (int) $u['id']);
 $groups = group_list((int) $u['id']);
 $programs = group_programs();
+$teachers = group_teachers();
 panel_head('ogretmen', 'siniflar', 'Sınıflarım | Öğretmen Paneli', $u);
 group_flash_html();
 ?>
@@ -24,7 +25,7 @@ group_flash_html();
       <div>
         <p class="stat-label"><?= e((string) $g['program_title']) ?></p>
         <h2 class="font-display mt-1 text-2xl"><a class="hover:text-navy" href="<?= e(ogretmen_grup_url((int) $g['id'])) ?>"><?= e((string) $g['name']) ?></a></h2>
-        <p class="mt-2 text-sm text-muted"><?= e((string) $g['days']) ?></p>
+        <p class="mt-2 text-sm text-muted"><?= e((string) $g['days']) ?><?= !empty($g['teacher_name']) ? ' · ' . e((string) $g['teacher_name']) : '' ?></p>
       </div>
       <div class="text-right">
         <p class="stat-label">Kontenjan</p>
@@ -91,6 +92,7 @@ group_flash_html();
     <label class="text-sm font-bold">Kontenjan
       <input type="number" name="cap" min="1" max="80" value="10" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
     </label>
+    <?= group_teachers_field($teachers, [(int) $u['id']], 'Siz otomatik eklersiniz. İsterseniz başka hoca da işaretleyin.', (int) $u['id']) ?>
     <label class="text-sm font-bold md:col-span-2">Açıklama (isteğe bağlı)
       <textarea name="description" rows="3" maxlength="4000" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" placeholder="Grup notu, seviye veya özel açıklama"></textarea>
     </label>

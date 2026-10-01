@@ -9,6 +9,7 @@ if ($id < 1) {
 group_handle_teacher_post($id, (int) $u['id']);
 $g = group_by_id($id, (int) $u['id']);
 $programs = group_programs();
+$teachers = group_teachers();
 if (!$g) {
     groups_error('Bu sınıf size ait değil.');
     redirect('ogretmen/siniflar');
@@ -38,6 +39,7 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
     <div>
       <h2 class="font-display text-3xl"><?= e((string) $g['name']) ?></h2>
       <p class="mt-2 text-sm font-bold"><?= e((string) $g['days']) ?></p>
+      <?php if (!empty($g['teacher_name'])): ?><p class="mt-1 text-sm text-muted"><?= e((string) $g['teacher_name']) ?></p><?php endif; ?>
     </div>
     <div class="flex flex-wrap gap-2">
       <?= group_cap_html((int) $counts['n'], (int) $g['cap']) ?>
@@ -85,7 +87,7 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
 <section class="card mt-6 p-5">
   <p class="stat-label">Düzenle</p>
   <h3 class="font-display mt-1 text-xl">Grup bilgileri</h3>
-  <p class="mt-1 text-sm text-muted">Ad, program, günler ve kontenjanı buradan değiştirirsiniz. Hoca ataması sizde kalır.</p>
+  <p class="mt-1 text-sm text-muted">Ad, program, günler, kontenjan ve hocaları buradan değiştirirsiniz. Siz grupta kalırsınız.</p>
   <form method="post" class="mt-4 grid gap-3 md:grid-cols-2">
     <input type="hidden" name="action" value="save">
     <label class="text-sm font-bold">Grup adı
@@ -104,6 +106,7 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
     <label class="text-sm font-bold">Kontenjan
       <input type="number" name="cap" min="1" max="80" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) $g['cap'] ?>">
     </label>
+    <?= group_teachers_field($teachers, $g['teacher_ids'] ?? group_teacher_ids($id), 'Siz grupta kalırsınız. Başka hoca da ekleyebilirsiniz.', (int) $u['id']) ?>
     <label class="text-sm font-bold md:col-span-2">Açıklama
       <textarea name="description" rows="3" maxlength="4000" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal"><?= e((string) ($g['description'] ?? '')) ?></textarea>
     </label>

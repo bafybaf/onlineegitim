@@ -13,7 +13,7 @@ $gst = db()->prepare(
      ORDER BY g.name"
 );
 $gst->execute([(int) $u['id']]);
-$groups = $gst->fetchAll();
+$groups = group_apply_teacher_labels($gst->fetchAll());
 $allowed = [];
 foreach ($groups as $g) {
     $allowed[(int) $g['id']] = $g;

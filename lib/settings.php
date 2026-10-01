@@ -23,7 +23,8 @@ function setting(string $key, string $default = ''): string
 {
     $all = settings_all();
     $v = array_key_exists($key, $all) ? (string) $all[$key] : $default;
-    if ($v !== '' && function_exists('utf8_from_mojibake')) {
+    $secret = str_contains($key, 'pass') || str_contains($key, 'secret') || str_contains($key, 'token');
+    if ($v !== '' && !$secret && function_exists('utf8_from_mojibake')) {
         $v = utf8_from_mojibake($v);
     }
     return $v;

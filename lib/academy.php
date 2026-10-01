@@ -252,9 +252,9 @@ function admin_delete_program(int $id): void
 function academy_delete_homework(int $homeworkId, int $teacherId): void
 {
     $st = db()->prepare(
-        'SELECT h.id FROM homework h JOIN class_groups g ON g.id = h.group_id WHERE h.id = ? AND g.teacher_id = ?'
+        'SELECT h.id FROM homework h JOIN class_groups g ON g.id = h.group_id WHERE h.id = ? AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))'
     );
-    $st->execute([$homeworkId, $teacherId]);
+    $st->execute([$homeworkId, $teacherId, $teacherId]);
     if (!$st->fetch()) {
         throw new RuntimeException('Ödev bulunamadı.');
     }
@@ -315,6 +315,9 @@ function notify_group_students(int $groupId, string $title, string $body, string
 
 function teacher_groups(int $teacherId): array
 {
+    if (function_exists('group_owned_in_sql')) {
+        return db()->query('SELECT * FROM class_groups WHERE id IN (' . group_owned_in_sql($teacherId) . ') ORDER BY name')->fetchAll();
+    }
     $st = db()->prepare('SELECT * FROM class_groups WHERE teacher_id=? ORDER BY name');
     $st->execute([$teacherId]);
     return $st->fetchAll();
@@ -425,7 +428,8 @@ function student_teachers(int $studentId): array
         "SELECT DISTINCT t.id, t.name, t.slug
          FROM enrollments e
          JOIN class_groups g ON g.id = e.group_id
-         JOIN users t ON t.id = g.teacher_id
+         LEFT JOIN class_group_teachers cgt ON cgt.group_id = g.id
+         JOIN users t ON t.id = COALESCE(cgt.teacher_id, g.teacher_id)
          WHERE e.student_id = ?
          ORDER BY t.name"
     );
@@ -502,9 +506,7 @@ function academy_can_access_group_file(array $user, int $groupId): bool
         return true;
     }
     if ($role === 'ogretmen') {
-        $st = db()->prepare('SELECT id FROM class_groups WHERE id = ? AND teacher_id = ?');
-        $st->execute([$groupId, (int) $user['id']]);
-        return (bool) $st->fetch();
+        return group_has_teacher($groupId, (int) $user['id']);
     }
     if ($role === 'ogrenci') {
         return student_enrolled_group((int) $user['id'], $groupId);
@@ -567,11 +569,12 @@ function teacher_owns_student(int $teacherId, int $studentId): bool
     $st = db()->prepare(
         "SELECT e.id FROM enrollments e
          JOIN class_groups g ON g.id = e.group_id
-         WHERE g.teacher_id = ? AND e.student_id = ?
+         WHERE e.student_id = ?
+           AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))
            AND (e.status IS NULL OR e.status <> 'silindi')
          LIMIT 1"
     );
-    $st->execute([$teacherId, $studentId]);
+    $st->execute([$studentId, $teacherId, $teacherId]);
     return (bool) $st->fetch();
 }
 
@@ -586,10 +589,11 @@ function teacher_class_students(int $teacherId, ?int $groupId = null): array
             JOIN class_groups g ON g.id = e.group_id
             JOIN programs p ON p.id = g.program_id
             LEFT JOIN packages pk ON pk.id = e.package_id
-            WHERE g.teacher_id = ? AND (e.status IS NULL OR e.status <> ?)
+            WHERE (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))
+              AND (e.status IS NULL OR e.status <> ?)
             ORDER BY g.name, u.name';
     $st = db()->prepare($sql);
-    $st->execute([$teacherId, 'silindi']);
+    $st->execute([$teacherId, $teacherId, 'silindi']);
     $rows = $st->fetchAll();
     $gids = array_values(array_unique(array_map(static fn(array $r): int => (int) $r['group_id'], $rows)));
     $att = [];

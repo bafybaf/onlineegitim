@@ -24,7 +24,11 @@ $sql = "SELECT q.*, u.name sname, u.email semail, g.name gname, pr.title pname
         LEFT JOIN users u ON u.id = q.student_id
         LEFT JOIN class_groups g ON g.id = q.group_id
         LEFT JOIN programs pr ON pr.id = q.program_id
-        WHERE (q.teacher_id = ? OR q.program_id IN (SELECT program_id FROM class_groups WHERE teacher_id = ?))";
+        WHERE (q.teacher_id = ? OR q.program_id IN (
+          SELECT program_id FROM class_groups WHERE teacher_id = ?
+          UNION
+          SELECT g.program_id FROM class_groups g JOIN class_group_teachers cgt ON cgt.group_id = g.id WHERE cgt.teacher_id = ?
+        ) OR q.group_id IN (" . group_owned_in_sql((int) $u['id']) . "))";
 if ($durum === 'bekleyen') {
     $sql .= ' AND q.answered_at IS NULL';
 } elseif ($durum === 'cevapli') {
@@ -32,7 +36,7 @@ if ($durum === 'bekleyen') {
 }
 $sql .= ' ORDER BY (q.answered_at IS NULL) DESC, q.id DESC';
 $st = db()->prepare($sql);
-$st->execute([(int) $u['id'], (int) $u['id']]);
+$st->execute([(int) $u['id'], (int) $u['id'], (int) $u['id']]);
 $rows = $st->fetchAll();
 $pending = question_teacher_pending_count((int) $u['id']);
 panel_head('ogretmen', 'sorular', 'Sorular | Öğretmen Paneli', $u);

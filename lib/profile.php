@@ -300,9 +300,17 @@ function admin_delete_user(int $id, int $actorId): string
     if ($isAdmin && admin_active_admin_count($id) < 1) {
         throw new RuntimeException('Son yönetici hesabı silinemez.');
     }
+    $linked = 0;
     $groups = db()->prepare('SELECT COUNT(*) FROM class_groups WHERE teacher_id = ?');
     $groups->execute([$id]);
-    if ((int) $groups->fetchColumn() > 0) {
+    $linked += (int) $groups->fetchColumn();
+    try {
+        $st = db()->prepare('SELECT COUNT(*) FROM class_group_teachers WHERE teacher_id = ?');
+        $st->execute([$id]);
+        $linked += (int) $st->fetchColumn();
+    } catch (Throwable) {
+    }
+    if ($linked > 0) {
         throw new RuntimeException('Bu hoca gruplara bağlı. Önce grupların hocasını değiştirin veya grupları silin.');
     }
 
@@ -340,6 +348,7 @@ function admin_delete_user(int $id, int $actorId): string
     db_try_exec('DELETE FROM recordings WHERE teacher_id = ?', [$id]);
     db_try_exec('DELETE FROM live_schedule WHERE teacher_id = ?', [$id]);
     db_try_exec('DELETE FROM live_rooms WHERE teacher_id = ?', [$id]);
+    db_try_exec('DELETE FROM class_group_teachers WHERE teacher_id = ?', [$id]);
     db_try_exec('DELETE FROM addresses WHERE user_id = ?', [$id]);
 
     try {

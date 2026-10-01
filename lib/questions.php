@@ -82,7 +82,8 @@ function question_student_groups(int $studentId): array
          ORDER BY g.name"
     );
     $st->execute([$studentId]);
-    return $st->fetchAll();
+    $rows = $st->fetchAll();
+    return function_exists('group_apply_teacher_labels') ? group_apply_teacher_labels($rows) : $rows;
 }
 
 function question_open_count(int $studentId): int
@@ -97,9 +98,23 @@ function question_program_teacher_ids(int $programId): array
     if ($programId < 1) {
         return [];
     }
+    $ids = [];
     $st = db()->prepare('SELECT DISTINCT teacher_id FROM class_groups WHERE program_id = ?');
     $st->execute([$programId]);
-    return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    try {
+        $st = db()->prepare(
+            'SELECT DISTINCT cgt.teacher_id FROM class_group_teachers cgt
+             JOIN class_groups g ON g.id = cgt.group_id
+             WHERE g.program_id = ?'
+        );
+        $st->execute([$programId]);
+        foreach ($st as $row) {
+            $ids[] = (int) $row['teacher_id'];
+        }
+    } catch (Throwable) {
+    }
+    return array_values(array_unique(array_filter($ids)));
 }
 
 function question_admin_ids(): array
@@ -119,9 +134,13 @@ function question_teacher_pending_count(int $teacherId): int
         $st = db()->prepare(
             'SELECT COUNT(*) FROM student_questions
              WHERE answered_at IS NULL
-               AND (teacher_id = ? OR program_id IN (SELECT program_id FROM class_groups WHERE teacher_id = ?))'
+               AND (teacher_id = ? OR program_id IN (
+                 SELECT program_id FROM class_groups WHERE teacher_id = ?
+                 UNION
+                 SELECT g.program_id FROM class_groups g JOIN class_group_teachers cgt ON cgt.group_id = g.id WHERE cgt.teacher_id = ?
+               ) OR group_id IN (' . (function_exists('group_owned_in_sql') ? group_owned_in_sql($teacherId) : '0') . '))'
         );
-        $st->execute([$teacherId, $teacherId]);
+        $st->execute([$teacherId, $teacherId, $teacherId]);
         return (int) $st->fetchColumn();
     } catch (Throwable) {
         return 0;
@@ -160,20 +179,24 @@ function question_create(int $studentId, int $groupId, string $body): int
     if (!$row) {
         throw new RuntimeException('Bu ders için soru soramazsınız.');
     }
-    $teacherId = (int) $row['teacher_id'];
+    $teacherIds = function_exists('group_teacher_ids') ? group_teacher_ids($groupId) : [];
+    if ($teacherIds === []) {
+        $teacherIds = [(int) $row['teacher_id']];
+    }
+    $teacherId = (int) $teacherIds[0];
     db()->prepare('INSERT INTO student_questions (student_id, teacher_id, group_id, body, source) VALUES (?,?,?,?,?)')
         ->execute([$studentId, $teacherId, $groupId, $body, 'panel']);
     $id = (int) db()->lastInsertId();
     $who = (string) (current_user()['name'] ?? 'Öğrenci');
-    notify_user(
-        $teacherId,
-        'Yeni soru',
-        $who . ': ' . mb_strimwidth($body, 0, 80, '…'),
-        url('ogretmen/sorular.php?id=' . $id)
-    );
+    $snip = $who . ': ' . mb_strimwidth($body, 0, 80, '…');
+    $seen = [];
+    foreach ($teacherIds as $tid) {
+        $seen[$tid] = true;
+        notify_user($tid, 'Yeni soru', $snip, url('ogretmen/sorular.php?id=' . $id));
+    }
     foreach (question_admin_ids() as $aid) {
-        if ($aid !== $teacherId) {
-            notify_user($aid, 'Yeni soru', $who . ': ' . mb_strimwidth($body, 0, 80, '…'), url('admin/sorular.php?id=' . $id));
+        if (!isset($seen[$aid])) {
+            notify_user($aid, 'Yeni soru', $snip, url('admin/sorular.php?id=' . $id));
         }
     }
     return $id;
@@ -243,15 +266,26 @@ function question_can_answer(array $user, array $row): bool
         return false;
     }
     $tid = (int) ($user['id'] ?? 0);
-    if ($tid > 0 && (int) ($row['teacher_id'] ?? 0) === $tid) {
+    if ($tid < 1) {
+        return false;
+    }
+    if ((int) ($row['teacher_id'] ?? 0) === $tid) {
+        return true;
+    }
+    $gid = (int) ($row['group_id'] ?? 0);
+    if ($gid > 0 && function_exists('group_has_teacher') && group_has_teacher($gid, $tid)) {
         return true;
     }
     $pid = (int) ($row['program_id'] ?? 0);
-    if ($pid < 1 || $tid < 1) {
+    if ($pid < 1) {
         return false;
     }
-    $st = db()->prepare('SELECT 1 FROM class_groups WHERE program_id = ? AND teacher_id = ? LIMIT 1');
-    $st->execute([$pid, $tid]);
+    $st = db()->prepare(
+        'SELECT 1 FROM class_groups g
+         WHERE g.program_id = ? AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))
+         LIMIT 1'
+    );
+    $st->execute([$pid, $tid, $tid]);
     return (bool) $st->fetch();
 }
 

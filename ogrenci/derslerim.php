@@ -11,9 +11,10 @@ $st = db()->prepare(
      WHERE e.student_id=?"
 );
 $st->execute([(int) $u['id']]);
+$mineGroups = group_apply_teacher_labels($st->fetchAll());
 panel_head('ogrenci', 'dersler', 'Derslerim | Öğrenci Paneli', $u);
 membership_panel_banner($u);
-foreach ($st as $g) {
+foreach ($mineGroups as $g) {
     $live = db()->prepare("SELECT * FROM live_rooms WHERE group_id=? AND status='live'");
     $live->execute([$g['id']]);
     $r = $live->fetch();

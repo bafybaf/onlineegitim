@@ -12,9 +12,12 @@ $pdo = db();
 
 if ($action === 'start' && $u['role'] === 'ogretmen') {
     $gid = (int) post('group_id');
-    $st = $pdo->prepare('SELECT * FROM class_groups WHERE id = ? AND teacher_id = ?');
-    $st->execute([$gid, $u['id']]);
+    $st = $pdo->prepare('SELECT * FROM class_groups WHERE id = ?');
+    $st->execute([$gid]);
     $g = $st->fetch();
+    if ($g && !group_has_teacher($gid, (int) $u['id'])) {
+        $g = false;
+    }
     if (!$g) {
         json_out(['ok' => false, 'error' => 'group']);
     }
@@ -63,7 +66,7 @@ if ($action === 'end') {
     if (!$room) {
         json_out(['ok' => false]);
     }
-    if ($u['role'] !== 'admin' && (int) $room['teacher_id'] !== (int) $u['id']) {
+    if ($u['role'] !== 'admin' && (int) $room['teacher_id'] !== (int) $u['id'] && !group_has_teacher((int) $room['group_id'], (int) $u['id'])) {
         json_out(['ok' => false], 403);
     }
     $pdo->prepare("UPDATE live_rooms SET status='ended', ended_at=NOW(), broadcasting=0 WHERE id=?")->execute([$id]);

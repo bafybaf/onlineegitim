@@ -2,9 +2,8 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogretmen');
-$groups = db()->prepare('SELECT * FROM class_groups WHERE teacher_id=?');
-$groups->execute([$u['id']]);
-$groups = $groups->fetchAll();
+$groups = teacher_groups((int) $u['id']);
+$owned = group_owned_ids((int) $u['id']);
 $all = db()->query("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id=r.teacher_id WHERE r.status='live' ORDER BY r.id")->fetchAll();
 panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
 ?>
@@ -26,8 +25,9 @@ panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
     <?php foreach ($all as $r): ?>
       <div class="card mt-3 p-4"><?= live_pill($r) ?>
         <p class="mt-2 font-extrabold"><?= e($r['title']) ?> — <?= e($r['topic']) ?></p>
-        <p class="text-sm text-muted"><?= e($r['teacher_name']) ?><?= (int) $r['teacher_id'] === (int) $u['id'] ? ' · sizin odanız' : '' ?></p>
-        <?php if ((int) $r['teacher_id'] === (int) $u['id']): ?>
+        <?php $mineRoom = (int) $r['teacher_id'] === (int) $u['id'] || in_array((int) $r['group_id'], $owned, true); ?>
+        <p class="text-sm text-muted"><?= e($r['teacher_name']) ?><?= $mineRoom ? ' · sizin odanız' : '' ?></p>
+        <?php if ($mineRoom): ?>
           <div class="mt-3 flex gap-2"><a class="btn-primary text-sm" href="<?= e(canli_url((int) $r['id'])) ?>">Gir</a>
           <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="ogretmen/kayit-yukle.php"><button class="btn-outline text-sm">Bitir</button></form></div>
         <?php endif; ?>

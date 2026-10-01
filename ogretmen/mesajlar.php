@@ -7,9 +7,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $to = (int) post('student_id');
     $body = post('body');
     $chk = db()->prepare(
-        'SELECT e.student_id FROM enrollments e JOIN class_groups g ON g.id=e.group_id WHERE e.student_id=? AND g.teacher_id=?'
+        'SELECT e.student_id FROM enrollments e JOIN class_groups g ON g.id=e.group_id WHERE e.student_id=? AND (g.teacher_id=? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id=g.id AND cgt.teacher_id=?))'
     );
-    $chk->execute([$to, (int) $u['id']]);
+    $chk->execute([$to, (int) $u['id'], (int) $u['id']]);
     if ($chk->fetch() && $body !== '') {
         db()->prepare('INSERT INTO messages (thread_user_id, from_user_id, teacher_id, body) VALUES (?,?,?,?)')
             ->execute([$to, (int) $u['id'], (int) $u['id'], $body]);
@@ -22,12 +22,12 @@ $threads = db()->prepare(
      FROM messages m
      JOIN users u ON u.id = m.thread_user_id
      WHERE m.teacher_id = ? OR (m.teacher_id IS NULL AND (m.from_user_id = ? OR m.thread_user_id IN (
-       SELECT e.student_id FROM enrollments e JOIN class_groups g ON g.id=e.group_id WHERE g.teacher_id=?
+       SELECT e.student_id FROM enrollments e JOIN class_groups g ON g.id=e.group_id WHERE g.teacher_id=? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id=g.id AND cgt.teacher_id=?)
      )))
      GROUP BY u.id, u.name, u.email
      ORDER BY last_id DESC"
 );
-$threads->execute([(int) $u['id'], (int) $u['id'], (int) $u['id']]);
+$threads->execute([(int) $u['id'], (int) $u['id'], (int) $u['id'], (int) $u['id']]);
 $threads = $threads->fetchAll();
 if ($sid < 1 && $threads) {
     $sid = (int) $threads[0]['id'];

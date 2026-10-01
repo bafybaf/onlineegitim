@@ -13,9 +13,12 @@ if (!$h) {
     exit;
 }
 $groups = db()->prepare(
-    'SELECT g.*, p.title program_title, p.slug program_slug FROM class_groups g JOIN programs p ON p.id=g.program_id WHERE g.teacher_id=? ORDER BY g.name'
+    'SELECT g.*, p.title program_title, p.slug program_slug FROM class_groups g
+     JOIN programs p ON p.id=g.program_id
+     WHERE g.teacher_id=? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?)
+     ORDER BY g.name'
 );
-$groups->execute([(int) $h['id']]);
+$groups->execute([(int) $h['id'], (int) $h['id']]);
 $groups = $groups->fetchAll();
 $upcoming = [];
 if (function_exists('schedule_fetch')) {

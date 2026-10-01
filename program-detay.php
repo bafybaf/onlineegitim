@@ -22,7 +22,7 @@ if (!$p) {
 }
 $groups = db()->prepare('SELECT g.*, t.name teacher, (SELECT COUNT(*) FROM enrollments e WHERE e.group_id = g.id) n FROM class_groups g JOIN users t ON t.id = g.teacher_id WHERE g.program_id = ? ORDER BY ' . catalog_order_sql('g', 'class_groups'));
 $groups->execute([(int) $p['id']]);
-$groups = $groups->fetchAll();
+$groups = group_apply_teacher_labels($groups->fetchAll());
 $u = current_user();
 $body = catalog_body('program', (string) $p['slug'], (string) $p['description']);
 $paras = catalog_paragraphs($body);

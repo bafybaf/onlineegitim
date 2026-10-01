@@ -78,14 +78,7 @@ group_flash_html();
         <?php endforeach; ?>
       </select>
     </label>
-    <label class="text-sm font-bold">Hoca
-      <select name="teacher_id" required class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
-        <option value="">Seçin</option>
-        <?php foreach ($teachers as $t): ?>
-          <option value="<?= (int) $t['id'] ?>"><?= e((string) $t['name']) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </label>
+    <?= group_teachers_field($teachers, []) ?>
     <label class="text-sm font-bold">Kontenjan
       <input type="number" name="cap" min="1" max="80" value="10" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
     </label>

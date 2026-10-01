@@ -2,23 +2,20 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogretmen');
-$groups = db()->prepare('SELECT * FROM class_groups WHERE teacher_id=?');
-$groups->execute([$u['id']]);
-$groups = $groups->fetchAll();
+$groups = teacher_groups((int) $u['id']);
 $mine = db()->prepare("SELECT * FROM live_rooms WHERE teacher_id=? AND status='live'");
 $mine->execute([$u['id']]);
 $mine = $mine->fetchAll();
 $others = db()->prepare("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id=r.teacher_id WHERE r.status='live' AND r.teacher_id<>?");
 $others->execute([$u['id']]);
-$nStu = db()->prepare('SELECT COUNT(DISTINCT e.student_id) FROM enrollments e JOIN class_groups g ON g.id=e.group_id WHERE g.teacher_id=?');
-$nStu->execute([$u['id']]);
+$nStu = db()->query('SELECT COUNT(DISTINCT e.student_id) FROM enrollments e JOIN class_groups g ON g.id=e.group_id WHERE g.id IN (' . group_owned_in_sql((int) $u['id']) . ')')->fetchColumn();
 $allLive = (int) db()->query("SELECT COUNT(*) FROM live_rooms WHERE status='live'")->fetchColumn();
 $qPending = function_exists('question_teacher_pending_count') ? question_teacher_pending_count((int) $u['id']) : 0;
 panel_head('ogretmen', 'dashboard', 'Özet | Öğretmen Paneli', $u);
 ?>
 <div class="grid gap-4 md:grid-cols-5">
   <div class="stat"><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Sınıf</p><p class="font-display mt-1 text-2xl"><?= count($groups) ?> grup</p></div>
-  <div class="stat"><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Öğrenci</p><p class="font-display mt-1 text-2xl"><?= (int) $nStu->fetchColumn() ?></p></div>
+  <div class="stat"><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Öğrenci</p><p class="font-display mt-1 text-2xl"><?= (int) $nStu ?></p></div>
   <div class="stat"><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Sizin açık odalar</p><p class="font-display mt-1 text-2xl"><?= count($mine) ?></p></div>
   <div class="stat"><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Sistemde eşzamanlı</p><p class="font-display mt-1 text-2xl"><?= $allLive ?></p></div>
   <div class="stat"><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Bekleyen soru</p><p class="font-display mt-1 text-2xl"><?= $qPending ?></p><a class="mt-2 inline-block text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/sorular')) ?>">Sorular →</a></div>

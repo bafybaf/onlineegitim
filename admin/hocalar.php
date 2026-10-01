@@ -11,10 +11,18 @@ $liveRooms = [];
 if ($hocalar) {
     $ids = array_map(static fn(array $t): int => (int) $t['id'], $hocalar);
     $in = implode(',', array_fill(0, count($ids), '?'));
-    $st = db()->prepare("SELECT teacher_id, COUNT(*) n FROM class_groups WHERE teacher_id IN ($in) GROUP BY teacher_id");
-    $st->execute($ids);
-    foreach ($st as $row) {
-        $groupN[(int) $row['teacher_id']] = (int) $row['n'];
+    try {
+        $st = db()->prepare("SELECT teacher_id, COUNT(*) n FROM class_group_teachers WHERE teacher_id IN ($in) GROUP BY teacher_id");
+        $st->execute($ids);
+        foreach ($st as $row) {
+            $groupN[(int) $row['teacher_id']] = (int) $row['n'];
+        }
+    } catch (Throwable) {
+        $st = db()->prepare("SELECT teacher_id, COUNT(*) n FROM class_groups WHERE teacher_id IN ($in) GROUP BY teacher_id");
+        $st->execute($ids);
+        foreach ($st as $row) {
+            $groupN[(int) $row['teacher_id']] = (int) $row['n'];
+        }
     }
     $st = db()->prepare("SELECT id, teacher_id, title, started_at FROM live_rooms WHERE teacher_id IN ($in) AND status='live'");
     $st->execute($ids);

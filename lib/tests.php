@@ -1,6 +1,9 @@
 <?php
 function teacher_owns_group(int $teacherId, int $groupId): bool
 {
+    if (function_exists('group_has_teacher')) {
+        return group_has_teacher($groupId, $teacherId);
+    }
     $st = db()->prepare('SELECT id FROM class_groups WHERE id=? AND teacher_id=?');
     $st->execute([$groupId, $teacherId]);
     return (bool) $st->fetch();
@@ -8,9 +11,16 @@ function teacher_owns_group(int $teacherId, int $groupId): bool
 
 function teacher_test(int $testId, int $teacherId): ?array
 {
-    $st = db()->prepare('SELECT t.*, g.name gname FROM tests t JOIN class_groups g ON g.id=t.group_id WHERE t.id=? AND t.teacher_id=? AND g.teacher_id=?');
-    $st->execute([$testId, $teacherId, $teacherId]);
-    return $st->fetch() ?: null;
+    $st = db()->prepare('SELECT t.*, g.name gname FROM tests t JOIN class_groups g ON g.id=t.group_id WHERE t.id=?');
+    $st->execute([$testId]);
+    $row = $st->fetch();
+    if (!$row) {
+        return null;
+    }
+    if ((int) $row['teacher_id'] === $teacherId || teacher_owns_group($teacherId, (int) $row['group_id'])) {
+        return $row;
+    }
+    return null;
 }
 
 function student_published_test(int $testId, int $studentId): ?array

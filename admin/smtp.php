@@ -13,6 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($pass === '') {
             $pass = setting('smtp_pass');
         }
+        $host = trim(post('smtp_host'));
+        if (function_exists('mail_is_gmail_host') && mail_is_gmail_host($host)) {
+            $pass = preg_replace('/\s+/', '', $pass) ?? $pass;
+        }
         $port = (string) max(1, min(65535, (int) post('smtp_port') ?: 587));
         $enc = post('smtp_encryption');
         if (!in_array($enc, ['tls', 'ssl', 'none'], true)) {
@@ -20,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $pairs = [
             'smtp_enabled' => isset($_POST['smtp_enabled']) ? '1' : '0',
-            'smtp_host' => post('smtp_host'),
+            'smtp_host' => $host,
             'smtp_port' => $port,
             'smtp_user' => post('smtp_user'),
             'smtp_pass' => $pass,
@@ -39,7 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $html = mail_wrap('SMTP test', '<p>Bu bir test e-postasıdır. SMTP ayarlarınız çalışıyor.</p>');
         $testOk = send_mail($to, 'SMTP test · Online İlahiyat', $html, 'SMTP test e-postası.');
         if (!$testOk) {
-            $err = 'Test gönderilemedi. SMTP bilgilerini kontrol edin. Formlar yine de veritabanına kaydedilir.';
+            $detail = function_exists('mail_last_error') ? mail_last_error() : '';
+            $err = $detail !== ''
+                ? $detail
+                : 'Test gönderilemedi. SMTP bilgilerini kontrol edin. Formlar yine de veritabanına kaydedilir.';
         }
     }
 }
@@ -52,6 +59,11 @@ panel_head('admin', 'smtp', 'SMTP ayarları | Admin', $u);
   <form method="post" class="card grid gap-4 p-6">
     <input type="hidden" name="action" value="save">
     <p class="text-sm text-muted">İletişim, “Sizi arayalım” ve yeni kayıt bildirimleri PHPMailer ile bu hesaptan gider. SMTP kapalıysa formlar yalnızca veritabanına yazılır.</p>
+    <div class="rounded-xl bg-soft p-3 text-xs text-muted">
+      <p class="font-extrabold text-navy">Gmail için</p>
+      <p class="mt-1">Sunucu: <b>smtp.gmail.com</b> · Port: <b>587</b> · Şifreleme: <b>TLS</b></p>
+      <p class="mt-1">Kullanıcı ve gönderen: aynı Gmail adresi. Şifre: Google hesap şifresi değil, <b>Uygulama şifresi</b> (Google Hesabı → Güvenlik → 2 adımlı doğrulama → Uygulama şifreleri).</p>
+    </div>
     <label class="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="smtp_enabled" value="1" <?= setting_bool('smtp_enabled') ? 'checked' : '' ?>> SMTP ile e-posta gönder</label>
     <label class="text-sm font-bold">Sunucu (host)
       <input name="smtp_host" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="smtp.gmail.com" value="<?= e(setting('smtp_host')) ?>" autocomplete="off">

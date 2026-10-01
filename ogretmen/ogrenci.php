@@ -22,10 +22,10 @@ try {
          FROM attendance a
          JOIN live_rooms r ON r.id = a.room_id
          JOIN class_groups g ON g.id = r.group_id
-         WHERE a.student_id = ? AND g.teacher_id = ?
+         WHERE a.student_id = ? AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))
          ORDER BY r.started_at DESC LIMIT 12"
     );
-    $as->execute([$id, (int) $u['id']]);
+    $as->execute([$id, (int) $u['id'], (int) $u['id']]);
     $att = $as->fetchAll();
 } catch (Throwable) {
 }
@@ -36,10 +36,10 @@ try {
          FROM homework_subs s
          JOIN homework h ON h.id = s.homework_id
          JOIN class_groups g ON g.id = h.group_id
-         WHERE s.student_id = ? AND g.teacher_id = ?
+         WHERE s.student_id = ? AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))
          ORDER BY h.id DESC LIMIT 12"
     );
-    $hs->execute([$id, (int) $u['id']]);
+    $hs->execute([$id, (int) $u['id'], (int) $u['id']]);
     $hw = $hs->fetchAll();
 } catch (Throwable) {
 }
@@ -50,10 +50,10 @@ try {
          FROM test_attempts a
          JOIN tests t ON t.id = a.test_id
          JOIN class_groups g ON g.id = t.group_id
-         WHERE a.student_id = ? AND g.teacher_id = ? AND a.submitted_at IS NOT NULL
+         WHERE a.student_id = ? AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?)) AND a.submitted_at IS NOT NULL
          ORDER BY a.submitted_at DESC LIMIT 12"
     );
-    $ts->execute([$id, (int) $u['id']]);
+    $ts->execute([$id, (int) $u['id'], (int) $u['id']]);
     $tests = $ts->fetchAll();
 } catch (Throwable) {
 }

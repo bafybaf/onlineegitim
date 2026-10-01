@@ -15,6 +15,10 @@ if (post('delete_id')) {
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('title')) {
         $gid = (int) post('group_id');
+        if (!group_has_teacher($gid, (int) $u['id'])) {
+            flash_error('Bu grup size ait değil.');
+            redirect('ogretmen/odevler.php');
+        }
         db()->prepare('INSERT INTO homework (group_id, title, due_label, created_by) VALUES (?,?,?,?)')->execute([$gid, post('title'), post('due') ?: 'Bu hafta', $u['id']]);
     $hid = (int) db()->lastInsertId();
     $stu = db()->prepare('SELECT student_id FROM enrollments WHERE group_id=?');
@@ -30,9 +34,7 @@ if (post('ok')) {
     db()->prepare("UPDATE homework_subs SET status='ok' WHERE homework_id=? AND student_id=?")->execute([(int) post('hid'), (int) post('sid')]);
     redirect('ogretmen/odevler.php');
 }
-$groups = db()->prepare('SELECT * FROM class_groups WHERE teacher_id=?');
-$groups->execute([$u['id']]);
-$groups = $groups->fetchAll();
+$groups = teacher_groups((int) $u['id']);
 $gids = array_column($groups, 'id') ?: [0];
 $hw = db()->query('SELECT h.*, g.name gname FROM homework h JOIN class_groups g ON g.id=h.group_id WHERE h.group_id IN (' . implode(',', array_map('intval', $gids)) . ') ORDER BY h.id DESC')->fetchAll();
 panel_head('ogretmen', 'odevler', 'Ödevler | Öğretmen Paneli', $u);

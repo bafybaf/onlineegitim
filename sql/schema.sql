@@ -61,6 +61,15 @@ CREATE TABLE class_groups (
   CONSTRAINT fk_g_teach FOREIGN KEY (teacher_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE class_group_teachers (
+  group_id INT UNSIGNED NOT NULL,
+  teacher_id INT UNSIGNED NOT NULL,
+  PRIMARY KEY (group_id, teacher_id),
+  KEY idx_cgt_teacher (teacher_id),
+  CONSTRAINT fk_cgt_group FOREIGN KEY (group_id) REFERENCES class_groups(id) ON DELETE CASCADE,
+  CONSTRAINT fk_cgt_teach FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE packages (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   kind ENUM('magaza','ders') NOT NULL DEFAULT 'ders',

@@ -69,8 +69,13 @@ $ok = flash_ok();
 $groups = [];
 $liveN = 0;
 if (!$isNew) {
-    $gs = db()->prepare('SELECT g.id, g.name, p.title program_title FROM class_groups g JOIN programs p ON p.id = g.program_id WHERE g.teacher_id = ? ORDER BY p.title, g.name');
-    $gs->execute([$id]);
+    $gs = db()->prepare(
+        'SELECT g.id, g.name, p.title program_title FROM class_groups g
+         JOIN programs p ON p.id = g.program_id
+         WHERE g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?)
+         ORDER BY p.title, g.name'
+    );
+    $gs->execute([$id, $id]);
     $groups = $gs->fetchAll();
     $lv = db()->prepare("SELECT COUNT(*) FROM live_rooms WHERE teacher_id = ? AND status = 'live'");
     $lv->execute([$id]);

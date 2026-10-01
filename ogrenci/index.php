@@ -7,7 +7,7 @@ $lives->execute([$u['id']]);
 $lives = $lives->fetchAll();
 $groups = db()->prepare("SELECT g.*, t.name teacher_name, e.progress FROM enrollments e JOIN class_groups g ON g.id=e.group_id JOIN users t ON t.id=g.teacher_id WHERE e.student_id=? AND (e.status='aktif' OR e.status IS NULL) AND (e.expires_at IS NULL OR e.expires_at > NOW())");
 $groups->execute([$u['id']]);
-$groups = $groups->fetchAll();
+$groups = group_apply_teacher_labels($groups->fetchAll());
 $openHw = db()->prepare("SELECT COUNT(*) FROM homework_subs s JOIN homework h ON h.id=s.homework_id JOIN enrollments e ON e.group_id=h.group_id AND e.student_id=s.student_id WHERE s.student_id=? AND s.status='open'");
 $openHw->execute([$u['id']]);
 $hwN = (int) $openHw->fetchColumn();

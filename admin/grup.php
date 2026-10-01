@@ -57,8 +57,8 @@ panel_head('admin', 'gruplar', (string) $g['name'] . ' | Grup | Admin', $u);
     <p class="stat-value text-xl"><?= (int) $counts['n'] ?> / <?= (int) $g['cap'] ?></p>
   </div>
   <div class="stat">
-    <p class="stat-label">Hoca</p>
-    <p class="stat-value text-xl"><?= e((string) $g['teacher_name']) ?></p>
+      <p class="stat-label">Hoca</p>
+    <p class="stat-value text-xl"><?= e((string) ($g['teacher_names'] ?? $g['teacher_name'])) ?></p>
     <p class="stat-hint"><?= e((string) ($g['teacher_phone'] ?: $g['teacher_email'] ?: '')) ?></p>
   </div>
   <div class="stat">
@@ -89,13 +89,7 @@ panel_head('admin', 'gruplar', (string) $g['name'] . ' | Grup | Admin', $u);
         <?php endforeach; ?>
       </select>
     </label>
-    <label class="text-sm font-bold">Hoca
-      <select name="teacher_id" required class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
-        <?php foreach ($teachers as $t): ?>
-          <option value="<?= (int) $t['id'] ?>" <?= (int) $t['id'] === (int) $g['teacher_id'] ? 'selected' : '' ?>><?= e((string) $t['name']) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </label>
+    <?= group_teachers_field($teachers, $g['teacher_ids'] ?? group_teacher_ids($id)) ?>
     <label class="text-sm font-bold">Kontenjan
       <input type="number" name="cap" min="1" max="80" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) $g['cap'] ?>">
     </label>
