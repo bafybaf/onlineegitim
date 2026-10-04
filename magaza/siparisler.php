@@ -42,7 +42,7 @@ panel_head('musteri', 'siparisler', 'Siparişlerim | Mağaza', $u);
 <p class="mb-5 text-sm text-muted">Kitap ve eğitim siparişlerinizin ödeme, teslimat ve güncel durumu.</p>
 <?php if (!$orders): ?>
   <div class="card">
-    <?php shop_empty('Henüz siparişiniz yok', 'Ödeme sonrası siparişler burada görünür. Kargo ve dijital teslim ayrı izlenir.', page_url('kitaplar'), 'Mağazadan kitap al'); ?>
+    <?php shop_empty('Henüz siparişiniz yok', 'Ödeme sonrası siparişler burada görünür.', shop_books_visible() ? page_url('kitaplar') : page_url('programlar'), shop_books_visible() ? 'Mağazadan kitap al' : 'Eğitimlere bak'); ?>
   </div>
 <?php else: ?>
   <div class="grid gap-4">

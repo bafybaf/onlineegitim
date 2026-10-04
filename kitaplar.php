@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
+shop_books_require_visible();
 $catSlug = trim((string) ($_GET['kategori'] ?? ''));
 $cats = shop_categories();
 $activeCat = $catSlug !== '' ? shop_category_by_slug($catSlug) : null;

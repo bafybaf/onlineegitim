@@ -26,7 +26,7 @@ $groups = group_apply_teacher_labels($groups->fetchAll());
 $u = current_user();
 $body = catalog_body('program', (string) $p['slug'], (string) $p['description']);
 $paras = catalog_paragraphs($body);
-$relatedSlug = catalog_related_book_slug((string) $p['slug']);
+$relatedSlug = shop_books_visible() ? catalog_related_book_slug((string) $p['slug']) : '';
 $related = null;
 if ($relatedSlug !== '') {
     $bst = db()->prepare('SELECT * FROM books WHERE slug = ?');

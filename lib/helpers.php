@@ -79,6 +79,9 @@ function flash_ok(?string $msg = null): string
 
 function cart(): array
 {
+    if (function_exists('shop_books_visible') && !shop_books_visible()) {
+        return [];
+    }
     return $_SESSION['cart'] ?? [];
 }
 
@@ -102,6 +105,10 @@ function cart_count(): int
 
 function cart_set(int $bookId, int $qty): void
 {
+    if (function_exists('shop_books_visible') && !shop_books_visible()) {
+        $_SESSION['cart'] = [];
+        return;
+    }
     if (!isset($_SESSION['cart'])) {
         $_SESSION['cart'] = [];
     }

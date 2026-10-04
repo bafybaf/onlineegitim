@@ -386,7 +386,7 @@ function payment_success_href(array $payment): string
     return match ($payment['kind'] ?? '') {
         'uyelik_ders', 'program' => url('ogrenci/index.php'),
         'uyelik_magaza' => url('magaza/index.php'),
-        default => url('magaza/kitaplarim.php'),
+        default => shop_books_visible() ? url('magaza/kitaplarim.php') : url('magaza/index.php'),
     };
 }
 

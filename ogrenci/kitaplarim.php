@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogrenci');
+if (!shop_books_visible()) {
+    redirect('ogrenci');
+}
 $st = db()->prepare(
     'SELECT sb.id, b.title, sb.status, sb.kind, b.is_digital FROM student_books sb JOIN books b ON b.id=sb.book_id WHERE sb.user_id=?'
 );

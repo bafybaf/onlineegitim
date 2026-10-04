@@ -11,9 +11,12 @@ $groups = group_apply_teacher_labels($groups->fetchAll());
 $openHw = db()->prepare("SELECT COUNT(*) FROM homework_subs s JOIN homework h ON h.id=s.homework_id JOIN enrollments e ON e.group_id=h.group_id AND e.student_id=s.student_id WHERE s.student_id=? AND s.status='open'");
 $openHw->execute([$u['id']]);
 $hwN = (int) $openHw->fetchColumn();
-$books = db()->prepare('SELECT b.title, sb.status FROM student_books sb JOIN books b ON b.id=sb.book_id WHERE sb.user_id=?');
-$books->execute([$u['id']]);
-$books = $books->fetchAll();
+$books = [];
+if (shop_books_visible()) {
+    $booksSt = db()->prepare('SELECT b.title, sb.status FROM student_books sb JOIN books b ON b.id=sb.book_id WHERE sb.user_id=?');
+    $booksSt->execute([$u['id']]);
+    $books = $booksSt->fetchAll();
+}
 $prog = $groups ? (int) round(array_sum(array_column($groups, 'progress')) / count($groups)) : 0;
 $ad = trim((string) explode(' ', (string) $u['name'], 2)[0]);
 $mem = live_membership_state($u, $groups ? user_enrollments((int) $u['id']) : []);
@@ -157,6 +160,7 @@ membership_panel_banner($u);
 </section>
 <?php endif; ?>
 
+<?php if (shop_books_visible()): ?>
 <section class="card dash-card dash-books">
   <div class="flex items-center justify-between gap-3">
     <div>
@@ -175,4 +179,5 @@ membership_panel_banner($u);
     </ul>
   <?php endif; ?>
 </section>
+<?php endif; ?>
 <?php panel_foot();

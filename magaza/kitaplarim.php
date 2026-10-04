@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('musteri');
+if (!shop_books_visible()) {
+    redirect('magaza');
+}
 
 $st = db()->prepare(
     'SELECT sb.id, sb.status, sb.kind, b.id book_id, b.title, b.slug, b.author, b.is_digital, b.pages

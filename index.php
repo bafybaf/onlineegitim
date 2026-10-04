@@ -2,7 +2,9 @@
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
 $progs = public_programs();
-$books = db()->query('SELECT b.*, c.name AS category_name, c.slug AS category_slug FROM books b LEFT JOIN categories c ON c.id = b.category_id ORDER BY ' . catalog_order_sql('b', 'books') . ' LIMIT 4')->fetchAll();
+$books = shop_books_visible()
+    ? db()->query('SELECT b.*, c.name AS category_name, c.slug AS category_slug FROM books b LEFT JOIN categories c ON c.id = b.category_id ORDER BY ' . catalog_order_sql('b', 'books') . ' LIMIT 4')->fetchAll()
+    : [];
 $homePosts = [];
 try {
     $homePosts = db()->query('SELECT slug, title, created_at FROM posts WHERE published=1 ORDER BY ' . catalog_order_sql('', 'posts') . ' LIMIT 3')->fetchAll();
@@ -21,7 +23,7 @@ if (!empty($_SESSION['flash'])) {
     echo '<p class="mx-auto max-w-7xl px-4 pt-4 font-bold text-accent lg:px-8">' . e($_SESSION['flash']) . '</p>';
     unset($_SESSION['flash']);
 }
-if ($campBanner):
+if ($campBanner && shop_books_visible()):
     $campHref = kitaplar_url();
 ?>
 <section class="bg-navy text-accent">
@@ -91,6 +93,7 @@ if ($campBanner):
     </div>
   </div>
 </section>
+<?php if ($books): ?>
 <section class="bg-soft py-16">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">
     <div class="flex items-end justify-between gap-4">
@@ -115,6 +118,7 @@ if ($campBanner):
     </div>
   </div>
 </section>
+<?php endif; ?>
 <?php if ($homePosts): ?>
 <section class="py-16">
   <div class="mx-auto max-w-7xl px-4 lg:px-8">

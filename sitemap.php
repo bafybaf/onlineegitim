@@ -5,7 +5,6 @@ $base = rtrim(canonical_base(), '/');
 $urls = [
     $base . '/',
     page_url('programlar'),
-    page_url('kitaplar'),
     page_url('kadro'),
     page_url('blog'),
     page_url('iletisim'),
@@ -14,12 +13,17 @@ $urls = [
     page_url('kayit-ders'),
     page_url('kayit-magaza'),
 ];
+if (shop_books_visible()) {
+    $urls[] = page_url('kitaplar');
+}
 foreach (db()->query('SELECT slug FROM programs')->fetchAll() as $p) {
     $urls[] = page_url('program', (string) $p['slug']);
 }
 try {
-    foreach (db()->query('SELECT slug FROM books')->fetchAll() as $b) {
-        $urls[] = page_url('kitap', (string) $b['slug']);
+    if (shop_books_visible()) {
+        foreach (db()->query('SELECT slug FROM books')->fetchAll() as $b) {
+            $urls[] = page_url('kitap', (string) $b['slug']);
+        }
     }
 } catch (Throwable) {
 }

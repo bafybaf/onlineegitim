@@ -1,5 +1,18 @@
 <?php
 
+function shop_books_visible(): bool
+{
+    return function_exists('setting_bool') && setting_bool('shop_books_visible', false);
+}
+
+function shop_books_require_visible(): void
+{
+    if (shop_books_visible()) {
+        return;
+    }
+    redirect('');
+}
+
 function admin_delete_book(int $id): void
 {
     $st = db()->prepare('SELECT id FROM books WHERE id = ?');

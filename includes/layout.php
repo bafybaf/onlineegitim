@@ -77,7 +77,9 @@ function public_head(string $title, string $desc = ''): void
       <?php foreach (nav_exam_menus() as $exam): ?>
       <a class="nav-link flex items-center" href="<?= e(page_url('program', $exam['slug'])) ?>"><?= e($exam['label']) ?></a>
       <?php endforeach; ?>
+      <?php if (shop_books_visible()): ?>
       <a class="nav-link flex items-center" href="<?= e(page_url('kitaplar')) ?>">Kitaplarımız</a>
+      <?php endif; ?>
       <a class="nav-link flex items-center" href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a class="nav-link flex items-center" href="<?= e(page_url('iletisim')) ?>">İletişim</a>
     </nav>
@@ -98,14 +100,18 @@ function public_head(string $title, string $desc = ''): void
         <div class="nav-item account-dd hidden lg:flex">
           <a class="btn-primary h-10 px-4 text-sm" href="<?= e(page_url('kayit')) ?>">Kayıt Ol</a>
           <div class="mega"><div class="mega-panel">
+            <?php if (shop_books_visible()): ?>
             <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('kayit-magaza')) ?>">Mağaza kaydı</a>
+            <?php endif; ?>
             <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('kayit-ders')) ?>">Ders kaydı</a>
           </div></div>
         </div>
         <div class="nav-item account-dd hidden lg:flex">
           <a class="flex h-10 items-center rounded-xl px-3 text-sm font-extrabold text-navy" href="<?= e(page_url('giris')) ?>">Giriş</a>
           <div class="mega"><div class="mega-panel">
+            <?php if (shop_books_visible()): ?>
             <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a>
+            <?php endif; ?>
             <a class="block rounded-lg px-3 py-2 text-sm font-bold hover:bg-soft" href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a>
           </div></div>
         </div>
@@ -126,7 +132,9 @@ function public_head(string $title, string $desc = ''): void
       <?php foreach (nav_exam_menus() as $exam): ?>
       <a href="<?= e(page_url('program', $exam['slug'])) ?>"><?= e($exam['label']) ?></a>
       <?php endforeach; ?>
+      <?php if (shop_books_visible()): ?>
       <a href="<?= e(page_url('kitaplar')) ?>">Kitaplarımız</a>
+      <?php endif; ?>
       <a href="<?= e(page_url('blog')) ?>">Duyurular</a>
       <a href="<?= e(page_url('iletisim')) ?>">İletişim</a>
       <?php if ($u && membership_needs_pay($u)): ?>
@@ -137,9 +145,13 @@ function public_head(string $title, string $desc = ''): void
       <?php elseif ($u): ?>
         <a href="<?= e(url(panel_home($u['role']))) ?>" class="btn-primary mt-2">Panelim</a>
       <?php else: ?>
+        <?php if (shop_books_visible()): ?>
         <a href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a>
+        <?php endif; ?>
         <a href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a>
+        <?php if (shop_books_visible()): ?>
         <a href="<?= e(page_url('kayit-magaza')) ?>">Mağaza kaydı</a>
+        <?php endif; ?>
         <a href="<?= e(page_url('kayit-ders')) ?>" class="btn-primary mt-2">Ders kaydı</a>
       <?php endif; ?>
     </div>
@@ -157,7 +169,7 @@ function public_foot(): void
       <p>
         <img src="<?= e(brand_logo_url('logo_footer.png')) ?>" alt="Online İlahiyat" class="footer-logo">
       </p>
-      <p class="site-footer-lead">Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.</p>
+      <p class="site-footer-lead"><?= shop_books_visible() ? 'Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.' : 'Canlı ilahiyat dersleri ve küçük gruplar. Evden, gerçek takip ile.' ?></p>
       <p class="site-footer-mail">info@onlineilahiyat.com</p>
     </div>
     <div>
@@ -169,12 +181,16 @@ function public_foot(): void
       </div>
     </div>
     <div>
-      <p class="site-footer-label">Mağaza &amp; Sistem</p>
+      <p class="site-footer-label"><?= shop_books_visible() ? 'Mağaza &amp; Sistem' : 'Sistem' ?></p>
       <div class="site-footer-links">
+        <?php if (shop_books_visible()): ?>
         <a href="<?= e(page_url('kitaplar')) ?>">Kitaplar</a>
         <a href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a>
+        <?php endif; ?>
         <a href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a>
+        <?php if (shop_books_visible()): ?>
         <a href="<?= e(page_url('kayit-magaza')) ?>">Mağaza kaydı</a>
+        <?php endif; ?>
         <a href="<?= e(page_url('kayit-ders')) ?>">Ders kaydı</a>
       </div>
     </div>
@@ -250,7 +266,7 @@ function panel_nav(string $role, string $page): array
             ['label' => 'Hesap', 'items' => [
                 ['id' => 'hesap', 'href' => 'ogrenci/hesap', 'label' => 'Hesabım', 'icon' => 'user'],
                 ['id' => 'uyelik', 'href' => 'uyelik-ders', 'label' => 'Üyelik al', 'icon' => 'card'],
-                ['id' => 'kitaplar', 'href' => 'ogrenci/kitaplarim', 'label' => 'Kitaplarım', 'icon' => 'library'],
+                ...(shop_books_visible() ? [['id' => 'kitaplar', 'href' => 'ogrenci/kitaplarim', 'label' => 'Kitaplarım', 'icon' => 'library']] : []),
                 ['id' => 'mesajlar', 'href' => 'ogrenci/mesajlar', 'label' => 'Mesajlar', 'icon' => 'mail'],
                 ['id' => 'bildirimler', 'href' => 'ogrenci/bildirimler', 'label' => 'Bildirimler', 'icon' => 'mail', 'badge' => function_exists('academy_unread_count') ? academy_unread_count((int) (current_user()['id'] ?? 0)) : 0],
             ]],
@@ -287,7 +303,7 @@ function panel_nav(string $role, string $page): array
                 ['id' => 'dashboard', 'href' => 'magaza', 'label' => 'Hesabım', 'icon' => 'home'],
                 ['id' => 'siparisler', 'href' => 'magaza/siparisler', 'label' => 'Siparişlerim', 'icon' => 'bag'],
                 ['id' => 'bildirimler', 'href' => 'magaza/bildirimler', 'label' => 'Bildirimler', 'icon' => 'mail', 'badge' => function_exists('academy_unread_count') ? academy_unread_count((int) (current_user()['id'] ?? 0)) : 0],
-                ['id' => 'kitaplar', 'href' => 'magaza/kitaplarim', 'label' => 'Kitaplarım', 'icon' => 'library'],
+                ...(shop_books_visible() ? [['id' => 'kitaplar', 'href' => 'magaza/kitaplarim', 'label' => 'Kitaplarım', 'icon' => 'library']] : []),
                 ['id' => 'egitimler', 'href' => 'magaza/egitimlerim', 'label' => 'Eğitimlerim', 'icon' => 'layers'],
                 ['id' => 'adresler', 'href' => 'magaza/adresler', 'label' => 'Adresler', 'icon' => 'pin'],
                 ['id' => 'profil', 'href' => 'magaza/profil', 'label' => 'Profilim', 'icon' => 'user'],

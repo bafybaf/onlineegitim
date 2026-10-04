@@ -3,6 +3,12 @@ require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'shop_books_visible') {
+    setting_set('shop_books_visible', post('shop_books_visible') === '1' ? '1' : '0');
+    flash_ok(post('shop_books_visible') === '1' ? 'Kitap vitrini sitede açıldı.' : 'Kitap vitrini siteden gizlendi.');
+    redirect('admin/eticaret');
+}
+
 $paidPay = (int) db()->query("SELECT COALESCE(SUM(total),0) FROM payments WHERE status='odendi'")->fetchColumn();
 $legacy = (int) db()->query("SELECT COALESCE(SUM(total),0) FROM orders WHERE merchant_oid IS NULL OR merchant_oid=''")->fetchColumn();
 $ciro = $paidPay + $legacy;
@@ -34,11 +40,25 @@ $sonOdeme = db()->query(
     'SELECT p.*, u.name FROM payments p JOIN users u ON u.id = p.user_id ORDER BY p.id DESC LIMIT 10'
 )->fetchAll();
 
+$ok = flash_ok();
 panel_head('admin', 'eticaret', 'E-ticaret özeti | Admin', $u);
 ?>
 <div class="dash-hello">
   <h2>Mağaza özeti</h2>
   <p>Ödenen ciro, kargo kuyruğu ve stok. Kitap siparişleri satın alınca burada görünür.</p>
+</div>
+<?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
+<div class="card mb-6 flex flex-wrap items-center justify-between gap-4 p-5">
+  <div>
+    <p class="font-extrabold">Kitap vitrini</p>
+    <p class="mt-1 text-sm text-muted"><?= shop_books_visible() ? 'Sitede kitaplar ve satış görünüyor.' : 'Siteden kitaplar ve satış şimdilik gizli. Admin kataloğu duruyor.' ?></p>
+  </div>
+  <form method="post">
+    <?= csrf_field() ?>
+    <input type="hidden" name="action" value="shop_books_visible">
+    <input type="hidden" name="shop_books_visible" value="<?= shop_books_visible() ? '0' : '1' ?>">
+    <button class="btn-outline text-sm"><?= shop_books_visible() ? 'Vitrini gizle' : 'Vitrini aç' ?></button>
+  </form>
 </div>
 
 <div class="grid gap-4 md:grid-cols-4">

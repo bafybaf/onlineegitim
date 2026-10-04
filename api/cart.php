@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 
 $action = post('action');
+if (!shop_books_visible() && in_array($action, ['add', 'set', 'checkout'], true)) {
+    $_SESSION['cart'] = [];
+    if ($action !== 'checkout') {
+        json_out(['ok' => false, 'error' => 'hidden', 'count' => cart_count()]);
+    }
+}
 if ($action === 'add') {
     $id = (int) post('book_id');
     $st = db()->prepare('SELECT id FROM books WHERE id = ?');

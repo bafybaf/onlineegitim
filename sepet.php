@@ -65,7 +65,9 @@ public_head('Sepet | Online İlahiyat');
       <h2 class="font-display text-3xl">Sepetiniz boş</h2>
       <div class="mt-6 flex flex-wrap gap-3">
         <a href="<?= e(url('programlar.php')) ?>" class="btn-primary">Eğitimlere bak</a>
+        <?php if (shop_books_visible()): ?>
         <a href="<?= e(url('kitaplar.php')) ?>" class="btn-outline">Kitaplar</a>
+        <?php endif; ?>
       </div>
     </div>
   </div>

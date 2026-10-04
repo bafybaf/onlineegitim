@@ -53,12 +53,14 @@ if (function_exists('membership_panel_banner')) {
     <p class="font-display mt-1 text-2xl"><?= $orderCount ?></p>
     <a class="mt-2 inline-block text-sm font-extrabold text-navy" href="<?= e(url('magaza/siparisler.php')) ?>">Tümünü gör →</a>
   </div>
+  <?php if (shop_books_visible()): ?>
   <div class="stat">
     <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Kitaplarım</p>
     <p class="font-display mt-1 text-2xl"><?= $bookCount ?></p>
     <p class="mt-1 text-sm text-muted"><?= $dlCnt ?> dijital kopya hazır</p>
     <a class="mt-2 inline-block text-sm font-extrabold text-navy" href="<?= e(url('magaza/kitaplarim.php')) ?>">Kitaplarım →</a>
   </div>
+  <?php endif; ?>
   <div class="stat">
     <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Sepet</p>
     <p class="font-display mt-1 text-2xl"><?= $cartN ?></p>
@@ -74,7 +76,7 @@ if (function_exists('membership_panel_banner')) {
       <a class="text-sm font-extrabold text-navy" href="<?= e(url('magaza/siparisler.php')) ?>">Tümü</a>
     </div>
     <?php if (!$orders): ?>
-      <?php shop_empty('Henüz sipariş yok', 'Kitap mağazasından ilk siparişinizi verin.', page_url('kitaplar'), 'Mağazaya git'); ?>
+      <?php shop_empty('Henüz sipariş yok', shop_books_visible() ? 'Kitap mağazasından ilk siparişinizi verin.' : 'Eğitimlerden ilk siparişinizi verin.', shop_books_visible() ? page_url('kitaplar') : page_url('programlar'), shop_books_visible() ? 'Mağazaya git' : 'Eğitimlere bak'); ?>
     <?php else: ?>
       <table class="table">
         <thead><tr><th>No</th><th>Tutar</th><th>Durum</th><th>Tarih</th></tr></thead>
@@ -92,6 +94,7 @@ if (function_exists('membership_panel_banner')) {
     <?php endif; ?>
   </section>
 
+  <?php if (shop_books_visible()): ?>
   <section class="card overflow-hidden">
     <div class="flex items-center justify-between px-5 py-4">
       <h2 class="font-display text-xl">Kitaplarım</h2>
@@ -118,6 +121,7 @@ if (function_exists('membership_panel_banner')) {
       </table>
     <?php endif; ?>
   </section>
+  <?php endif; ?>
 </div>
 
 <section class="card mt-6 p-5">
@@ -131,7 +135,11 @@ if (function_exists('membership_panel_banner')) {
     </div>
     <div class="flex flex-wrap gap-2">
       <a class="btn-outline h-10 px-4 text-sm" href="<?= e(url('magaza/profil.php')) ?>">Profili düzenle</a>
+      <?php if (shop_books_visible()): ?>
       <a class="btn-primary h-10 px-4 text-sm" href="<?= e(page_url('kitaplar')) ?>">Mağazaya git</a>
+      <?php else: ?>
+      <a class="btn-primary h-10 px-4 text-sm" href="<?= e(page_url('programlar')) ?>">Eğitimlere bak</a>
+      <?php endif; ?>
     </div>
   </div>
 </section>

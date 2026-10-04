@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
+shop_books_require_visible();
 $slug = $_GET['slug'] ?? 'tefsir-ozet';
 $st = db()->prepare('SELECT b.*, c.name AS category_name, c.slug AS category_slug FROM books b LEFT JOIN categories c ON c.id = b.category_id WHERE b.slug = ?');
 $st->execute([$slug]);
