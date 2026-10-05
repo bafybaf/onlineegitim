@@ -1,0 +1,139 @@
+name: Release
+
+run-name: Release (${{ inputs.bump }}${{ inputs.prerelease && ', rc' || '' }}${{ inputs.dry_run && ', dry run' || '' }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      prerelease:
+        description: 'Pre-release (tag as vX.Y.Z-rc.N; not marked latest on GitHub or Packagist)'
+        required: false
+        type: boolean
+        default: false
+      notes:
+        description: 'Extra notes (prepended to the auto-generated notes)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (compute version and run CI, but do not tag or release)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      notes_start_tag: ${{ steps.version.outputs.notes_start_tag }}
+
+    steps:
+    - name: Ensure stable release runs from main
+      if: github.ref != 'refs/heads/main' && !inputs.prerelease
+      run: |
+        echo "::error::Stable releases can only be created from main (got $GITHUB_REF). Enable prerelease to release an RC from another branch."
+        exit 1
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Ensure this commit can be released
+      run: |
+        stable='^v[0-9]+\.[0-9]+\.[0-9]+$'
+        released="$(git tag --points-at HEAD | grep -E "$stable" | paste -sd ' ' - || true)"
+        if [[ -n "$released" ]]; then
+          echo "::error::${GITHUB_SHA::7} is already released as $released. If its GitHub release is missing, re-run the failed jobs of the run that created the tag."
+          exit 1
+        fi
+        # The bump is applied to the latest stable tag, so every stable release must be in this branch
+        missing="$(git tag --list 'v*' --no-merged HEAD | grep -E "$stable" | paste -sd ' ' - || true)"
+        if [[ -n "$missing" ]]; then
+          echo "::error::This branch does not contain the stable release(s) $missing. Merge main into it first."
+          exit 1
+        fi
+
+    - name: Compute next version
+      id: version
+      env:
+        BUMP: ${{ inputs.bump }}
+        PRERELEASE: ${{ inputs.prerelease }}
+      run: |
+        args=("$BUMP")
+        if [[ "$PRERELEASE" == "true" ]]; then
+          args+=(--rc)
+        fi
+        version="$(git tag --list 'v*' | .github/scripts/next-version.sh "${args[@]}")"
+        # Release notes always start from the previous stable tag, skipping RCs
+        notes_start_tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-*' 2>/dev/null || true)"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "notes_start_tag=$notes_start_tag" >> "$GITHUB_OUTPUT"
+        echo "Next version: **$version** (\`$BUMP\` bump of \`${GITHUB_SHA::7}\`, notes since \`${notes_start_tag:-first commit}\`)" >> "$GITHUB_STEP_SUMMARY"
+
+  ci:
+    needs: prepare
+    uses: ./.github/workflows/php.yml
+
+  release:
+    needs: [ prepare, ci ]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create and push tag
+      env:
+        VERSION: ${{ needs.prepare.outputs.version }}
+      run: |
+        # On a re-run after a failed release step, reuse the tag pushed by the earlier attempt
+        if git fetch --depth=1 origin "refs/tags/$VERSION:refs/tags/$VERSION" 2>/dev/null; then
+          if [[ "$(git rev-parse "refs/tags/$VERSION^{commit}")" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag $VERSION already exists on another commit."
+            exit 1
+          fi
+          echo "Tag $VERSION already exists on ${GITHUB_SHA::7}, reusing it."
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git tag -a "$VERSION" -m "Release $VERSION" "$GITHUB_SHA"
+        git push origin "refs/tags/$VERSION"
+
+    - name: Create GitHub release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ needs.prepare.outputs.version }}
+        NOTES_START_TAG: ${{ needs.prepare.outputs.notes_start_tag }}
+        PRERELEASE: ${{ inputs.prerelease }}
+        NOTES: ${{ inputs.notes }}
+      run: |
+        args=(--verify-tag --title "$VERSION" --generate-notes)
+        if [[ -n "$NOTES_START_TAG" ]]; then
+          args+=(--notes-start-tag "$NOTES_START_TAG")
+        fi
+        if [[ "$PRERELEASE" == "true" ]]; then
+          args+=(--prerelease)
+        fi
+        if [[ -n "$NOTES" ]]; then
+          args+=(--notes "$NOTES")
+        fi
+        gh release create "$VERSION" "${args[@]}"
+        echo "Released [$VERSION]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$VERSION)" >> "$GITHUB_STEP_SUMMARY"

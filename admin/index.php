@@ -35,8 +35,7 @@ panel_head('admin', 'dashboard', 'Yönetim özeti | Admin', $u);
 <div class="card mt-6 p-5"><h2 class="font-display text-2xl">Şu an canlı</h2>
 <?php foreach ($live as $r): ?><p class="mt-3"><?= live_pill($r) ?> <b><?= e($r['title']) ?></b> · <?= e($r['teacher_name']) ?> · <a class="font-extrabold text-navy" href="<?= e(canli_url((int) $r['id'])) ?>">İzle</a></p><?php endforeach; ?>
 </div>
-<p class="mt-6 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/paytr.php')) ?>">Ödeme ayarları →</a>
-  PayTR: <?= paytr_configured() ? 'kayıtlı' . (setting_bool('paytr_test_mode', true) ? ' · test' : ' · canlı') : 'yok' ?>
-  · iyzico: <?= function_exists('iyzico_configured') && iyzico_configured() ? (setting_bool('iyzico_sandbox', true) ? 'açık · sandbox' : 'açık · canlı') : 'kapalı' ?>
+<p class="mt-6 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/odeme.php')) ?>">Ödeme ayarları →</a>
+  Sipay: <?= function_exists('sipay_configured') && sipay_configured() ? 'kayıtlı' . (setting_bool('sipay_test_mode', true) ? ' · test' : ' · canlı') : 'yok' ?>
 </p>
 <?php panel_foot();

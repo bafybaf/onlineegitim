@@ -22,7 +22,6 @@ require_once __DIR__ . '/live.php';
 if (is_file(__DIR__ . '/schedule.php')) {
     require_once __DIR__ . '/schedule.php';
 }
-require_once __DIR__ . '/paytr.php';
 require_once __DIR__ . '/payment.php';
 require_once __DIR__ . '/membership.php';
 require_once __DIR__ . '/profile.php';
@@ -40,10 +39,10 @@ $autoload = dirname(__DIR__) . '/vendor/autoload.php';
 if (is_file($autoload)) {
     require_once $autoload;
 }
-if (is_file(__DIR__ . '/iyzico.php')) {
-    require_once __DIR__ . '/iyzico.php';
-}
 require_once __DIR__ . '/seo_urls.php';
+if (is_file(__DIR__ . '/sipay.php')) {
+    require_once __DIR__ . '/sipay.php';
+}
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/catalog.php';
 if (is_file(__DIR__ . '/site_content.php')) {

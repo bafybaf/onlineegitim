@@ -257,12 +257,6 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
   width: auto;
   object-fit: contain;
 }
-.pay-logo-iyzico {
-  height: 36px;
-  padding: 4px 8px 2px;
-  background: #fff;
-  border-radius: 6px;
-}
 .pay-cards {
   display: flex;
   align-items: center;

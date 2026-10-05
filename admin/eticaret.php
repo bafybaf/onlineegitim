@@ -105,7 +105,7 @@ panel_head('admin', 'eticaret', 'E-ticaret özeti | Admin', $u);
   <a href="<?= e(urun_yeni_url()) ?>" class="btn-outline text-sm">Yeni ürün</a>
   <a href="<?= e(url('admin/kategoriler')) ?>" class="btn-outline text-sm">Kategoriler</a>
   <a href="<?= e(url('admin/kampanyalar')) ?>" class="btn-outline text-sm">Kampanyalar</a>
-  <a href="<?= e(url('admin/paytr')) ?>" class="btn-outline text-sm">Ödeme ayarları</a>
+  <a href="<?= e(url('admin/odeme')) ?>" class="btn-outline text-sm">Ödeme ayarları</a>
 </div>
 
 <div class="mt-6 grid gap-4 lg:grid-cols-2">

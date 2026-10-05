@@ -279,3 +279,16 @@ function payment_fail(array $payment, string $reason): void
     db()->prepare('UPDATE payments SET status = ?, fail_reason = ? WHERE id = ? AND status = ?')
         ->execute(['basarisiz', mb_substr($reason, 0, 255), $payment['id'], 'bekliyor']);
 }
+
+function payment_checkout_url(array $payment): string
+{
+    $oid = (string) ($payment['merchant_oid'] ?? '');
+    if (($payment['status'] ?? '') === 'odendi') {
+        return odeme_sonuc_url('ok', $oid);
+    }
+    if ((int) ($payment['total'] ?? 0) < 1) {
+        $paid = payment_settle_now($payment);
+        return odeme_sonuc_url('ok', (string) ($paid['merchant_oid'] ?? $oid));
+    }
+    return odeme_url($oid);
+}

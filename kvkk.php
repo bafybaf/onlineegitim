@@ -13,7 +13,7 @@ public_head('KVKK Aydınlatma Metni | Online İlahiyat', 'Kişisel verilerin iş
   <ul class="mt-2 list-disc pl-5 text-muted">
     <li>Kimlik ve iletişim: ad soyad, e-posta, telefon</li>
     <li>Eğitim: grup kaydı, yoklama, ödev, test sonucu, mesaj</li>
-    <li>Ödeme: PayTR üzerinden kart işlemi (kart bilgisi bizde saklanmaz)</li>
+    <li>Ödeme: Sipay üzerinden kart işlemi (kart bilgisi bizde saklanmaz)</li>
     <li>Teslimat: kargo adresi (kitap siparişi)</li>
   </ul>
   <h2 class="font-display mt-8 text-2xl">Amaç ve hukuki sebep</h2>

@@ -10,14 +10,9 @@ if ($u && $payment && (int) $payment['user_id'] !== (int) $u['id']) {
     $payment = null;
 }
 if ($payment && $durum !== 'hata' && ($payment['status'] ?? '') !== 'odendi') {
-    $token = trim((string) ($_POST['token'] ?? $_GET['token'] ?? $payment['gateway_token'] ?? ''));
-    if (iyzico_configured() && $token !== '') {
-        $done = iyzico_complete($token);
-        if (!empty($done['payment'])) {
-            $payment = $done['payment'];
-        }
-    } elseif (!iyzico_configured()) {
-        $payment = payment_settle_now($payment);
+    $done = sipay_sync_payment($payment, sipay_payload());
+    if (!empty($done['payment'])) {
+        $payment = $done['payment'];
     }
 }
 

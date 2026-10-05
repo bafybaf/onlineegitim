@@ -1,65 +1,6 @@
 {
     "packages": [
         {
-            "name": "iyzico/iyzipay-php",
-            "version": "v2.0.61",
-            "version_normalized": "2.0.61.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/iyzico/iyzipay-php.git",
-                "reference": "168839f9ccb2aebaa2cb9f07b883b1b2bb0cf87a"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/iyzico/iyzipay-php/zipball/168839f9ccb2aebaa2cb9f07b883b1b2bb0cf87a",
-                "reference": "168839f9ccb2aebaa2cb9f07b883b1b2bb0cf87a",
-                "shasum": ""
-            },
-            "require": {
-                "ext-curl": "*",
-                "php": ">=7.4.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^9.6.34",
-                "satooshi/php-coveralls": "~0.6.1"
-            },
-            "time": "2026-04-28T11:31:34+00:00",
-            "type": "library",
-            "installation-source": "dist",
-            "autoload": {
-                "psr-4": {
-                    "Iyzipay\\": "src/Iyzipay/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "iyzico and contributors",
-                    "homepage": "https://github.com/iyzico/iyzipay-php/contributors"
-                }
-            ],
-            "description": "iyzipay api php client",
-            "homepage": "https://www.iyzico.com",
-            "keywords": [
-                "iyzico",
-                "iyzico.com",
-                "iyzipay",
-                "iyzipay api",
-                "iyzipay api php",
-                "iyzipay api php client",
-                "iyzipay php",
-                "payment processing"
-            ],
-            "support": {
-                "issues": "https://github.com/iyzico/iyzipay-php/issues",
-                "source": "https://github.com/iyzico/iyzipay-php/tree/v2.0.61"
-            },
-            "install-path": "../iyzico/iyzipay-php"
-        },
-        {
             "name": "phpmailer/phpmailer",
             "version": "v6.12.0",
             "version_normalized": "6.12.0.0",
@@ -142,6 +83,66 @@
                 }
             ],
             "install-path": "../phpmailer/phpmailer"
+        },
+        {
+            "name": "sipay-tr/sipay-php-sdk",
+            "version": "v1.2.0",
+            "version_normalized": "1.2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sipay-tr/sipay-php-sdk",
+                "reference": "6de33e4f37ff5f1124d849b09e6ddf95e3e77d0c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sipay-tr/sipay-php-sdk/zipball/6de33e4f37ff5f1124d849b09e6ddf95e3e77d0c",
+                "reference": "6de33e4f37ff5f1124d849b09e6ddf95e3e77d0c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "ext-openssl": "*",
+                "php": ">=7.4.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.68",
+                "phpunit/phpunit": "^9.6",
+                "satooshi/php-coveralls": "~0.6.1",
+                "symfony/var-dumper": "^5.4"
+            },
+            "time": "2026-10-02T11:36:10+00:00",
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "Sipay\\": "src/Sipay/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Semih Keskin",
+                    "email": "semih@itsmoneo.com"
+                }
+            ],
+            "description": "PHP SDK for the Sipay API",
+            "homepage": "https://www.sipay.com.tr",
+            "keywords": [
+                "sipay",
+                "sipay api php",
+                "sipay api php client",
+                "sipay api sdk",
+                "sipay api sdk client",
+                "sipay payment gateway",
+                "sipay php",
+                "sipay php sdk",
+                "sipay sdk"
+            ],
+            "install-path": "../sipay-tr/sipay-php-sdk"
         }
     ],
     "dev": true,

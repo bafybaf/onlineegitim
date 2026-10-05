@@ -6,6 +6,6 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Sipay\\' => array($vendorDir . '/sipay-tr/sipay-php-sdk/src/Sipay'),
     'PHPMailer\\PHPMailer\\' => array($vendorDir . '/phpmailer/phpmailer/src'),
-    'Iyzipay\\' => array($vendorDir . '/iyzico/iyzipay-php/src/Iyzipay'),
 );

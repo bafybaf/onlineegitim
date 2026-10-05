@@ -207,7 +207,6 @@ function public_foot(): void
   <div class="site-footer-bottom">
     <p class="site-footer-copy">© <?= date('Y') ?> Online İlahiyat. Tüm hakları saklıdır.</p>
     <div class="site-footer-pay" aria-label="Güvenli ödeme">
-      <img src="<?= e(url('assets/img/pay/iyzico-ile-ode.svg')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/img/pay/iyzico-ile-ode.svg') ?>" alt="iyzico ile Öde" class="pay-logo pay-logo-iyzico">
       <span class="pay-cards">
         <img src="<?= e(url('assets/img/pay/visa.svg')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/img/pay/visa.svg') ?>" alt="Visa" class="pay-logo pay-logo-card">
         <img src="<?= e(url('assets/img/pay/mastercard.svg')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/img/pay/mastercard.svg') ?>" alt="Mastercard" class="pay-logo pay-logo-mc">
@@ -334,7 +333,7 @@ function panel_nav(string $role, string $page): array
             ['id' => 'kampanyalar', 'href' => 'admin/kampanyalar', 'label' => 'Kampanyalar', 'icon' => 'card'],
         ]],
         ['label' => 'Sistem', 'items' => [
-            ['id' => 'paytr', 'href' => 'admin/paytr', 'label' => 'Ödeme', 'icon' => 'card'],
+            ['id' => 'odeme', 'href' => 'admin/odeme', 'label' => 'Ödeme', 'icon' => 'card'],
             ['id' => 'seo', 'href' => 'admin/seo', 'label' => 'SEO', 'icon' => 'search'],
             ['id' => 'smtp', 'href' => 'admin/smtp', 'label' => 'SMTP', 'icon' => 'mail'],
             ['id' => 'google', 'href' => 'admin/google', 'label' => 'Google', 'icon' => 'user'],

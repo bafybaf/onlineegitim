@@ -10,6 +10,12 @@ $payment = payment_by_oid($oid);
 if (!$payment || (int) $payment['user_id'] !== (int) $u['id']) {
     json_out(['ok' => false, 'error' => 'not_found'], 404);
 }
+if (($payment['status'] ?? '') === 'bekliyor' && function_exists('sipay_sync_payment')) {
+    $sync = sipay_sync_payment($payment);
+    if (!empty($sync['payment'])) {
+        $payment = $sync['payment'];
+    }
+}
 json_out([
     'ok' => true,
     'status' => $payment['status'],

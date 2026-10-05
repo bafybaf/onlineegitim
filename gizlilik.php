@@ -10,7 +10,7 @@ public_head('Gizlilik Politikası | Online İlahiyat', 'Çerez, oturum ve veri g
   <h2 class="font-display mt-8 text-2xl">Çerez ve oturum</h2>
   <p class="mt-2 text-muted">Giriş oturumu için zorunlu çerez kullanılır. İsteğe bağlı analiz (Google Analytics) yalnızca admin SEO ayarında kimlik girilmişse çalışır.</p>
   <h2 class="font-display mt-8 text-2xl">Üçüncü taraflar</h2>
-  <p class="mt-2 text-muted">Ödeme PayTR, e-posta SMTP sağlayıcınız, canlı yayın MediaMTX sunucusu üzerinden yürür. Kart numarası sunucumuzda tutulmaz.</p>
+  <p class="mt-2 text-muted">Ödeme Sipay, e-posta SMTP sağlayıcınız, canlı yayın MediaMTX sunucusu üzerinden yürür. Kart numarası sunucumuzda tutulmaz.</p>
   <h2 class="font-display mt-8 text-2xl">İçerik ve kayıtlar</h2>
   <p class="mt-2 text-muted">Ders videoları ve PDF notlar `storage` altında yetki kontrolüyle sunulur. Hesabınızı başkasıyla paylaşmayın.</p>
   <p class="mt-8"><a class="font-extrabold text-navy" href="<?= e(page_url('kvkk')) ?>">KVKK metni →</a></p>

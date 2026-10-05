@@ -1,0 +1,22 @@
+# IntelliJ Idea generated files
+*.ipr
+*.iws
+.idea
+*.iml
+*plugin.xml
+
+# VI generated files
+.*.sw[a-z]
+*.un~
+Session.vim
+.DS_Store
+
+# Composer specific files
+composer.lock
+composer.phar
+vendor
+
+.phpunit.result.cache
+
+# CS-fixer files
+.php-cs-fixer.cache
