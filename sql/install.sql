@@ -60,7 +60,7 @@ CREATE TABLE class_groups (
   days VARCHAR(80) NOT NULL,
   description TEXT NULL,
   whatsapp_url VARCHAR(255) NULL,
-  cap TINYINT UNSIGNED NOT NULL DEFAULT 10,
+  cap SMALLINT UNSIGNED NOT NULL DEFAULT 10,
   CONSTRAINT fk_g_prog FOREIGN KEY (program_id) REFERENCES programs(id),
   CONSTRAINT fk_g_teach FOREIGN KEY (teacher_id) REFERENCES users(id)
 ) ENGINE=InnoDB;

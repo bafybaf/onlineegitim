@@ -91,7 +91,7 @@ panel_head('admin', 'gruplar', (string) $g['name'] . ' | Grup | Admin', $u);
     </label>
     <?= group_teachers_field($teachers, $g['teacher_ids'] ?? group_teacher_ids($id)) ?>
     <label class="text-sm font-bold">Kontenjan
-      <input type="number" name="cap" min="1" max="80" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) $g['cap'] ?>">
+      <input type="number" name="cap" min="1" max="9999" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) $g['cap'] ?>">
     </label>
     <label class="text-sm font-bold md:col-span-2">Açıklama
       <textarea name="description" rows="3" maxlength="4000" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal"><?= e((string) ($g['description'] ?? '')) ?></textarea>

@@ -104,7 +104,7 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
       </select>
     </label>
     <label class="text-sm font-bold">Kontenjan
-      <input type="number" name="cap" min="1" max="80" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) $g['cap'] ?>">
+      <input type="number" name="cap" min="1" max="9999" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= (int) $g['cap'] ?>">
     </label>
     <?= group_teachers_field($teachers, $g['teacher_ids'] ?? group_teacher_ids($id), 'Siz grupta kalırsınız. Başka hoca da ekleyebilirsiniz.', (int) $u['id']) ?>
     <label class="text-sm font-bold md:col-span-2">Açıklama

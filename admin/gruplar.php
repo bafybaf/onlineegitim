@@ -80,7 +80,7 @@ group_flash_html();
     </label>
     <?= group_teachers_field($teachers, []) ?>
     <label class="text-sm font-bold">Kontenjan
-      <input type="number" name="cap" min="1" max="80" value="10" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
+      <input type="number" name="cap" min="1" max="9999" value="10" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
     </label>
     <label class="text-sm font-bold md:col-span-2">Açıklama (isteğe bağlı)
       <textarea name="description" rows="3" maxlength="4000" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" placeholder="Grup notu, seviye veya özel açıklama"></textarea>

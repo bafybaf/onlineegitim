@@ -45,6 +45,10 @@ function ensure_class_groups_schema(): void
         } catch (Throwable) {
         }
     }
+    try {
+        db()->exec('ALTER TABLE class_groups MODIFY COLUMN cap SMALLINT UNSIGNED NOT NULL DEFAULT 10');
+    } catch (Throwable) {
+    }
     ensure_group_teachers_schema();
 }
 
@@ -585,7 +589,7 @@ function group_normalize(array $in, bool $admin): array
         'whatsapp_url' => function_exists('academy_normalize_wa')
             ? academy_normalize_wa((string) ($in['whatsapp_url'] ?? ''))
             : (trim((string) ($in['whatsapp_url'] ?? '')) ?: null),
-        'cap' => max(1, min(80, $cap)),
+        'cap' => max(1, min(9999, $cap)),
     ];
     if ($admin) {
         $out['program_id'] = (int) ($in['program_id'] ?? 0);
