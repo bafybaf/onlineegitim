@@ -36,7 +36,7 @@
   let uploadLock = false;
   let measureToken = 0;
   const zoomEl = document.getElementById('board-zoom');
-  const GAP = 0.012;
+  const PAGE_PAD = 0.2;
   const MAX_ZOOM = 40;
 
   function pdfId(u) {
@@ -180,8 +180,9 @@
     layouts.forEach((lay) => {
       const y = lay.y * d.w;
       const h = lay.h * d.w;
+      const pad = PAGE_PAD * d.w;
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, y, d.w, h);
+      ctx.fillRect(0, y, d.w, h + pad);
       const cached = pageCache[lay.n];
       if (cached && cached.canvas) {
         const sw = cached.canvas.width || 1;
@@ -190,13 +191,16 @@
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(cached.canvas, 0, y, d.w, h);
       }
+      const line = Math.max(1, d.w * 0.006);
+      ctx.fillStyle = '#e7e5e4';
+      ctx.fillRect(0, y + h + pad - line, d.w, line);
     });
   }
 
   function visibleLayouts() {
     const y0 = viewDocY(0) - 0.15;
     const y1 = viewDocY(1) + 0.15;
-    return layouts.filter((lay) => lay.y + lay.h >= y0 && lay.y <= y1);
+    return layouts.filter((lay) => lay.y + lay.h + PAGE_PAD >= y0 && lay.y <= y1);
   }
 
   function renderPage(lay, gen) {
@@ -361,9 +365,9 @@
         if (token !== measureToken || gen !== pageGen) return;
         const base = pg.getViewport({ scale: 1 });
         const h = base.height / Math.max(1, base.width);
-        const y = layouts.length ? (layouts[layouts.length - 1].y + layouts[layouts.length - 1].h + GAP) : 0;
+        const y = layouts.length ? (layouts[layouts.length - 1].y + layouts[layouts.length - 1].h + PAGE_PAD) : 0;
         layouts.push({ n: i, y: y, h: h });
-        docH = y + h;
+        docH = y + h + PAGE_PAD;
         if (i === 1 || i % 4 === 0) {
           clampPan();
           paintAll();
