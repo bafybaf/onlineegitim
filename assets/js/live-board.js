@@ -625,5 +625,5 @@
   }
   fit();
   pull();
-  setInterval(pull, publish ? 1200 : 400);
+  setInterval(pull, publish ? 1200 : 1500);
 })();

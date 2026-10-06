@@ -191,14 +191,12 @@ if ($action === 'poll') {
         json_out(['ok' => false], 403);
     }
     $key = live_ensure_stream_key($pdo, $room);
-    $chat = $pdo->prepare('SELECT who_label, body FROM live_chat WHERE room_id = ? ORDER BY id');
+    $chat = $pdo->prepare('SELECT who_label, body FROM live_chat WHERE room_id = ? ORDER BY id DESC LIMIT 80');
     $chat->execute([$id]);
-    $lives = $pdo->query("SELECT r.id, r.title, u.name teacher FROM live_rooms r JOIN users u ON u.id=r.teacher_id WHERE r.status='live' ORDER BY r.id")->fetchAll();
     $payload = [
         'ok' => true,
         'room' => live_public_room($room),
-        'chat' => $chat->fetchAll(),
-        'lives' => $lives,
+        'chat' => array_reverse($chat->fetchAll()),
         'mins' => live_mins($room['started_at']),
         'hls_url' => live_hls_url($key),
         'hls_url_alt' => live_hls_url($key, 1),

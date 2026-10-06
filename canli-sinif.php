@@ -264,7 +264,7 @@ setInterval(async () => {
   if (j.room && j.room.status === 'ended') {
     if (typeof window.livePlayerMarkEnded === 'function') window.livePlayerMarkEnded();
   }
-}, 2000);
+}, 4000);
 </script>
 <script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-layout.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-layout.js') ?>"></script>
