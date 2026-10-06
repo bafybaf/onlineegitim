@@ -152,7 +152,7 @@ $presentN = count($students);
         <canvas id="board-bg"></canvas>
         <canvas id="board-draw"></canvas>
         <div id="live-rec-count" class="live-rec-count">
-          <b id="live-rec-num">10</b>
+          <b id="live-rec-num">3</b>
           <p>Kayıt başlıyor</p>
         </div>
         <div id="live-pause-overlay" class="live-pause-overlay<?= !empty($pauseInfo['paused']) ? ' is-on' : '' ?>">

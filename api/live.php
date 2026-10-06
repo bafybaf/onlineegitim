@@ -79,15 +79,22 @@ if ($action === 'end') {
     if (function_exists('vod_commit_live_room')) {
         try {
             $saved = vod_commit_live_room($pdo, $room, (int) post('mins'));
+            if (!$saved) {
+                usleep(800000);
+                $saved = vod_commit_live_room($pdo, $room, (int) post('mins'));
+            }
         } catch (Throwable $e) {
             $saved = false;
         }
     }
     if (post('goto')) {
+        $chunks = (int) post('rec_chunks');
         if ($saved) {
             flash_ok('Ders kaydı kaydedildi. Aşağıdan izleyebilirsiniz.');
+        } elseif ($chunks < 1) {
+            flash_error('Ders kapandı ama video gelmedi. Odada “Kayıt”a basın, 3 saniye geri sayım bitsin, düğme kırmızı “● Kayıt” olsun; sonra Bitir’de “Kaydediliyor” yazısı geçene kadar bekleyin.');
         } else {
-            flash_error('Ders kapandı. Video yoksa odada “Kayıt”a basıp geri sayımın bitmesini bekleyin; Bitir’de “Kaydediliyor” yazısı geçmeden sayfayı kapatmayın. Bu sayfayı bir kez yenilemek bekleyen kaydı düşürebilir.');
+            flash_error('Ders kapandı. Kayıt parçaları gitti ama video birleşmedi. Bu sayfayı bir kez yenileyin. Yine yoksa hostingde storage/vod yazılabilir olmalı.');
         }
         redirect(post('goto'));
     }
@@ -379,7 +386,11 @@ if ($action === 'record_chunk') {
         json_out(['ok' => false], 403);
     }
     if (empty($_FILES['chunk']['tmp_name']) || !is_uploaded_file($_FILES['chunk']['tmp_name'])) {
-        json_out(['ok' => false], 400);
+        json_out([
+            'ok' => false,
+            'error' => 'nofile',
+            'len' => (int) ($_SERVER['CONTENT_LENGTH'] ?? 0),
+        ], 400);
     }
     $seq = (int) post('seq');
     $dir = academy_storage('vod');

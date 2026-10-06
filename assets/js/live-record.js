@@ -19,7 +19,7 @@
   canvas.width = W;
   canvas.height = H;
   canvas.setAttribute('aria-hidden', 'true');
-  canvas.style.cssText = 'position:fixed;left:-9999px;top:0;width:16px;height:16px;opacity:0;pointer-events:none';
+  canvas.style.cssText = 'position:fixed;left:0;top:0;width:320px;height:180px;opacity:0.02;pointer-events:none;z-index:-1';
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d', { alpha: false });
 
@@ -45,7 +45,9 @@
   let pendingShare = null;
   let mixNodes = [];
   let mixWatch = 0;
+  let recPulse = 0;
   let uploadedChunks = 0;
+  let uploadFailed = 0;
   let csrfToken = '';
   try {
     var meta = document.querySelector('meta[name="csrf-token"]');
@@ -289,15 +291,38 @@
     if (!recorder) {
       try { recorder = new MediaRecorder(recStream); } catch (fatal) { recorder = null; return false; }
     }
-    recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size) upload(ev.data); };
-    try { recorder.start(2000); } catch (e) { recorder = null; return false; }
+    recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size > 8) upload(ev.data); };
+    try { recorder.start(1000); } catch (e) { recorder = null; return false; }
+    if (recPulse) clearInterval(recPulse);
+    recPulse = setInterval(function () {
+      if (!recorder || recorder.state !== 'recording' || recPaused) return;
+      try { recorder.requestData(); } catch (e) {}
+    }, 2000);
     if (recPaused) { try { recorder.pause(); } catch (e) {} }
     if (!startedMs) startedMs = Date.now();
     return true;
   }
 
+  function postChunk(fd) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', api);
+      xhr.withCredentials = true;
+      if (csrfToken) xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+      xhr.timeout = 60000;
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
+        else reject(new Error('chunk ' + xhr.status));
+      };
+      xhr.onerror = function () { reject(new Error('net')); };
+      xhr.ontimeout = function () { reject(new Error('timeout')); };
+      xhr.send(fd);
+    });
+  }
+
   function upload(blob) {
-    if (!blob || blob.size < 20 || done) return queue;
+    if (!blob || blob.size < 8) return queue;
+    if (done && !finishing) return queue;
     var n = seq;
     seq += 1;
     queue = queue.then(function () {
@@ -309,13 +334,13 @@
         fd.append('seq', String(n));
         fd.append('chunk', blob, 'c.webm');
         if (csrfToken) fd.append('_csrf', csrfToken);
-        return fetch(api, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (res) {
-          if (!res.ok) throw new Error('chunk ' + res.status);
+        return postChunk(fd).then(function () {
           uploadedChunks += 1;
           return n;
         }).catch(function (err) {
           tries += 1;
-          if (tries < 4) return new Promise(function (r) { setTimeout(r, 600 * tries); }).then(once);
+          if (tries < 8) return new Promise(function (r) { setTimeout(r, 400 * tries); }).then(once);
+          uploadFailed += 1;
           throw err;
         });
       }
@@ -364,7 +389,7 @@
   function beginCountdown() {
     if (armed || counting || done || finishing) return;
     counting = true;
-    var n = 10;
+    var n = 3;
     if (startBtn) { startBtn.disabled = true; startBtn.textContent = n + '…'; }
     showCount(n);
     clearInterval(countTimer);
@@ -397,29 +422,46 @@
       body: body,
       credentials: 'same-origin',
       keepalive: true
-    }).then(function (res) { return res && res.ok; }).catch(function () { return false; });
+    }).then(function (res) { return res.ok ? res.json() : { saved: false }; }).then(function (j) {
+      return !!(j && j.saved);
+    }).catch(function () { return false; });
+  }
+
+  function sleep(ms) {
+    return new Promise(function (r) { setTimeout(r, ms); });
   }
 
   async function finish() {
     if (finishing || done) return;
-    cancelCount();
+    if (counting) {
+      cancelCount();
+      beginRecord();
+      await sleep(1200);
+    }
     finishing = true;
     if (mixWatch) { clearInterval(mixWatch); mixWatch = 0; }
-    stopPaintLoop();
+    if (recPulse) { clearInterval(recPulse); recPulse = 0; }
     if (recorder && recorder.state !== 'inactive') {
+      try { recorder.requestData(); } catch (e) {}
       await new Promise(function (resolve) {
         var settled = false;
         var once = function () { if (!settled) { settled = true; resolve(); } };
         recorder.onstop = once;
-        recorder.addEventListener('dataavailable', function () { setTimeout(once, 50); }, { once: true });
+        recorder.addEventListener('dataavailable', function () { setTimeout(once, 200); }, { once: true });
         try { recorder.requestData(); } catch (e) {}
         try { recorder.stop(); } catch (e) { once(); }
-        setTimeout(once, 5000);
+        setTimeout(once, 8000);
       });
+      await sleep(400);
     }
+    stopPaintLoop();
     if (recorder) {
-      await waitAtMost(queue, 60000);
-      await waitAtMost(postDone(false), 20000);
+      await waitAtMost(queue, 120000);
+      var ok = await waitAtMost(postDone(false), 20000);
+      if (!ok && uploadedChunks > 0) {
+        await sleep(1500);
+        await waitAtMost(postDone(false), 15000);
+      }
     }
     done = true;
     armed = false;
@@ -469,9 +511,14 @@
       if (btn) { btn.disabled = true; btn.textContent = 'Kaydediliyor…'; }
       finish().finally(function () {
         f.dataset.recOk = '1';
-        var mins = f.querySelector('input[name="mins"]');
-        if (mins) mins.value = String(minsNow());
-        else { var h = document.createElement('input'); h.type = 'hidden'; h.name = 'mins'; h.value = String(minsNow()); f.appendChild(h); }
+        function hid(name, val) {
+          var el = f.querySelector('input[name="' + name + '"]');
+          if (!el) { el = document.createElement('input'); el.type = 'hidden'; el.name = name; f.appendChild(el); }
+          el.value = String(val);
+        }
+        hid('mins', minsNow());
+        hid('rec_chunks', uploadedChunks);
+        hid('rec_failed', uploadFailed);
         f.submit();
       });
     });
