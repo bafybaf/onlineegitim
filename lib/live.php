@@ -170,6 +170,29 @@ function live_start_chat_message(string $mode = 'browser'): string
     return 'Oda açıldı.';
 }
 
+function ensure_live_attendance_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $has = false;
+        foreach (db()->query('SHOW COLUMNS FROM attendance')->fetchAll() as $row) {
+            if (($row['Field'] ?? '') === 'entered_at') {
+                $has = true;
+                break;
+            }
+        }
+        if (!$has) {
+            db()->exec('ALTER TABLE attendance ADD COLUMN entered_at DATETIME NULL AFTER present');
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
 function ensure_live_pause_schema(): void
 {
     static $done = false;
@@ -484,6 +507,42 @@ function live_present_count(int $roomId): int
     }
 }
 
+function live_present_students(int $roomId): array
+{
+    ensure_live_attendance_schema();
+    try {
+        $st = db()->prepare(
+            'SELECT u.id, u.name, a.entered_at
+             FROM attendance a
+             JOIN users u ON u.id = a.student_id
+             WHERE a.room_id = ? AND a.present = 1
+             ORDER BY a.entered_at IS NULL, a.entered_at ASC, u.name'
+        );
+        $st->execute([$roomId]);
+        return $st->fetchAll();
+    } catch (Throwable) {
+        return [];
+    }
+}
+
+function live_entered_students(int $roomId): array
+{
+    ensure_live_attendance_schema();
+    try {
+        $st = db()->prepare(
+            'SELECT u.id, u.name, u.email, a.present, a.entered_at
+             FROM attendance a
+             JOIN users u ON u.id = a.student_id
+             WHERE a.room_id = ? AND (a.present = 1 OR a.entered_at IS NOT NULL)
+             ORDER BY a.entered_at IS NULL, a.entered_at ASC, a.id ASC'
+        );
+        $st->execute([$roomId]);
+        return $st->fetchAll();
+    } catch (Throwable) {
+        return [];
+    }
+}
+
 function live_student_has_seat(int $roomId, int $studentId): bool
 {
     try {
@@ -531,10 +590,17 @@ function live_student_room_open(array $room, int $studentId): bool
 
 function live_mark_student_present(int $roomId, int $studentId): void
 {
+    ensure_live_attendance_schema();
     db()->prepare(
-        'INSERT INTO attendance (room_id, student_id, present) VALUES (?,?,1)
-         ON DUPLICATE KEY UPDATE present = 1'
+        'INSERT INTO attendance (room_id, student_id, present, entered_at) VALUES (?,?,1,NOW())
+         ON DUPLICATE KEY UPDATE present = 1, entered_at = IF(entered_at IS NULL, NOW(), entered_at)'
     )->execute([$roomId, $studentId]);
+}
+
+function live_mark_student_absent(int $roomId, int $studentId): void
+{
+    db()->prepare('UPDATE attendance SET present = 0 WHERE room_id = ? AND student_id = ?')
+        ->execute([$roomId, $studentId]);
 }
 
 function live_student_try_enter(array $room, int $studentId): bool
@@ -544,20 +610,23 @@ function live_student_try_enter(array $room, int $studentId): bool
     if ($roomId < 1 || $groupId < 1 || $studentId < 1) {
         return false;
     }
+    ensure_live_attendance_schema();
     $pdo = db();
     $pdo->beginTransaction();
     try {
         $lock = $pdo->prepare('SELECT cap FROM class_groups WHERE id = ? FOR UPDATE');
         $lock->execute([$groupId]);
-        if ($lock->fetch() === false) {
+        $row = $lock->fetch();
+        if ($row === false) {
             $pdo->rollBack();
             return false;
         }
+        $cap = max(1, (int) ($row['cap'] ?? 1));
         if (live_student_has_seat($roomId, $studentId)) {
             $pdo->commit();
             return true;
         }
-        if (live_present_count($roomId) >= live_group_cap($groupId)) {
+        if (live_present_count($roomId) >= $cap) {
             $pdo->rollBack();
             return false;
         }

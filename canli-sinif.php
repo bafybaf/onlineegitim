@@ -52,9 +52,7 @@ if ($u['role'] === 'ogrenci') {
 $chat = db()->prepare('SELECT who_label, body FROM live_chat WHERE room_id = ? ORDER BY id');
 $chat->execute([$id]);
 $msgs = $chat->fetchAll();
-$stu = db()->prepare('SELECT u.id, u.name, COALESCE(a.present,0) present FROM enrollments e JOIN users u ON u.id=e.student_id LEFT JOIN attendance a ON a.student_id=u.id AND a.room_id=? WHERE e.group_id=?');
-$stu->execute([$id, $room['group_id']]);
-$students = $stu->fetchAll();
+$students = live_present_students($id);
 $canPublish = live_user_can_publish($u, $room);
 $canEnd = $canPublish;
 $playKey = live_ensure_stream_key(db(), $room);
@@ -75,12 +73,7 @@ $healthUrl = live_health_url();
 $doRecord = $canPublish && ($room['status'] ?? '') === 'live';
 $pauseInfo = live_room_pause_state($room);
 $waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
-$presentN = 0;
-foreach ($students as $s) {
-    if ((int) $s['present'] === 1) {
-        $presentN++;
-    }
-}
+$presentN = count($students);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -180,16 +173,20 @@ foreach ($students as $s) {
           <button type="button" id="live-unmute" class="live-unmute-btn" hidden>Sesi aç</button>
         </div>
         <p id="live-proto" class="absolute bottom-14 left-4 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white/80" hidden></p>
-        <div class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= $presentN ?>/<?= count($students) ?> · <?= live_mins($room['started_at']) ?> dk</div>
+        <div id="live-seat-n" class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= (int) $presentN ?> derste · <?= live_mins($room['started_at']) ?> dk</div>
       </div>
       <aside class="chat">
-      <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet · Yoklama</div>
+      <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet<?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?> · Derstekiler <span id="live-present-n"><?= (int) $presentN ?></span><?php endif; ?></div>
       <div id="chat-log" class="chat-log text-sm"><?php foreach ($msgs as $m): ?><p><b><?= e($m['who_label']) ?>:</b> <?= e($m['body']) ?></p><?php endforeach; ?></div>
       <?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?>
-      <div class="max-h-28 overflow-auto border-t border-[#2a2a2a] px-3 py-2 text-xs">
-        <?php foreach ($students as $s): ?>
-          <label class="mr-3 inline-flex items-center gap-1"><input type="checkbox" class="att" data-sid="<?= (int) $s['id'] ?>" <?= $s['present'] ? 'checked' : '' ?>> <?= e($s['name']) ?></label>
-        <?php endforeach; ?>
+      <div id="live-present-list" class="live-present-list">
+        <?php if (!$students): ?>
+          <p class="live-present-empty">Henüz öğrenci girmedi</p>
+        <?php else: ?>
+          <?php foreach ($students as $s): ?>
+            <label class="live-present-row"><input type="checkbox" class="att" data-sid="<?= (int) $s['id'] ?>" checked> <?= e($s['name']) ?></label>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </div>
       <?php endif; ?>
       <form id="chat-form" class="flex gap-2 border-t border-[#2a2a2a] p-3">
@@ -248,9 +245,38 @@ document.getElementById('chat-form').onsubmit = async (e) => {
   await fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=chat&room_id='+roomId+'&body='+encodeURIComponent(t) });
   e.target.q.value='';
 };
-document.querySelectorAll('.att').forEach((cb) => cb.addEventListener('change', () => {
-  fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=attend&room_id='+roomId+'&student_id='+cb.dataset.sid+'&present='+(cb.checked?'1':'0') });
-}));
+function bindAtt(cb) {
+  cb.addEventListener('change', async () => {
+    const r = await fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=attend&room_id='+roomId+'&student_id='+cb.dataset.sid+'&present='+(cb.checked?'1':'0') });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) {
+      cb.checked = !cb.checked;
+      if (j.message) window.alert(j.message);
+    }
+  });
+}
+document.querySelectorAll('.att').forEach(bindAtt);
+let presentSig = <?= json_encode(implode(',', array_map(static fn ($s) => (string) (int) $s['id'], $students))) ?>;
+function renderPresent(rows) {
+  const list = document.getElementById('live-present-list');
+  if (!list) return;
+  const n = (rows || []).length;
+  const nEl = document.getElementById('live-present-n');
+  if (nEl) nEl.textContent = String(n);
+  const seat = document.getElementById('live-seat-n');
+  if (seat) {
+    seat.textContent = seat.textContent.replace(/^\d+ derste/, n + ' derste');
+  }
+  const sig = (rows || []).map((s) => String(s.id)).join(',');
+  if (sig === presentSig) return;
+  presentSig = sig;
+  if (!rows || !rows.length) {
+    list.innerHTML = '<p class="live-present-empty">Henüz öğrenci girmedi</p>';
+    return;
+  }
+  list.innerHTML = rows.map((s) => '<label class="live-present-row"><input type="checkbox" class="att" data-sid="'+s.id+'" checked> '+esc(s.name)+'</label>').join('');
+  list.querySelectorAll('.att').forEach(bindAtt);
+}
 setInterval(async () => {
   const r = await fetch(base + 'api/live.php?action=poll&id=' + roomId);
   const j = await r.json();
@@ -258,6 +284,7 @@ setInterval(async () => {
   const log = document.getElementById('chat-log');
   log.innerHTML = (j.chat||[]).map(c => `<p><b>${esc(c.who_label)}:</b> ${esc(c.body)}</p>`).join('');
   log.scrollTop = log.scrollHeight;
+  if (Array.isArray(j.present)) renderPresent(j.present);
   if (j.room && typeof window.livePauseApply === 'function') {
     window.livePauseApply(j.room);
   }

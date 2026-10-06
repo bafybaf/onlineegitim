@@ -263,6 +263,7 @@ CREATE TABLE attendance (
   room_id INT UNSIGNED NOT NULL,
   student_id INT UNSIGNED NOT NULL,
   present TINYINT(1) NOT NULL DEFAULT 0,
+  entered_at DATETIME NULL,
   UNIQUE KEY uq_att (room_id, student_id),
   CONSTRAINT fk_a_r FOREIGN KEY (room_id) REFERENCES live_rooms(id) ON DELETE CASCADE,
   CONSTRAINT fk_a_s FOREIGN KEY (student_id) REFERENCES users(id)

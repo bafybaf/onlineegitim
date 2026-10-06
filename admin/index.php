@@ -33,7 +33,7 @@ panel_head('admin', 'dashboard', 'Yönetim özeti | Admin', $u);
   </a>
 </div>
 <div class="card mt-6 p-5"><h2 class="font-display text-2xl">Şu an canlı</h2>
-<?php foreach ($live as $r): ?><p class="mt-3"><?= live_pill($r) ?> <b><?= e($r['title']) ?></b> · <?= e($r['teacher_name']) ?> · <a class="font-extrabold text-navy" href="<?= e(canli_url((int) $r['id'])) ?>">İzle</a></p><?php endforeach; ?>
+<?php foreach ($live as $r): ?><p class="mt-3"><?= live_pill($r) ?> <b><?= e($r['title']) ?></b> · <?= e($r['teacher_name']) ?> · <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-oda.php?id=' . (int) $r['id'])) ?>">Girenler</a> · <a class="font-extrabold text-navy" href="<?= e(canli_url((int) $r['id'])) ?>">İzle</a></p><?php endforeach; ?>
 </div>
 <p class="mt-6 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/odeme.php')) ?>">Ödeme ayarları →</a>
   Sipay: <?= function_exists('sipay_configured') && sipay_configured() ? 'kayıtlı' . (setting_bool('sipay_test_mode', true) ? ' · test' : ' · canlı') : 'yok' ?>

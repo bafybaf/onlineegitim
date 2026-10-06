@@ -45,13 +45,20 @@
   let pendingShare = null;
   let mixNodes = [];
   let mixWatch = 0;
+  let uploadedChunks = 0;
+  let csrfToken = '';
+  try {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    csrfToken = (meta && meta.getAttribute('content')) || '';
+  } catch (e) {}
 
-  function mime() {
-    var types = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8', 'video/webm'];
-    for (var i = 0; i < types.length; i++) {
-      if (window.MediaRecorder && MediaRecorder.isTypeSupported(types[i])) return types[i];
-    }
-    return 'video/webm';
+  function mimeList(hasAudio) {
+    var types = hasAudio
+      ? ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8', 'video/webm']
+      : ['video/webm;codecs=vp8', 'video/webm'];
+    return types.filter(function (t) {
+      return window.MediaRecorder && MediaRecorder.isTypeSupported(t);
+    }).concat(['']);
   }
 
   function calcLayout() {
@@ -267,32 +274,53 @@
   }
 
   function startRecorder(media) {
-    if (!armed || !window.MediaRecorder || recorder || done) return;
+    if (!armed || !window.MediaRecorder || recorder || done) return !!recorder;
     refreshMix(media);
     recStream = canvas.captureStream(15);
-    if (audioClone) recStream.addTrack(audioClone);
-    var opts = { mimeType: mime(), videoBitsPerSecond: 2800000, audioBitsPerSecond: 128000 };
-    try { recorder = new MediaRecorder(recStream, opts); } catch (e) {
-      try { recorder = new MediaRecorder(recStream, { mimeType: mime() }); } catch (e2) {
-        try { recorder = new MediaRecorder(recStream); } catch (fatal) { recorder = null; return; }
-      }
+    if (audioClone && recStream.getAudioTracks().length === 0) recStream.addTrack(audioClone);
+    var hasAudio = recStream.getAudioTracks().length > 0;
+    var types = mimeList(hasAudio);
+    for (var i = 0; i < types.length && !recorder; i++) {
+      var opts = { videoBitsPerSecond: 2800000 };
+      if (types[i]) opts.mimeType = types[i];
+      if (hasAudio) opts.audioBitsPerSecond = 128000;
+      try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }
+    }
+    if (!recorder) {
+      try { recorder = new MediaRecorder(recStream); } catch (fatal) { recorder = null; return false; }
     }
     recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size) upload(ev.data); };
-    try { recorder.start(4000); } catch (e) { recorder = null; return; }
+    try { recorder.start(2000); } catch (e) { recorder = null; return false; }
     if (recPaused) { try { recorder.pause(); } catch (e) {} }
     if (!startedMs) startedMs = Date.now();
+    return true;
   }
 
   function upload(blob) {
     if (!blob || blob.size < 20 || done) return queue;
-    var fd = new FormData();
-    fd.append('action', 'record_chunk');
-    fd.append('id', String(cfg.roomId));
-    fd.append('seq', String(seq));
-    fd.append('chunk', blob, 'c.webm');
     var n = seq;
     seq += 1;
-    queue = queue.then(function () { return fetch(api, { method: 'POST', body: fd }).catch(function () { return null; }); }).then(function () { return n; });
+    queue = queue.then(function () {
+      var tries = 0;
+      function once() {
+        var fd = new FormData();
+        fd.append('action', 'record_chunk');
+        fd.append('id', String(cfg.roomId));
+        fd.append('seq', String(n));
+        fd.append('chunk', blob, 'c.webm');
+        if (csrfToken) fd.append('_csrf', csrfToken);
+        return fetch(api, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (res) {
+          if (!res.ok) throw new Error('chunk ' + res.status);
+          uploadedChunks += 1;
+          return n;
+        }).catch(function (err) {
+          tries += 1;
+          if (tries < 4) return new Promise(function (r) { setTimeout(r, 600 * tries); }).then(once);
+          throw err;
+        });
+      }
+      return once().catch(function () { return n; });
+    });
     return queue;
   }
 
@@ -319,11 +347,18 @@
     counting = false;
     armed = true;
     if (!startedMs) startedMs = Date.now();
-    if (startBtn) { startBtn.disabled = true; startBtn.textContent = '● Kayıt'; startBtn.classList.add('is-hot'); }
     calcLayout();
     startPaintLoop();
-    startRecorder(pendingMedia || (video && video.srcObject));
+    var ok = startRecorder(pendingMedia || (video && video.srcObject));
     watchShareMix();
+    if (!ok) {
+      armed = false;
+      stopPaintLoop();
+      if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Kayıt'; startBtn.classList.remove('is-hot'); }
+      window.alert('Kayıt başlatılamadı. Kamerayı açıp tekrar “Kayıt”a basın.');
+      return;
+    }
+    if (startBtn) { startBtn.disabled = true; startBtn.textContent = '● Kayıt'; startBtn.classList.add('is-hot'); }
   }
 
   function beginCountdown() {
@@ -345,15 +380,24 @@
     return Promise.race([Promise.resolve(p).catch(function () { return null; }), new Promise(function (r) { setTimeout(r, ms); })]);
   }
 
-  function postDone() {
+  function postDone(useBeacon) {
     var body = 'action=record_done&id=' + encodeURIComponent(cfg.roomId) + '&mins=' + minsNow();
-    try {
-      if (navigator.sendBeacon) {
-        var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
-        if (navigator.sendBeacon(api, blob)) return Promise.resolve();
-      }
-    } catch (e) {}
-    return fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body, keepalive: true }).catch(function () { return null; });
+    if (csrfToken) body += '&_csrf=' + encodeURIComponent(csrfToken);
+    if (useBeacon) {
+      try {
+        if (navigator.sendBeacon) {
+          var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
+          if (navigator.sendBeacon(api, blob)) return Promise.resolve();
+        }
+      } catch (e) {}
+    }
+    return fetch(api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      credentials: 'same-origin',
+      keepalive: true
+    }).then(function (res) { return res && res.ok; }).catch(function () { return false; });
   }
 
   async function finish() {
@@ -367,19 +411,20 @@
         var settled = false;
         var once = function () { if (!settled) { settled = true; resolve(); } };
         recorder.onstop = once;
+        recorder.addEventListener('dataavailable', function () { setTimeout(once, 50); }, { once: true });
         try { recorder.requestData(); } catch (e) {}
         try { recorder.stop(); } catch (e) { once(); }
-        setTimeout(once, 2500);
+        setTimeout(once, 5000);
       });
     }
     if (recorder) {
-      await waitAtMost(queue, 12000);
-      await waitAtMost(postDone(), 10000);
+      await waitAtMost(queue, 60000);
+      await waitAtMost(postDone(false), 20000);
     }
     done = true;
     armed = false;
     stopPaintLoop();
-    if (startBtn) { startBtn.disabled = true; startBtn.textContent = recorder ? 'Bitti' : 'Kayıt'; }
+    if (startBtn) { startBtn.disabled = true; startBtn.textContent = recorder && uploadedChunks ? 'Bitti' : 'Kayıt'; }
   }
 
   window.liveRecordFinish = finish;
@@ -444,8 +489,8 @@
   }
 
   window.addEventListener('pagehide', function () {
-    if (done || finishing || !recorder) return;
+    if (done || !recorder) return;
     if (recorder.state === 'recording') { try { recorder.requestData(); } catch (e) {} }
-    postDone();
+    postDone(true);
   });
 })();

@@ -9,6 +9,7 @@ if (!in_array($u['role'], ['ogrenci', 'ogretmen', 'admin'], true)) {
 }
 $action = post('action') ?: ($_GET['action'] ?? '');
 $pdo = db();
+ensure_live_attendance_schema();
 
 if ($action === 'start' && $u['role'] === 'ogretmen') {
     $gid = (int) post('group_id');
@@ -86,7 +87,7 @@ if ($action === 'end') {
         if ($saved) {
             flash_ok('Ders kaydı kaydedildi. Aşağıdan izleyebilirsiniz.');
         } else {
-            flash_error('Ders kapandı. Kayıt görünmüyorsa odada “Kaydı başlat”a basılıp 10 saniye beklenmiş olmalı.');
+            flash_error('Ders kapandı. Video yoksa odada “Kayıt”a basıp geri sayımın bitmesini bekleyin; Bitir’de “Kaydediliyor” yazısı geçmeden sayfayı kapatmayın. Bu sayfayı bir kez yenilemek bekleyen kaydı düşürebilir.');
         }
         redirect(post('goto'));
     }
@@ -156,8 +157,14 @@ if ($action === 'attend' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
     if (!$room || !live_user_can_publish($u, $room)) {
         json_out(['ok' => false], 403);
     }
-    $pdo->prepare('INSERT INTO attendance (room_id, student_id, present) VALUES (?,?,?) ON DUPLICATE KEY UPDATE present = VALUES(present)')
-        ->execute([$id, (int) post('student_id'), post('present') === '1' ? 1 : 0]);
+    $sid = (int) post('student_id');
+    if (post('present') === '1') {
+        if (!live_student_try_enter($room, $sid)) {
+            json_out(['ok' => false, 'error' => 'full', 'message' => live_full_watch_message()], 403);
+        }
+        json_out(['ok' => true]);
+    }
+    live_mark_student_absent($id, $sid);
     json_out(['ok' => true]);
 }
 
@@ -204,6 +211,10 @@ if ($action === 'poll') {
         'whep_url_alt' => live_whep_url($key, 1),
         'health_url' => live_health_url(),
     ];
+    if (in_array($u['role'], ['ogretmen', 'admin'], true)) {
+        $payload['present'] = live_present_students($id);
+        $payload['present_n'] = count($payload['present']);
+    }
     if (live_user_can_publish($u, $room)) {
         $payload['stream_key'] = $key;
         $payload['whip_url'] = live_whip_url($key);
@@ -372,6 +383,9 @@ if ($action === 'record_chunk') {
     }
     $seq = (int) post('seq');
     $dir = academy_storage('vod');
+    if (!is_dir($dir) || !is_writable($dir)) {
+        json_out(['ok' => false, 'error' => 'storage'], 500);
+    }
     $abs = $dir . '/live-' . $id . '.webm';
     if ($seq === 0 && is_file($abs)) {
         @unlink($abs);
@@ -380,10 +394,11 @@ if ($action === 'record_chunk') {
     if ($bin === false || $bin === '') {
         json_out(['ok' => false], 400);
     }
-    if (file_put_contents($abs, $bin, FILE_APPEND) === false) {
-        json_out(['ok' => false], 500);
+    $wrote = file_put_contents($abs, $bin, FILE_APPEND);
+    if ($wrote === false) {
+        json_out(['ok' => false, 'error' => 'write'], 500);
     }
-    json_out(['ok' => true, 'seq' => $seq]);
+    json_out(['ok' => true, 'seq' => $seq, 'bytes' => (int) $wrote, 'size' => (int) filesize($abs)]);
 }
 
 if ($action === 'record_done') {
