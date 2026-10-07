@@ -419,6 +419,21 @@
   let hls = null;
   let busy = false;
 
+  function waitIceGather(conn, ms) {
+    if (!conn || conn.iceGatheringState === 'complete') {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const t = setTimeout(resolve, ms);
+      conn.addEventListener('icegatheringstatechange', () => {
+        if (conn.iceGatheringState === 'complete') {
+          clearTimeout(t);
+          resolve();
+        }
+      });
+    });
+  }
+
   function stop() {
     if (pc) {
       try { pc.close(); } catch (e) {}
@@ -456,6 +471,7 @@
     };
     const offer = await conn.createOffer();
     await conn.setLocalDescription(offer);
+    await waitIceGather(conn, 1500);
     let res;
     try {
       res = await fetch(url, {

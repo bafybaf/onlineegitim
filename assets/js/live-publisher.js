@@ -380,7 +380,11 @@
       screenPc = null;
     }
     screenLoc = '';
-    if (!displayStream || !whipScreenUrls.length) return false;
+    if (!displayStream) return false;
+    if (!whipScreenUrls.length) {
+      setProto('Ekran WHIP yok — Admin → Canlı’da Ekran adreslerini kaydedin');
+      return false;
+    }
     screenPc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
@@ -391,6 +395,9 @@
       t.enabled = true;
       screenPc.addTransceiver(t, { direction: 'sendonly', streams: [displayStream] });
     });
+    if (!displayStream.getVideoTracks().length) {
+      screenPc.addTransceiver('video', { direction: 'sendonly' });
+    }
     const offer = await screenPc.createOffer();
     await screenPc.setLocalDescription(offer);
     await waitIceGather(screenPc, 2500);
@@ -399,7 +406,7 @@
       const url = whipScreenUrls[i];
       let res;
       try {
-        res = await fetchSdp(url, offerSdp, 8000);
+        res = await fetchSdp(url, offerSdp, 12000);
       } catch (e) {
         continue;
       }
@@ -408,6 +415,8 @@
       const sdp = await res.text();
       if (!sdp || !/v=0/i.test(sdp)) continue;
       await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
+      const iceOk = await waitPcReady(screenPc, 10000);
+      if (!iceOk) continue;
       applySendPause();
       return true;
     }
@@ -505,8 +514,13 @@
     if (!displayStream.getAudioTracks().length) {
       setProto('Ekran sesi yok — Chrome’da Sekme seçip “Sekme sesini paylaş”ı işaretleyin');
     }
-    const ok = await connectWhipScreen();
-    if (!ok) setProto('Ekran bağlanamadı');
+    let ok = await connectWhipScreen();
+    if (!ok) {
+      await new Promise((r) => setTimeout(r, 800));
+      ok = await connectWhipScreen();
+    }
+    if (!ok) setProto('Ekran Cloudflare’a bağlanamadı — Admin’de Ekran WHIP/WHEP dolu olsun');
+    else setProto('Ekran yayında');
   }
 
   btn.addEventListener('click', () => {
