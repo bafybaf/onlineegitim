@@ -225,7 +225,7 @@
     };
     const offer = await conn.createOffer();
     await conn.setLocalDescription(offer);
-    await waitIceGather(conn, 1500);
+    await waitIceGather(conn, 400);
     let res;
     try {
       res = await fetch(url, {
@@ -471,7 +471,7 @@
     };
     const offer = await conn.createOffer();
     await conn.setLocalDescription(offer);
-    await waitIceGather(conn, 1500);
+    await waitIceGather(conn, 400);
     let res;
     try {
       res = await fetch(url, {

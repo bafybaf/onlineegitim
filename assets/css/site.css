@@ -591,9 +591,9 @@ body:has(.live-shell) {
 .live-shell.is-board-full .live-stage-oval .live-unmute-btn { right: 12px; bottom: 12px; padding: 8px 10px; font-size: 12px; }
 .live-board { display: flex; flex-direction: column; min-height: 0; height: 100%; background: transparent; color: #111827; }
 .live-board-bar {
-  display: flex; flex-wrap: nowrap; gap: 3px; align-items: center;
-  padding: 0 6px; background: #0a0a0a; color: #fff;
-  overflow-x: auto; overflow-y: hidden; height: 28px; flex-shrink: 0;
+  display: flex; flex-wrap: nowrap; gap: 4px; align-items: center;
+  padding: 0 8px; background: #0a0a0a; color: #fff;
+  overflow-x: auto; overflow-y: hidden; height: 36px; flex-shrink: 0;
   scrollbar-width: none;
 }
 .live-board-bar::-webkit-scrollbar { display: none; }
@@ -604,7 +604,8 @@ body:has(.live-shell) {
 .live-board-sep { width: 1px; height: 16px; background: #243152; margin: 0 4px; }
 .live-board-tool {
   border: 0; border-radius: 6px; background: #2a2a2a; color: #fff;
-  font-weight: 800; font-size: 11px; padding: 4px 7px; line-height: 1;
+  font-weight: 800; font-size: 12px; padding: 7px 10px; line-height: 1;
+  cursor: pointer;
 }
 .live-board-tool.is-on, .live-board-dot.is-on { outline: 2px solid #f5c542; }
 .live-board-file { cursor: pointer; }
@@ -669,7 +670,7 @@ body:has(.live-shell) {
 .live-board-bar .live-cam-btn,
 .live-cam-btn {
   border-radius: 6px; background: #e8232a; color: #fff; font-weight: 800;
-  font-size: 11px; padding: 4px 9px;
+  font-size: 12px; padding: 7px 11px; cursor: pointer;
 }
 .live-cam-btn--ghost { background: #2a2a2a; }
 .live-obs-hint { font-size: 12px; font-weight: 700; color: #9aa4c4; text-transform: none; letter-spacing: 0; flex: 1; min-width: 220px; }

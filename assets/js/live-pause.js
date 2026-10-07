@@ -53,11 +53,12 @@
         return;
       }
       pending = true;
-      btn.disabled = true;
+      const next = !paused;
+      setState(next);
       try {
-        const body = paused
-          ? 'action=resume&id=' + roomId
-          : 'action=pause&id=' + roomId;
+        const body = next
+          ? 'action=pause&id=' + roomId
+          : 'action=resume&id=' + roomId;
         const r = await fetch(api, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -66,10 +67,13 @@
         const j = await r.json();
         if (j.ok && j.room) {
           window.livePauseApply(j.room);
+        } else {
+          setState(!next);
         }
-      } catch (e) {}
+      } catch (e) {
+        setState(!next);
+      }
       pending = false;
-      btn.disabled = false;
     });
   }
 

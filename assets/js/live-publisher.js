@@ -27,6 +27,7 @@
   let camStream = null;
   let displayStream = null;
   let sharing = false;
+  let shareStarting = false;
   let publishing = false;
   let starting = false;
   let hearing = false;
@@ -279,7 +280,7 @@
     });
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    await waitIceGather(pc, 2500);
+    await waitIceGather(pc, 400);
     const offerSdp = pc.localDescription && pc.localDescription.sdp ? pc.localDescription.sdp : offer.sdp;
     let lastErr = '';
     for (let i = 0; i < whipUrls.length; i++) {
@@ -302,11 +303,7 @@
         continue;
       }
       await pc.setRemoteDescription({ type: 'answer', sdp: sdp });
-      const iceOk = await waitPcReady(pc, 10000);
-      if (!iceOk) {
-        lastErr = 'ice';
-        continue;
-      }
+      waitPcReady(pc, 4000);
       return true;
     }
     throw new Error(lastErr || 'whip');
@@ -319,7 +316,7 @@
       return;
     }
     starting = true;
-    btn.disabled = true;
+    btn.textContent = 'Bağlanıyor…';
     try {
       if (!stream) {
         stream = await captureMedia();
@@ -333,19 +330,8 @@
         }
       }
       setWait('Yayına bağlanılıyor…', 'Öğrenciler bağlanınca görüntü açılır.', true);
-      let lastErr = null;
-      for (let n = 0; n < 3; n++) {
-        try {
-          setProto(n ? 'Yeniden bağlanıyor…' : 'Bağlanıyor…');
-          await connectWhip();
-          lastErr = null;
-          break;
-        } catch (err) {
-          lastErr = err;
-          await new Promise((r) => setTimeout(r, 800));
-        }
-      }
-      if (lastErr) throw lastErr;
+      setProto('Bağlanıyor…');
+      await connectWhip();
       publishing = true;
       btn.textContent = 'Kapat';
       if (listenBtn) listenBtn.hidden = false;
@@ -363,14 +349,14 @@
       publishing = false;
       if (!stream) {
         setWait('Kamera açılamadı', '', true);
+        btn.textContent = 'Kamera';
       } else {
-        setWait('Yayın bağlanamadı', 'Öğrenciler sizi göremez. Kamerayı kapatıp tekrar açın.', true);
+        setWait('Yayın bağlanamadı', 'Tekrar deneyin.', true);
         setProto('Yayın bağlanamadı');
-        btn.textContent = 'Kapat';
+        btn.textContent = 'Tekrar';
       }
     } finally {
       starting = false;
-      btn.disabled = false;
     }
   }
 
@@ -400,7 +386,7 @@
     }
     const offer = await screenPc.createOffer();
     await screenPc.setLocalDescription(offer);
-    await waitIceGather(screenPc, 2500);
+    await waitIceGather(screenPc, 400);
     const offerSdp = screenPc.localDescription && screenPc.localDescription.sdp ? screenPc.localDescription.sdp : offer.sdp;
     for (let i = 0; i < whipScreenUrls.length; i++) {
       const url = whipScreenUrls[i];
@@ -415,8 +401,7 @@
       const sdp = await res.text();
       if (!sdp || !/v=0/i.test(sdp)) continue;
       await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
-      const iceOk = await waitPcReady(screenPc, 10000);
-      if (!iceOk) continue;
+      waitPcReady(screenPc, 4000);
       applySendPause();
       return true;
     }
@@ -457,10 +442,13 @@
   }
 
   async function startShare() {
+    if (shareStarting || sharing) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       setProto('Ekran paylaşımı yok');
       return;
     }
+    shareStarting = true;
+    if (shareBtn) shareBtn.textContent = 'Seçin…';
     try {
       displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 15 } },
@@ -483,8 +471,14 @@
         displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       }
     }
+    if (!displayStream) {
+      shareStarting = false;
+      if (shareBtn) shareBtn.textContent = 'Ekran';
+      return;
+    }
     const screenTrack = displayStream.getVideoTracks()[0];
     if (!screenTrack) {
+      shareStarting = false;
       await stopShare();
       return;
     }
@@ -514,27 +508,31 @@
     if (!displayStream.getAudioTracks().length) {
       setProto('Ekran sesi yok — Chrome’da Sekme seçip “Sekme sesini paylaş”ı işaretleyin');
     }
-    let ok = await connectWhipScreen();
-    if (!ok) {
-      await new Promise((r) => setTimeout(r, 800));
-      ok = await connectWhipScreen();
-    }
-    if (!ok) setProto('Ekran Cloudflare’a bağlanamadı — Admin’de Ekran WHIP/WHEP dolu olsun');
-    else setProto('Ekran yayında');
+    shareStarting = false;
+    connectWhipScreen().then(function (ok) {
+      if (!ok) setProto('Ekran Cloudflare’a bağlanamadı — Admin’de Ekran WHIP/WHEP dolu olsun');
+      else if (!sendPaused) setProto('Ekran yayında');
+    });
   }
 
   btn.addEventListener('click', () => {
-    if (publishing || stream) {
+    if (starting) return;
+    if (publishing) {
       stopPublish();
-    } else {
-      startPublish();
+      return;
     }
+    startPublish();
   });
 
   if (shareBtn) {
     shareBtn.addEventListener('click', () => {
+      if (shareStarting) return;
       if (sharing) stopShare();
-      else startShare().catch(() => setProto('Paylaşım iptal'));
+      else startShare().catch(() => {
+        shareStarting = false;
+        if (shareBtn) shareBtn.textContent = 'Ekran';
+        setProto('Paylaşım iptal');
+      });
     });
   }
 

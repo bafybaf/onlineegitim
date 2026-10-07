@@ -240,11 +240,11 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-document.getElementById('chat-form').onsubmit = async (e) => {
+document.getElementById('chat-form').onsubmit = (e) => {
   e.preventDefault();
   const t = e.target.q.value.trim(); if (!t) return;
-  await fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=chat&room_id='+roomId+'&body='+encodeURIComponent(t) });
-  e.target.q.value='';
+  e.target.q.value = '';
+  fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=chat&room_id='+roomId+'&body='+encodeURIComponent(t) });
 };
 function bindAtt(cb) {
   cb.addEventListener('change', async () => {
