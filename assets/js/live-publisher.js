@@ -271,11 +271,11 @@
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
     stream.getVideoTracks().forEach((t) => {
-      pc.addTrack(t, stream);
+      pc.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
     });
     stream.getAudioTracks().forEach((t) => {
       t.enabled = true;
-      pc.addTrack(t, stream);
+      pc.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
     });
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -385,11 +385,11 @@
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
     displayStream.getVideoTracks().forEach((t) => {
-      screenPc.addTrack(t, displayStream);
+      screenPc.addTransceiver(t, { direction: 'sendonly', streams: [displayStream] });
     });
     displayStream.getAudioTracks().forEach((t) => {
       t.enabled = true;
-      screenPc.addTrack(t, displayStream);
+      screenPc.addTransceiver(t, { direction: 'sendonly', streams: [displayStream] });
     });
     const offer = await screenPc.createOffer();
     await screenPc.setLocalDescription(offer);

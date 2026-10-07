@@ -136,6 +136,24 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     return $ok || is_file($abs);
 }
 
+function vod_file_bytes(string $path): int
+{
+    if (!is_file($path)) {
+        return 0;
+    }
+    clearstatcache(true, $path);
+    $sz = @filesize($path);
+    if ($sz === false) {
+        return PHP_INT_MAX;
+    }
+    return (int) $sz;
+}
+
+function vod_file_ready(string $path, int $min = 200): bool
+{
+    return is_file($path) && vod_file_bytes($path) >= $min;
+}
+
 function vod_clip_title(string $s, int $n = 160): string
 {
     $s = trim($s);
@@ -171,28 +189,31 @@ function vod_commit_live_room(PDO $pdo, array $room, int $mins = 0): bool
 
 function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id): bool
 {
+    @set_time_limit(180);
     $like = 'vod/oda-' . $id . '-%';
-    $dup = $pdo->prepare('SELECT id FROM recordings WHERE video_path LIKE ? LIMIT 1');
-    $dup->execute([$like]);
+    $liveName = 'vod/live-' . $id . '.webm';
+    $dup = $pdo->prepare('SELECT id FROM recordings WHERE video_path LIKE ? OR video_path = ? LIMIT 1');
+    $dup->execute([$like, $liveName]);
     if ($dup->fetch()) {
         return true;
     }
     $tmp = academy_storage('vod') . '/live-' . $id . '.webm';
     $name = '';
     $dest = '';
-    if (is_file($tmp) && filesize($tmp) >= 200) {
+    if (vod_file_ready($tmp)) {
         $name = 'vod/oda-' . $id . '-' . date('Ymd-His') . '.webm';
         $dest = academy_storage() . '/' . $name;
-        if (!@rename($tmp, $dest) && !@copy($tmp, $dest)) {
-            return false;
-        }
-        if (is_file($tmp) && realpath($tmp) !== realpath($dest)) {
+        @set_time_limit(180);
+        if (!@rename($tmp, $dest)) {
+            $dest = $tmp;
+            $name = 'vod/' . basename($tmp);
+        } elseif (is_file($tmp) && @realpath($tmp) !== @realpath($dest)) {
             @unlink($tmp);
         }
     } else {
         $found = glob(academy_storage() . '/vod/oda-' . $id . '-*.webm') ?: [];
         rsort($found);
-        if (!$found || !is_file($found[0]) || filesize($found[0]) < 200) {
+        if (!$found || !vod_file_ready($found[0])) {
             return false;
         }
         $dest = $found[0];
@@ -212,16 +233,17 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id):
     if ($teacher !== '') {
         $label .= ' — ' . $teacher;
     }
-    $fileMs = is_file($dest) ? vod_webm_last_timecode_ms($dest) : 0.0;
+    $bytes = vod_file_bytes($dest);
+    $fileMs = ($bytes > 0 && $bytes < 80 * 1024 * 1024) ? vod_webm_last_timecode_ms($dest) : 0.0;
     if ($fileMs > 400) {
         $mins = max(1, (int) ceil($fileMs / 60000));
     } else {
         $mins = max(1, $mins);
     }
-    $mins = min(300, $mins);
+    $mins = min(480, $mins);
     $patchMs = $fileMs > 400 ? $fileMs : ($mins * 60 * 1000.0);
-    if (function_exists('vod_webm_patch_duration') && is_file($dest)) {
-        vod_webm_patch_duration($dest, $patchMs);
+    if (function_exists('vod_webm_patch_duration') && is_file($dest) && $bytes > 0 && $bytes < 40 * 1024 * 1024) {
+        vod_webm_patch_duration($dest, $patchMs, $bytes < 8 * 1024 * 1024);
     }
     try {
         $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
@@ -242,13 +264,21 @@ function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int
         if (!preg_match('/live-(\d+)\.webm$/', str_replace('\\', '/', $file), $m)) {
             continue;
         }
-        if (!is_file($file) || filesize($file) < 200) {
+        if (!vod_file_ready($file)) {
             continue;
         }
-        $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ? AND teacher_id = ?');
-        $st->execute([(int) $m[1], $teacherId]);
+        $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+        $st->execute([(int) $m[1]]);
         $room = $st->fetch();
-        if ($room && vod_commit_live_room($pdo, $room, 0)) {
+        if (!$room) {
+            continue;
+        }
+        $tid = (int) $room['teacher_id'];
+        $gid = (int) $room['group_id'];
+        if ($tid !== $teacherId && !(function_exists('group_has_teacher') && group_has_teacher($gid, $teacherId))) {
+            continue;
+        }
+        if (vod_commit_live_room($pdo, $room, 0)) {
             $n++;
         }
     }
@@ -256,10 +286,21 @@ function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int
         if (!preg_match('/oda-(\d+)-/', basename($file), $m)) {
             continue;
         }
-        $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ? AND teacher_id = ?');
-        $st->execute([(int) $m[1], $teacherId]);
+        if (!vod_file_ready($file)) {
+            continue;
+        }
+        $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+        $st->execute([(int) $m[1]]);
         $room = $st->fetch();
-        if ($room && vod_commit_live_room($pdo, $room, 0)) {
+        if (!$room) {
+            continue;
+        }
+        $tid = (int) $room['teacher_id'];
+        $gid = (int) $room['group_id'];
+        if ($tid !== $teacherId && !(function_exists('group_has_teacher') && group_has_teacher($gid, $teacherId))) {
+            continue;
+        }
+        if (vod_commit_live_room($pdo, $room, 0)) {
             $n++;
         }
     }

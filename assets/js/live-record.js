@@ -48,6 +48,11 @@
   let recPulse = 0;
   let uploadedChunks = 0;
   let uploadFailed = 0;
+  let queued = 0;
+  const seqKey = 'oi-rec-seq-' + String(cfg.roomId);
+  try {
+    seq = Math.max(0, parseInt(sessionStorage.getItem(seqKey) || '0', 10) || 0);
+  } catch (e) {}
   let csrfToken = '';
   try {
     var meta = document.querySelector('meta[name="csrf-token"]');
@@ -283,7 +288,7 @@
     var hasAudio = recStream.getAudioTracks().length > 0;
     var types = mimeList(hasAudio);
     for (var i = 0; i < types.length && !recorder; i++) {
-      var opts = { videoBitsPerSecond: 2800000 };
+      var opts = { videoBitsPerSecond: 1600000 };
       if (types[i]) opts.mimeType = types[i];
       if (hasAudio) opts.audioBitsPerSecond = 128000;
       try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }
@@ -292,12 +297,12 @@
       try { recorder = new MediaRecorder(recStream); } catch (fatal) { recorder = null; return false; }
     }
     recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size > 8) upload(ev.data); };
-    try { recorder.start(1000); } catch (e) { recorder = null; return false; }
+    try { recorder.start(4000); } catch (e) { recorder = null; return false; }
     if (recPulse) clearInterval(recPulse);
     recPulse = setInterval(function () {
-      if (!recorder || recorder.state !== 'recording' || recPaused) return;
+      if (!recorder || recorder.state !== 'recording' || recPaused || queued > 4) return;
       try { recorder.requestData(); } catch (e) {}
-    }, 2000);
+    }, 4000);
     if (recPaused) { try { recorder.pause(); } catch (e) {} }
     if (!startedMs) startedMs = Date.now();
     return true;
@@ -309,7 +314,7 @@
       xhr.open('POST', api);
       xhr.withCredentials = true;
       if (csrfToken) xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
-      xhr.timeout = 60000;
+      xhr.timeout = 20000;
       xhr.onload = function () {
         if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
         else reject(new Error('chunk ' + xhr.status));
@@ -323,8 +328,12 @@
   function upload(blob) {
     if (!blob || blob.size < 8) return queue;
     if (done && !finishing) return queue;
+    if (!finishing && queued >= 8) return queue;
+    if (!finishing && blob.size > 8 * 1024 * 1024) return queue;
     var n = seq;
     seq += 1;
+    try { sessionStorage.setItem(seqKey, String(seq)); } catch (e) {}
+    queued += 1;
     queue = queue.then(function () {
       var tries = 0;
       function once() {
@@ -332,6 +341,7 @@
         fd.append('action', 'record_chunk');
         fd.append('id', String(cfg.roomId));
         fd.append('seq', String(n));
+        fd.append('resume', n > 0 ? '1' : '0');
         fd.append('chunk', blob, 'c.webm');
         if (csrfToken) fd.append('_csrf', csrfToken);
         return postChunk(fd).then(function () {
@@ -339,12 +349,15 @@
           return n;
         }).catch(function (err) {
           tries += 1;
-          if (tries < 8) return new Promise(function (r) { setTimeout(r, 400 * tries); }).then(once);
+          if (tries < 3) return new Promise(function (r) { setTimeout(r, 700 * tries); }).then(once);
           uploadFailed += 1;
           throw err;
         });
       }
-      return once().catch(function () { return n; });
+      return once().catch(function () { return n; }).then(function (v) {
+        queued = Math.max(0, queued - 1);
+        return v;
+      });
     });
     return queue;
   }
@@ -456,7 +469,7 @@
     }
     stopPaintLoop();
     if (recorder) {
-      await waitAtMost(queue, 120000);
+      await waitAtMost(queue, 180000);
       var ok = await waitAtMost(postDone(false), 20000);
       if (!ok && uploadedChunks > 0) {
         await sleep(1500);
@@ -465,6 +478,7 @@
     }
     done = true;
     armed = false;
+    try { sessionStorage.removeItem(seqKey); } catch (e) {}
     stopPaintLoop();
     if (startBtn) { startBtn.disabled = true; startBtn.textContent = recorder && uploadedChunks ? 'Bitti' : 'Kayıt'; }
   }

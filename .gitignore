@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+config/stream.local.php
 composer.phar
 Thumbs.db
 .DS_Store

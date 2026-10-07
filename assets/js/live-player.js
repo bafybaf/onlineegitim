@@ -338,7 +338,7 @@
     }
     busy = true;
     try {
-      const mtx = await pingMtx();
+      const mtx = cfg.provider === 'cloudflare' ? 'unknown' : await pingMtx();
       if (playMode !== 'hls') {
         let whepResult = null;
         for (let i = 0; i < whepUrls.length; i++) {

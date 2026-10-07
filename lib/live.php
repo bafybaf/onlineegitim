@@ -93,8 +93,38 @@ function live_rtmp_url(): string
     return 'rtmp://' . live_obs_host() . ':1935/live';
 }
 
+function live_cf_kind(string $streamKey): string
+{
+    return str_ends_with($streamKey, '-screen') ? 'screen' : 'cam';
+}
+
+function live_cf_url(string $kind, string $dir): string
+{
+    $kind = $kind === 'screen' ? 'screen' : 'cam';
+    $dir = $dir === 'whip' ? 'whip' : 'whep';
+    $const = $kind === 'screen'
+        ? ($dir === 'whip' ? 'CF_STREAM_WHIP_SCREEN' : 'CF_STREAM_WHEP_SCREEN')
+        : ($dir === 'whip' ? 'CF_STREAM_WHIP' : 'CF_STREAM_WHEP');
+    $set = $kind === 'screen'
+        ? ($dir === 'whip' ? 'cf_stream_whip_screen' : 'cf_stream_whep_screen')
+        : ($dir === 'whip' ? 'cf_stream_whip' : 'cf_stream_whep');
+    $v = defined($const) ? trim((string) constant($const)) : '';
+    if ($v === '' && function_exists('setting')) {
+        $v = trim(setting($set));
+    }
+    return rtrim($v, '/');
+}
+
+function live_cf_ready(): bool
+{
+    return live_cf_url('cam', 'whip') !== '' && live_cf_url('cam', 'whep') !== '';
+}
+
 function live_hls_url(string $streamKey, int $which = 0): string
 {
+    if (live_cf_ready()) {
+        return '';
+    }
     $paths = live_stream_paths($streamKey);
     if (!isset($paths[$which])) {
         return '';
@@ -104,6 +134,13 @@ function live_hls_url(string $streamKey, int $which = 0): string
 
 function live_whep_url(string $streamKey, int $which = 0): string
 {
+    if (live_cf_ready()) {
+        if ($which > 0) {
+            return '';
+        }
+        $url = live_cf_url(live_cf_kind($streamKey), 'whep');
+        return $url !== '' ? $url : '';
+    }
     $paths = live_stream_paths($streamKey);
     if (!isset($paths[$which])) {
         return '';
@@ -113,6 +150,12 @@ function live_whep_url(string $streamKey, int $which = 0): string
 
 function live_whip_url(string $streamKey, int $which = 0): string
 {
+    if (live_cf_ready()) {
+        if ($which > 0) {
+            return '';
+        }
+        return live_cf_url(live_cf_kind($streamKey), 'whip');
+    }
     $paths = live_stream_paths($streamKey);
     if (!isset($paths[$which])) {
         return '';
@@ -403,6 +446,9 @@ function live_play_mode_picker(string $name = 'play_mode', ?string $selected = n
 
 function live_health_url(): string
 {
+    if (live_cf_ready()) {
+        return '';
+    }
     return rtrim(live_hls_base(), '/') . '/';
 }
 

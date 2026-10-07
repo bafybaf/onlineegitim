@@ -20,3 +20,19 @@ define('LIVE_HOST', oi_env('LIVE_HOST', ''));
 // HTTPS alt alanlar (Coolify). Boşsa yerel http://HOST:8888 / :8889 kullanılır.
 define('LIVE_HLS_BASE', rtrim(oi_env('LIVE_HLS_BASE', ''), '/'));
 define('LIVE_WHEP_BASE', rtrim(oi_env('LIVE_WHEP_BASE', ''), '/'));
+$oiStreamLocal = __DIR__ . '/stream.local.php';
+if (is_file($oiStreamLocal)) {
+    require $oiStreamLocal;
+}
+if (!defined('CF_STREAM_WHIP')) {
+    define('CF_STREAM_WHIP', rtrim(oi_env('CF_STREAM_WHIP', ''), '/'));
+}
+if (!defined('CF_STREAM_WHEP')) {
+    define('CF_STREAM_WHEP', rtrim(oi_env('CF_STREAM_WHEP', ''), '/'));
+}
+if (!defined('CF_STREAM_WHIP_SCREEN')) {
+    define('CF_STREAM_WHIP_SCREEN', rtrim(oi_env('CF_STREAM_WHIP_SCREEN', ''), '/'));
+}
+if (!defined('CF_STREAM_WHEP_SCREEN')) {
+    define('CF_STREAM_WHEP_SCREEN', rtrim(oi_env('CF_STREAM_WHEP_SCREEN', ''), '/'));
+}

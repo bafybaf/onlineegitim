@@ -17,6 +17,10 @@ services:
       LIVE_HOST: ${LIVE_HOST:-onlineilahiyat.com}
       LIVE_HLS_BASE: ${LIVE_HLS_BASE:-}
       LIVE_WHEP_BASE: ${LIVE_WHEP_BASE:-}
+      CF_STREAM_WHIP: ${CF_STREAM_WHIP:-}
+      CF_STREAM_WHEP: ${CF_STREAM_WHEP:-}
+      CF_STREAM_WHIP_SCREEN: ${CF_STREAM_WHIP_SCREEN:-}
+      CF_STREAM_WHEP_SCREEN: ${CF_STREAM_WHEP_SCREEN:-}
     volumes:
       - app_storage:/var/www/html/storage
     depends_on:

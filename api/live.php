@@ -70,6 +70,7 @@ if ($action === 'end') {
     if ($u['role'] !== 'admin' && (int) $room['teacher_id'] !== (int) $u['id'] && !group_has_teacher((int) $room['group_id'], (int) $u['id'])) {
         json_out(['ok' => false], 403);
     }
+    @set_time_limit(180);
     $pdo->prepare("UPDATE live_rooms SET status='ended', ended_at=NOW(), broadcasting=0 WHERE id=?")->execute([$id]);
     try {
         $pdo->prepare('UPDATE live_rooms SET paused = 0, pause_ends_at = NULL WHERE id = ?')->execute([$id]);
@@ -397,19 +398,36 @@ if ($action === 'record_chunk') {
     if (!is_dir($dir) || !is_writable($dir)) {
         json_out(['ok' => false, 'error' => 'storage'], 500);
     }
+    if (function_exists('session_write_close')) {
+        @session_write_close();
+    }
     $abs = $dir . '/live-' . $id . '.webm';
-    if ($seq === 0 && is_file($abs)) {
+    $resume = post('resume') === '1';
+    $existing = function_exists('vod_file_bytes') ? vod_file_bytes($abs) : (is_file($abs) ? (int) filesize($abs) : 0);
+    if ($seq === 0 && $existing > 0 && !$resume && $existing < 65536) {
         @unlink($abs);
+        $existing = 0;
     }
-    $bin = file_get_contents($_FILES['chunk']['tmp_name']);
-    if ($bin === false || $bin === '') {
-        json_out(['ok' => false], 400);
+    $src = fopen($_FILES['chunk']['tmp_name'], 'rb');
+    $dst = fopen($abs, 'ab');
+    if ($src === false || $dst === false) {
+        if ($src) {
+            fclose($src);
+        }
+        if ($dst) {
+            fclose($dst);
+        }
+        json_out(['ok' => false, 'error' => 'write'], 500);
     }
-    $wrote = file_put_contents($abs, $bin, FILE_APPEND);
+    $wrote = stream_copy_to_stream($src, $dst);
+    fclose($src);
+    fclose($dst);
     if ($wrote === false) {
         json_out(['ok' => false, 'error' => 'write'], 500);
     }
-    json_out(['ok' => true, 'seq' => $seq, 'bytes' => (int) $wrote, 'size' => (int) filesize($abs)]);
+    @set_time_limit(120);
+    $sizeOut = function_exists('vod_file_bytes') ? vod_file_bytes($abs) : (int) @filesize($abs);
+    json_out(['ok' => true, 'seq' => $seq, 'bytes' => (int) $wrote, 'size' => (int) $sizeOut]);
 }
 
 if ($action === 'record_done') {
@@ -419,6 +437,10 @@ if ($action === 'record_done') {
     $room = $st->fetch();
     if (!$room || !live_user_can_publish($u, $room)) {
         json_out(['ok' => false], 403);
+    }
+    @set_time_limit(180);
+    if (function_exists('session_write_close')) {
+        @session_write_close();
     }
     $ok = vod_commit_live_room($pdo, $room, (int) post('mins'));
     json_out(['ok' => true, 'saved' => $ok]);

@@ -202,6 +202,7 @@ const base = <?= json_encode(url('')) ?>;
 const roomId = <?= $id ?>;
 window.LIVE_PLAYER = {
   method: 'browser',
+  provider: <?= json_encode(live_cf_ready() ? 'cloudflare' : 'mediamtx') ?>,
   publish: <?= $canPublish ? 'true' : 'false' ?>,
   hlsUrl: <?= json_encode($hlsUrl) ?>,
   hlsUrlAlt: <?= json_encode($hlsUrlAlt) ?>,

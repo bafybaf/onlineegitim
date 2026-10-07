@@ -3,6 +3,21 @@ require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
 ensure_live_attendance_schema();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'cf_stream') {
+    $pairs = [
+        'cf_stream_whip' => trim((string) post('cf_stream_whip')),
+        'cf_stream_whep' => trim((string) post('cf_stream_whep')),
+        'cf_stream_whip_screen' => trim((string) post('cf_stream_whip_screen')),
+        'cf_stream_whep_screen' => trim((string) post('cf_stream_whep_screen')),
+    ];
+    foreach ($pairs as $k => $v) {
+        setting_set($k, $v);
+    }
+    flash_ok(live_cf_ready()
+        ? 'Cloudflare yayın adresi kaydedildi. Kamera artık Stream üzerinden gider.'
+        : 'Adresler temizlendi. Yayın yine sunucudaki MediaMTX üzerinden gider.');
+    redirect('admin/canli.php');
+}
 $all = db()->query(
     "SELECT r.*, t.name teacher_name, g.name gname, g.cap,
             (SELECT COUNT(*) FROM attendance a WHERE a.room_id = r.id AND a.present = 1) present_n
@@ -19,6 +34,27 @@ $err = flash_error();
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <p class="mb-4 text-sm text-muted">Dersin açıldığı tarih ve saat, kontenjan ve o derse girebilen öğrenciler. Açık odayı kapatabilir veya detayına bakabilirsiniz.</p>
+<div class="card mb-6 p-5">
+  <h2 class="font-display text-xl">Cloudflare Stream</h2>
+  <p class="mt-1 text-sm text-muted">WHIP yayın / WHEP izleme adresleri doluysa kamera ve ekran Cloudflare’a gider; sunucu CPU’su rahatlar. Şu an tek girdi var: aynı anda bir ders yayınlasın. Kayıt yine sitede kalır.</p>
+  <p class="mt-2 text-sm <?= live_cf_ready() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?= live_cf_ready() ? 'Stream açık.' : 'Stream adresi yok; MediaMTX kullanılıyor.' ?></p>
+  <form method="post" class="mt-4 grid gap-3">
+    <input type="hidden" name="action" value="cf_stream">
+    <label class="text-sm font-bold">Kamera WHIP
+      <input name="cf_stream_whip" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('cf_stream_whip') ?: (defined('CF_STREAM_WHIP') ? (string) CF_STREAM_WHIP : '')) ?>" autocomplete="off">
+    </label>
+    <label class="text-sm font-bold">Kamera WHEP
+      <input name="cf_stream_whep" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('cf_stream_whep') ?: (defined('CF_STREAM_WHEP') ? (string) CF_STREAM_WHEP : '')) ?>" autocomplete="off">
+    </label>
+    <label class="text-sm font-bold">Ekran WHIP
+      <input name="cf_stream_whip_screen" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('cf_stream_whip_screen') ?: (defined('CF_STREAM_WHIP_SCREEN') ? (string) CF_STREAM_WHIP_SCREEN : '')) ?>" autocomplete="off">
+    </label>
+    <label class="text-sm font-bold">Ekran WHEP
+      <input name="cf_stream_whep_screen" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('cf_stream_whep_screen') ?: (defined('CF_STREAM_WHEP_SCREEN') ? (string) CF_STREAM_WHEP_SCREEN : '')) ?>" autocomplete="off">
+    </label>
+    <button class="btn-primary h-10 w-fit text-sm">Kaydet</button>
+  </form>
+</div>
 <div class="card overflow-hidden">
   <table class="table">
     <thead>
