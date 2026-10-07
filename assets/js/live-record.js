@@ -2,7 +2,7 @@
   const cfg = window.LIVE_RECORD || {};
   if (!cfg.roomId) return;
 
-  const W = 1920;
+  const W = 1280;
   const api = cfg.url || '';
   const video = document.getElementById('live-video');
   const bg = document.getElementById('board-bg');
@@ -13,8 +13,8 @@
   const countBox = document.getElementById('live-rec-count');
   const countNum = document.getElementById('live-rec-num');
 
-  let sideW = 400;
-  let H = 810;
+  let H = 720;
+  let layoutLocked = false;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -69,17 +69,14 @@
   }
 
   function calcLayout() {
-    var main = document.querySelector('.live-main');
-    var side = document.querySelector('.live-side');
-    if (main && side && main.clientWidth > 100 && side.clientWidth > 10) {
-      sideW = Math.round(W * side.clientWidth / main.clientWidth);
-    }
-    var boardW = W - sideW;
+    if (layoutLocked) return;
     if (stage && stage.clientWidth > 2 && stage.clientHeight > 2) {
       var aspect = stage.clientWidth / stage.clientHeight;
-      var next = Math.round(boardW / aspect);
+      var next = Math.round(W / aspect);
       if (next % 2) next += 1;
-      H = Math.max(480, next);
+      H = Math.max(640, Math.min(800, next));
+    } else {
+      H = 720;
     }
     canvas.width = W;
     canvas.height = H;
@@ -158,56 +155,18 @@
 
   function paint() {
     if (finishing || done || !armed || recPaused) return;
-    var boardW = W - sideW;
-    ctx.fillStyle = '#0b1020';
-    ctx.fillRect(0, 0, W, H);
-
+    paintBoard(0, 0, W, H);
+    var pipW = Math.round(W * 0.22);
+    var pipH = Math.round(pipW * 9 / 16);
+    var ox = W - pipW - 18;
+    var oy = 18;
     ctx.save();
-    ctx.beginPath(); ctx.rect(0, 0, boardW, H); ctx.clip();
-    paintBoard(0, 0, boardW, H);
-    ctx.restore();
-
-    var pad = 14;
-    var ovalW = Math.max(180, sideW - pad * 2);
-    var ovalH = Math.round(ovalW * 9 / 16);
-    var ox = boardW + pad;
-    var oy = pad;
-    var camBlock = oy + ovalH + pad;
-
-    ctx.fillStyle = '#111111';
-    ctx.fillRect(boardW, 0, sideW, H);
-
-    ctx.save();
-    roundRectPath(ox, oy, ovalW, ovalH, 16);
+    roundRectPath(ox, oy, pipW, pipH, 14);
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.clip();
-    drawCover(video, ox, oy, ovalW, ovalH);
+    drawCover(video, ox, oy, pipW, pipH);
     ctx.restore();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 18px Nunito, sans-serif';
-    ctx.fillText('Sohbet', boardW + 16, camBlock + 26);
-    var log = document.getElementById('chat-log');
-    if (log) {
-      ctx.font = '15px Nunito, sans-serif';
-      ctx.fillStyle = '#e5e7eb';
-      var lines = Array.from(log.querySelectorAll('p')).slice(-25);
-      var maxCh = Math.floor((sideW - 32) / 8);
-      var y = camBlock + 50;
-      lines.forEach(function (p) {
-        var t = (p.textContent || '').replace(/\s+/g, ' ').trim();
-        if (!t || y > H - 10) return;
-        ctx.fillText(t.length > maxCh ? t.slice(0, maxCh - 1) + '…' : t, boardW + 16, y);
-        y += 22;
-      });
-    }
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '700 16px Nunito, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('onlineilahiyat.com', boardW + sideW / 2, H - 16);
-    ctx.textAlign = 'left';
   }
 
   function stopPaintLoop() {
@@ -283,12 +242,12 @@
   function startRecorder(media) {
     if (!armed || !window.MediaRecorder || recorder || done) return !!recorder;
     refreshMix(media);
-    recStream = canvas.captureStream(15);
+    recStream = canvas.captureStream(12);
     if (audioClone && recStream.getAudioTracks().length === 0) recStream.addTrack(audioClone);
     var hasAudio = recStream.getAudioTracks().length > 0;
     var types = mimeList(hasAudio);
     for (var i = 0; i < types.length && !recorder; i++) {
-      var opts = { videoBitsPerSecond: 1600000 };
+      var opts = { videoBitsPerSecond: 2200000 };
       if (types[i]) opts.mimeType = types[i];
       if (hasAudio) opts.audioBitsPerSecond = 128000;
       try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }
@@ -297,12 +256,9 @@
       try { recorder = new MediaRecorder(recStream); } catch (fatal) { recorder = null; return false; }
     }
     recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size > 8) upload(ev.data); };
-    try { recorder.start(4000); } catch (e) { recorder = null; return false; }
+    try { recorder.start(2000); } catch (e) { recorder = null; return false; }
     if (recPulse) clearInterval(recPulse);
-    recPulse = setInterval(function () {
-      if (!recorder || recorder.state !== 'recording' || recPaused || queued > 4) return;
-      try { recorder.requestData(); } catch (e) {}
-    }, 4000);
+    recPulse = 0;
     if (recPaused) { try { recorder.pause(); } catch (e) {} }
     if (!startedMs) startedMs = Date.now();
     return true;
@@ -314,7 +270,7 @@
       xhr.open('POST', api);
       xhr.withCredentials = true;
       if (csrfToken) xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
-      xhr.timeout = 20000;
+      xhr.timeout = 12000;
       xhr.onload = function () {
         if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
         else reject(new Error('chunk ' + xhr.status));
@@ -328,8 +284,6 @@
   function upload(blob) {
     if (!blob || blob.size < 8) return queue;
     if (done && !finishing) return queue;
-    if (!finishing && queued >= 8) return queue;
-    if (!finishing && blob.size > 8 * 1024 * 1024) return queue;
     var n = seq;
     seq += 1;
     try { sessionStorage.setItem(seqKey, String(seq)); } catch (e) {}
@@ -386,6 +340,7 @@
     armed = true;
     if (!startedMs) startedMs = Date.now();
     calcLayout();
+    layoutLocked = true;
     startPaintLoop();
     var ok = startRecorder(pendingMedia || (video && video.srcObject));
     watchShareMix();
@@ -469,11 +424,10 @@
     }
     stopPaintLoop();
     if (recorder) {
-      await waitAtMost(queue, 180000);
-      var ok = await waitAtMost(postDone(false), 20000);
+      await waitAtMost(queue, 25000);
+      var ok = await waitAtMost(postDone(false), 8000);
       if (!ok && uploadedChunks > 0) {
-        await sleep(1500);
-        await waitAtMost(postDone(false), 15000);
+        await waitAtMost(postDone(false), 8000);
       }
     }
     done = true;
@@ -522,7 +476,7 @@
       if (f.dataset.recOk === '1') return;
       ev.preventDefault();
       var btn = f.querySelector('button');
-      if (btn) { btn.disabled = true; btn.textContent = 'Kaydediliyor…'; }
+      if (btn) { btn.disabled = true; btn.textContent = queued ? 'Yükleniyor…' : 'Kaydediliyor…'; }
       finish().finally(function () {
         f.dataset.recOk = '1';
         function hid(name, val) {
