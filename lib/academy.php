@@ -143,6 +143,14 @@ function academy_store_upload(string $field, string $subdir, array $mimes, int $
     if ($err === UPLOAD_ERR_NO_FILE) {
         return null;
     }
+    if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) {
+        throw new RuntimeException(function_exists('request_upload_limit_message')
+            ? request_upload_limit_message($maxMb)
+            : 'Dosya en fazla ' . $maxMb . ' MB olabilir.');
+    }
+    if ($err === UPLOAD_ERR_PARTIAL) {
+        throw new RuntimeException('Dosya yarım yüklendi. Yeniden deneyin.');
+    }
     if ($err !== UPLOAD_ERR_OK) {
         throw new RuntimeException('Dosya yüklenemedi.');
     }

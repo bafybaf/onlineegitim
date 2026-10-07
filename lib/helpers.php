@@ -55,6 +55,61 @@ function post(string $key, $default = ''): string
     return trim((string) ($_POST[$key] ?? $default));
 }
 
+function php_ini_bytes(string $key): int
+{
+    $raw = trim((string) ini_get($key));
+    if ($raw === '' || $raw === '0' || $raw === '-1') {
+        return 0;
+    }
+    if (function_exists('ini_parse_quantity')) {
+        $n = (int) ini_parse_quantity($raw);
+        return $n > 0 ? $n : 0;
+    }
+    $unit = strtoupper(substr($raw, -1));
+    $n = (float) $raw;
+    $mul = ['K' => 1024, 'M' => 1048576, 'G' => 1073741824];
+    if (isset($mul[$unit])) {
+        $n *= $mul[$unit];
+    }
+    return (int) $n;
+}
+
+function request_post_too_large(): bool
+{
+    if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
+        return false;
+    }
+    $len = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+    $max = php_ini_bytes('post_max_size');
+    if ($max > 0 && $len > $max) {
+        return true;
+    }
+    foreach ($_FILES as $file) {
+        if (!is_array($file)) {
+            continue;
+        }
+        $err = $file['error'] ?? null;
+        if (is_array($err)) {
+            foreach ($err as $code) {
+                if ((int) $code === UPLOAD_ERR_INI_SIZE || (int) $code === UPLOAD_ERR_FORM_SIZE) {
+                    return true;
+                }
+            }
+            continue;
+        }
+        $code = (int) $err;
+        if ($code === UPLOAD_ERR_INI_SIZE || $code === UPLOAD_ERR_FORM_SIZE) {
+            return true;
+        }
+    }
+    return $len > 1024 && empty($_POST) && empty($_FILES);
+}
+
+function request_upload_limit_message(int $maxMb = 200): string
+{
+    return 'Dosya sunucuya sığmadı. En fazla ' . $maxMb . ' MB MP4 yükleyin; başlık ve grup bilgisi büyük dosyada kaybolmaz.';
+}
+
 function flash_error(?string $msg = null): string
 {
     if ($msg !== null) {

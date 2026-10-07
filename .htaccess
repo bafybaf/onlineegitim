@@ -3,9 +3,19 @@ DirectoryIndex index.php
 AddDefaultCharset UTF-8
 <IfModule mod_php.c>
   php_value default_charset UTF-8
+  php_value upload_max_filesize 220M
+  php_value post_max_size 230M
+  php_value max_execution_time 300
+  php_value max_input_time 300
+  php_value memory_limit 512M
 </IfModule>
 <IfModule mod_php8.c>
   php_value default_charset UTF-8
+  php_value upload_max_filesize 220M
+  php_value post_max_size 230M
+  php_value max_execution_time 300
+  php_value max_input_time 300
+  php_value memory_limit 512M
 </IfModule>
 
 <IfModule mod_rewrite.c>
