@@ -521,5 +521,5 @@ function live_pill(array $r): string
     if (($r['status'] ?? '') !== 'live') {
         return '<span class="text-muted">Kapalı</span>';
     }
-    return '<span class="live-pill"><i></i> Canlı · ' . live_mins($r['started_at']) . ' dk · oda #' . $r['id'] . '</span>';
+    return '<span class="live-pill"><i></i> Canlı</span>';
 }

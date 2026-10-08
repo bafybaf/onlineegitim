@@ -173,7 +173,7 @@ $presentN = count($students);
           <button type="button" id="live-unmute" class="live-unmute-btn" hidden>Sesi aç</button>
         </div>
         <p id="live-proto" class="absolute bottom-14 left-4 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white/80" hidden></p>
-        <div id="live-seat-n" class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= (int) $presentN ?> derste · <?= live_mins($room['started_at']) ?> dk</div>
+        <div id="live-seat-n" class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= (int) $presentN ?> derste</div>
       </div>
       <aside class="chat">
       <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet<?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?> · Derstekiler <span id="live-present-n"><?= (int) $presentN ?></span><?php endif; ?></div>

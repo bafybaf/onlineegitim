@@ -192,7 +192,10 @@ function cart_program_set(int $programId, int $qty): void
 function live_mins(string $startedAt): int
 {
     $t = strtotime($startedAt);
-    return max(1, (int) round((time() - $t) / 60));
+    if ($t === false) {
+        return 0;
+    }
+    return max(0, (int) floor((time() - $t) / 60));
 }
 
 function db_try_exec(string $sql, array $args = []): void
