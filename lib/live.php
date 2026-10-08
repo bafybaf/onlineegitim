@@ -120,6 +120,123 @@ function live_cf_ready(): bool
     return live_cf_url('cam', 'whip') !== '' && live_cf_url('cam', 'whep') !== '';
 }
 
+function live_whip_url_ok(string $url): bool
+{
+    if (!filter_var($url, FILTER_VALIDATE_URL) || !str_starts_with(strtolower($url), 'https://')) {
+        return false;
+    }
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $path = (string) parse_url($url, PHP_URL_PATH);
+    if (!str_contains($path, '/webRTC/')) {
+        return false;
+    }
+    if (preg_match('/^customer-[a-z0-9]+\.cloudflarestream\.com$/', $host)) {
+        return true;
+    }
+    foreach ([live_cf_url('cam', 'whip'), live_cf_url('screen', 'whip')] as $allow) {
+        $ah = strtolower((string) parse_url($allow, PHP_URL_HOST));
+        if ($ah !== '' && $ah === $host) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function live_whip_abs_location(string $posted, string $loc): string
+{
+    $loc = trim($loc);
+    if ($loc === '') {
+        return '';
+    }
+    if (preg_match('#^https?://#i', $loc)) {
+        return $loc;
+    }
+    $parts = parse_url($posted);
+    $origin = ($parts['scheme'] ?? 'https') . '://' . ($parts['host'] ?? '');
+    if ($loc[0] === '/') {
+        return $origin . $loc;
+    }
+    return $origin . '/' . ltrim($loc, '/');
+}
+
+function live_whip_loc_key(string $target): string
+{
+    $path = trim((string) parse_url($target, PHP_URL_PATH), '/');
+    $id = explode('/', $path)[0] ?? 'x';
+    return 'cf_whip_loc_' . preg_replace('/[^A-Za-z0-9_-]/', '', $id);
+}
+
+function live_whip_http(string $method, string $url, string $sdp = ''): array
+{
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'status' => 0, 'sdp' => '', 'location' => '', 'error' => 'curl'];
+    }
+    $ch = curl_init($url);
+    $headers = ['Accept: application/sdp'];
+    $opts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => true,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_CUSTOMREQUEST => $method,
+    ];
+    if ($method === 'POST') {
+        $headers[] = 'Content-Type: application/sdp';
+        $opts[CURLOPT_POSTFIELDS] = $sdp;
+    }
+    $opts[CURLOPT_HTTPHEADER] = $headers;
+    curl_setopt_array($ch, $opts);
+    $raw = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $hs = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($raw === false) {
+        return ['ok' => false, 'status' => 0, 'sdp' => '', 'location' => '', 'error' => $err];
+    }
+    $head = substr($raw, 0, $hs);
+    $body = (string) substr($raw, $hs);
+    $loc = '';
+    if (preg_match('/^Location:\s*(.+)$/im', $head, $m)) {
+        $loc = live_whip_abs_location($url, trim($m[1]));
+    }
+    return [
+        'ok' => $code >= 200 && $code < 300,
+        'status' => $code,
+        'sdp' => $body,
+        'location' => $loc,
+        'error' => '',
+    ];
+}
+
+function live_whip_proxy(string $method, string $target, string $sdp = ''): array
+{
+    $method = strtoupper($method) === 'DELETE' ? 'DELETE' : 'POST';
+    if (!live_whip_url_ok($target)) {
+        return ['ok' => false, 'status' => 400, 'sdp' => '', 'location' => '', 'error' => 'url'];
+    }
+    $key = live_whip_loc_key($target);
+    $prev = (string) ($_SESSION[$key] ?? '');
+    if ($prev !== '' && live_whip_url_ok($prev)) {
+        live_whip_http('DELETE', $prev);
+        unset($_SESSION[$key]);
+    }
+    if ($method === 'DELETE') {
+        $res = live_whip_http('DELETE', $target);
+        unset($_SESSION[$key]);
+        return $res;
+    }
+    $res = live_whip_http('POST', $target, $sdp);
+    if ((int) ($res['status'] ?? 0) === 409) {
+        usleep(800000);
+        $res = live_whip_http('POST', $target, $sdp);
+    }
+    if (!empty($res['location']) && live_whip_url_ok((string) $res['location'])) {
+        $_SESSION[$key] = (string) $res['location'];
+    }
+    return $res;
+}
+
 function live_hls_url(string $streamKey, int $which = 0): string
 {
     if (live_cf_ready()) {
@@ -233,6 +350,116 @@ function ensure_live_attendance_schema(): void
         }
     } catch (Throwable $e) {
         $done = false;
+    }
+    ensure_live_log_schema();
+}
+
+function ensure_live_log_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec(
+            'CREATE TABLE IF NOT EXISTS live_logs (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                room_id INT UNSIGNED NOT NULL DEFAULT 0,
+                user_id INT UNSIGNED NULL,
+                kind VARCHAR(40) NOT NULL,
+                message VARCHAR(255) NOT NULL,
+                detail VARCHAR(500) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY room_created (room_id, created_at),
+                KEY kind_created (kind, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function live_log_is_alert(string $kind): bool
+{
+    return in_array($kind, ['whip_fail', 'whip_409', 'whep_fail', 'camera', 'ice'], true);
+}
+
+function live_log_event(int $roomId, string $kind, string $message, string $detail = '', ?int $userId = null): void
+{
+    ensure_live_log_schema();
+    $kind = preg_replace('/[^a-z0-9_]/', '', strtolower($kind)) ?: 'info';
+    $message = mb_substr(trim($message), 0, 255);
+    $detail = mb_substr(trim($detail), 0, 500);
+    if ($message === '') {
+        return;
+    }
+    try {
+        db()->prepare('INSERT INTO live_logs (room_id, user_id, kind, message, detail) VALUES (?,?,?,?,?)')
+            ->execute([$roomId, $userId, $kind, $message, $detail !== '' ? $detail : null]);
+    } catch (Throwable $e) {
+        return;
+    }
+    if (!live_log_is_alert($kind)) {
+        return;
+    }
+    try {
+        $st = db()->prepare('SELECT COUNT(*) FROM live_logs WHERE room_id = ? AND kind = ? AND created_at > DATE_SUB(NOW(), INTERVAL 3 MINUTE)');
+        $st->execute([$roomId, $kind]);
+        if ((int) $st->fetchColumn() !== 1) {
+            return;
+        }
+    } catch (Throwable $e) {
+        return;
+    }
+    $link = function_exists('url') ? url('admin/canli-log.php' . ($roomId > 0 ? '?oda=' . $roomId : '')) : '';
+    try {
+        $admins = db()->query("SELECT id FROM users WHERE role = 'admin' AND status IN ('aktif','bekliyor')")->fetchAll();
+        foreach ($admins as $admin) {
+            if (function_exists('notify_user')) {
+                notify_user((int) $admin['id'], 'Canlı ders hatası', $message, $link);
+            }
+        }
+    } catch (Throwable $e) {
+    }
+}
+
+function live_logs_recent(int $roomId = 0, int $limit = 200): array
+{
+    ensure_live_log_schema();
+    $limit = max(1, min(500, $limit));
+    try {
+        if ($roomId > 0) {
+            $st = db()->prepare('SELECT l.*, r.title room_title, u.name user_name
+                FROM live_logs l
+                LEFT JOIN live_rooms r ON r.id = l.room_id
+                LEFT JOIN users u ON u.id = l.user_id
+                WHERE l.room_id = ?
+                ORDER BY l.id DESC LIMIT ' . $limit);
+            $st->execute([$roomId]);
+            return $st->fetchAll();
+        }
+        return db()->query(
+            'SELECT l.*, r.title room_title, u.name user_name
+             FROM live_logs l
+             LEFT JOIN live_rooms r ON r.id = l.room_id
+             LEFT JOIN users u ON u.id = l.user_id
+             ORDER BY l.id DESC LIMIT ' . $limit
+        )->fetchAll();
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function live_log_recent_error_count(int $minutes = 120): int
+{
+    ensure_live_log_schema();
+    try {
+        $st = db()->prepare("SELECT COUNT(*) FROM live_logs WHERE kind IN ('whip_fail','whip_409','whep_fail','camera','ice') AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)");
+        $st->execute([max(5, $minutes)]);
+        return (int) $st->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
     }
 }
 
@@ -524,7 +751,12 @@ function live_user_can_access(array $u, array $room): bool
 
 function live_user_can_publish(array $u, array $room): bool
 {
-    return $u['role'] === 'admin' || (int) $room['teacher_id'] === (int) $u['id'];
+    return (int) ($room['teacher_id'] ?? 0) === (int) ($u['id'] ?? 0);
+}
+
+function live_user_is_observer(array $u, array $room): bool
+{
+    return ($u['role'] ?? '') === 'admin' && !live_user_can_publish($u, $room);
 }
 
 function live_full_watch_message(): string

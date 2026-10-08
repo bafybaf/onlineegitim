@@ -333,6 +333,7 @@ function panel_nav(string $role, string $page): array
             ['id' => 'gruplar', 'href' => 'admin/gruplar', 'label' => 'Gruplar', 'icon' => 'users'],
             ['id' => 'uyelikler', 'href' => 'admin/uyelikler', 'label' => 'Üyelikler', 'icon' => 'card'],
             ['id' => 'canli', 'href' => 'admin/canli', 'label' => 'Canlı', 'icon' => 'live', 'badge' => $liveN],
+            ['id' => 'bildirimler', 'href' => 'admin/bildirimler', 'label' => 'Bildirimler', 'icon' => 'mail', 'badge' => function_exists('academy_unread_count') ? academy_unread_count((int) (current_user()['id'] ?? 0)) : 0],
             ['id' => 'takvim', 'href' => 'admin/takvim', 'label' => 'Takvim', 'icon' => 'calendar'],
             ['id' => 'yazilar', 'href' => 'admin/yazilar', 'label' => 'Duyurular', 'icon' => 'mail'],
             ['id' => 'sorular', 'href' => 'admin/sorular', 'label' => 'Sorular', 'icon' => 'mail', 'badge' => function_exists('question_admin_pending_count') ? question_admin_pending_count() : 0],

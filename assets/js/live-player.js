@@ -21,6 +21,23 @@
   let lessonPaused = false;
   let retryTimer = 0;
   let retryMs = 4000;
+  let lastLogAt = {};
+
+  function reportLive(kind, message, detail) {
+    const api = cfg.api || '';
+    const rid = cfg.roomId || 0;
+    if (!api || !rid || !kind) return;
+    const now = Date.now();
+    if (lastLogAt[kind] && now - lastLogAt[kind] < 90000) return;
+    lastLogAt[kind] = now;
+    const body = new URLSearchParams();
+    body.set('action', 'log');
+    body.set('room_id', String(rid));
+    body.set('kind', kind);
+    body.set('message', message || kind);
+    body.set('detail', detail || '');
+    fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() }).catch(() => {});
+  }
 
   function showWait(on) {
     if (overlay) overlay.classList.toggle('is-off', !on);
@@ -423,6 +440,11 @@
       } else {
         const hint = waitHint(mtx === 'down' ? 'down' : 'wait');
         setWait(hint[0], hint[1]);
+        if (whepResult === 'ice') {
+          reportLive('ice', 'Öğrenci görüntüsü bağlanamadı.', String(whepResult));
+        } else if (whepResult === 'notrack' || whepResult === 'offline') {
+          reportLive('whep_fail', 'Canlı görüntü alınamadı.', String(whepResult));
+        }
       }
       playMode = 'none';
     } catch (e) {

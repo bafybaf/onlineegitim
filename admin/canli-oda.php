@@ -41,7 +41,7 @@ panel_head('admin', 'canli', 'Canlı ders · ' . $room['title'] . ' | Admin', $u
     <div class="flex flex-wrap items-center gap-2">
       <?= $live ? live_pill($room) : '<span class="text-sm font-extrabold text-muted">Bitti</span>' ?>
       <?php if ($live): ?>
-        <a class="btn-primary text-sm" href="<?= e(canli_url($id)) ?>">İzle</a>
+        <a class="btn-primary text-sm" href="<?= e(canli_url($id)) ?>">Gözlemle</a>
       <?php endif; ?>
     </div>
   </div>

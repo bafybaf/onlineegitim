@@ -33,7 +33,9 @@ $err = flash_error();
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4 text-sm text-muted">Dersin açıldığı tarih ve saat, kontenjan ve o derse girebilen öğrenciler. Açık odayı kapatabilir veya detayına bakabilirsiniz.</p>
+<?php $liveErrN = function_exists('live_log_recent_error_count') ? live_log_recent_error_count() : 0; ?>
+<p class="mb-4 text-sm text-muted">İzle ile derse öğrenci gibi girersiniz: hocayı, tahtayı ve sohbeti görürsünüz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır.</p>
+<p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
 <div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Cloudflare Stream</h2>
   <p class="mt-1 text-sm text-muted">WHIP yayın / WHEP izleme adresleri doluysa kamera ve ekran Cloudflare’a gider; sunucu CPU’su rahatlar. Şu an tek girdi var: aynı anda bir ders yayınlasın. Kayıt yine sitede kalır.</p>
@@ -95,7 +97,7 @@ $err = flash_error();
         <td>
           <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-oda.php?id=' . (int) $r['id'])) ?>">Girenler</a>
           <?php if (($r['status'] ?? '') === 'live'): ?>
-            · <a class="font-extrabold text-accent" href="<?= e(canli_url((int) $r['id'])) ?>">İzle</a>
+            · <a class="font-extrabold text-accent" href="<?= e(canli_url((int) $r['id'])) ?>">Gözlemle</a>
             · <form class="inline" method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="admin/canli.php"><button class="font-extrabold text-muted">Kapat</button></form>
           <?php endif; ?>
         </td>

@@ -54,6 +54,7 @@ $chat->execute([$id]);
 $msgs = $chat->fetchAll();
 $students = live_present_students($id);
 $canPublish = live_user_can_publish($u, $room);
+$isObserver = function_exists('live_user_is_observer') && live_user_is_observer($u, $room);
 $canEnd = $canPublish;
 $playKey = live_ensure_stream_key(db(), $room);
 $hlsUrl = live_hls_url($playKey);
@@ -73,6 +74,7 @@ $healthUrl = live_health_url();
 $doRecord = $canPublish && ($room['status'] ?? '') === 'live';
 $pauseInfo = live_room_pause_state($room);
 $waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
+$showRoster = in_array($u['role'], ['ogretmen', 'admin'], true);
 $presentN = count($students);
 ?>
 <!DOCTYPE html>
@@ -100,11 +102,14 @@ $presentN = count($students);
   <?php endif; ?>
   <?php if (!$canPublish): ?>
   <header class="flex items-center justify-between gap-2 px-3 text-white">
-    <h1 class="live-top-title font-display"><?= e($room['title']) ?><?php
+    <h1 class="live-top-title font-display"><?php if ($isObserver): ?><span class="live-pill">Gözlem</span> <?php endif; ?><?= e($room['title']) ?><?php
       $topic = trim((string) ($room['topic'] ?? ''));
       echo ($topic !== '' && $topic !== 'Ders') ? ' — ' . e($topic) : '';
     ?></h1>
     <div class="live-top-actions">
+      <?php if ($isObserver): ?>
+        <a href="<?= e(url('admin/canli-log.php?oda=' . $id)) ?>" class="live-cam-btn">Kayıtlar</a>
+      <?php endif; ?>
       <a href="<?= e(url($back)) ?>" id="live-leave" class="live-cam-btn">Ayrıl</a>
     </div>
   </header>
@@ -176,24 +181,30 @@ $presentN = count($students);
         <div id="live-seat-n" class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= (int) $presentN ?> derste</div>
       </div>
       <aside class="chat">
-      <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet<?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?> · Derstekiler <span id="live-present-n"><?= (int) $presentN ?></span><?php endif; ?></div>
+      <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet<?php if ($showRoster): ?> · Derstekiler <span id="live-present-n"><?= (int) $presentN ?></span><?php endif; ?></div>
       <div id="chat-log" class="chat-log text-sm"><?php foreach ($msgs as $m): ?><p><b><?= e($m['who_label']) ?>:</b> <?= e($m['body']) ?></p><?php endforeach; ?></div>
-      <?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?>
+      <?php if ($showRoster): ?>
       <p class="px-4 pt-2"><a class="text-xs font-extrabold text-accent" href="<?= e(url(($u['role'] === 'admin' ? 'admin/canli-oda.php?id=' : 'ogretmen/yoklama.php?oda=') . $id)) ?>">Kim girdi (yoklama)</a></p>
       <div id="live-present-list" class="live-present-list">
         <?php if (!$students): ?>
           <p class="live-present-empty">Henüz öğrenci girmedi</p>
         <?php else: ?>
           <?php foreach ($students as $s): ?>
-            <label class="live-present-row"><input type="checkbox" class="att" data-sid="<?= (int) $s['id'] ?>" checked> <?= e($s['name']) ?><?php if (!empty($s['entered_at'])): ?> <span class="live-present-time"><?= e(date('H:i', strtotime((string) $s['entered_at']))) ?></span><?php endif; ?></label>
+            <?php if ($isObserver): ?>
+              <p class="live-present-row"><?= e($s['name']) ?><?php if (!empty($s['entered_at'])): ?> <span class="live-present-time"><?= e(date('H:i', strtotime((string) $s['entered_at']))) ?></span><?php endif; ?></p>
+            <?php else: ?>
+              <label class="live-present-row"><input type="checkbox" class="att" data-sid="<?= (int) $s['id'] ?>" checked> <?= e($s['name']) ?><?php if (!empty($s['entered_at'])): ?> <span class="live-present-time"><?= e(date('H:i', strtotime((string) $s['entered_at']))) ?></span><?php endif; ?></label>
+            <?php endif; ?>
           <?php endforeach; ?>
         <?php endif; ?>
       </div>
       <?php endif; ?>
+      <?php if (!$isObserver): ?>
       <form id="chat-form" class="flex gap-2 border-t border-[#2a2a2a] p-3">
         <input name="q" class="flex-1 rounded-lg bg-[#0b1020] px-3 py-2 text-sm outline-none" placeholder="Mesaj yazın" autocomplete="off">
         <button class="rounded-lg bg-navy px-3 font-extrabold">Gönder</button>
       </form>
+      <?php endif; ?>
       </aside>
     </div>
   </div>
@@ -217,7 +228,10 @@ window.LIVE_PLAYER = {
   whepScreenUrlAlt: <?= json_encode($whepScreenUrlAlt) ?>,
   whipScreenUrl: <?= json_encode($whipScreenUrl) ?>,
   whipScreenUrlAlt: <?= json_encode($whipScreenUrlAlt) ?>,
-  healthUrl: <?= json_encode($healthUrl) ?>
+  healthUrl: <?= json_encode($healthUrl) ?>,
+  api: <?= json_encode(url('api/live.php')) ?>,
+  roomId: <?= (int) $id ?>,
+  observe: <?= $isObserver ? 'true' : 'false' ?>
 };
 window.LIVE_BOARD = {
   publish: <?= $canPublish ? 'true' : 'false' ?>,
@@ -241,12 +255,14 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-document.getElementById('chat-form').onsubmit = (e) => {
+const chatForm = document.getElementById('chat-form');
+if (chatForm) chatForm.onsubmit = (e) => {
   e.preventDefault();
   const t = e.target.q.value.trim(); if (!t) return;
   e.target.q.value = '';
   fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=chat&room_id='+roomId+'&body='+encodeURIComponent(t) });
 };
+const observeOnly = <?= $isObserver ? 'true' : 'false' ?>;
 function bindAtt(cb) {
   cb.addEventListener('change', async () => {
     const r = await fetch(base + 'api/live.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action=attend&room_id='+roomId+'&student_id='+cb.dataset.sid+'&present='+(cb.checked?'1':'0') });
@@ -278,9 +294,13 @@ function renderPresent(rows) {
   }
   list.innerHTML = rows.map((s) => {
     var t = s.entered_at ? String(s.entered_at).slice(11, 16) : '';
-    return '<label class="live-present-row"><input type="checkbox" class="att" data-sid="'+s.id+'" checked> '+esc(s.name)+(t ? ' <span class="live-present-time">'+esc(t)+'</span>' : '')+'</label>';
+    var time = t ? ' <span class="live-present-time">'+esc(t)+'</span>' : '';
+    if (observeOnly) {
+      return '<p class="live-present-row">'+esc(s.name)+time+'</p>';
+    }
+    return '<label class="live-present-row"><input type="checkbox" class="att" data-sid="'+s.id+'" checked> '+esc(s.name)+time+'</label>';
   }).join('');
-  list.querySelectorAll('.att').forEach(bindAtt);
+  if (!observeOnly) list.querySelectorAll('.att').forEach(bindAtt);
 }
 let chatSig = '';
 setInterval(async () => {

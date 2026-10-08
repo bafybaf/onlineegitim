@@ -11,6 +11,50 @@ $action = post('action') ?: ($_GET['action'] ?? '');
 $pdo = db();
 ensure_live_attendance_schema();
 
+if ($action === 'whip') {
+    $id = (int) post('room_id');
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false, 'error' => 'publish'], 403);
+    }
+    $method = strtoupper(trim((string) post('method')));
+    $target = trim((string) post('target'));
+    $sdp = (string) post('sdp');
+    $res = live_whip_proxy($method, $target, $sdp);
+    if (empty($res['ok']) && $method !== 'DELETE' && function_exists('live_log_event')) {
+        $code = (int) ($res['status'] ?? 0);
+        live_log_event(
+            $id,
+            $code === 409 ? 'whip_409' : 'whip_fail',
+            $code === 409 ? 'Hoca kamerası Cloudflare’a bağlanamadı (oturum meşgul).' : 'Hoca kamerası Cloudflare’a bağlanamadı.',
+            'HTTP ' . $code . ($res['error'] ?? ''),
+            (int) $u['id']
+        );
+    }
+    json_out([
+        'ok' => !empty($res['ok']),
+        'status' => (int) ($res['status'] ?? 0),
+        'sdp' => (string) ($res['sdp'] ?? ''),
+        'location' => (string) ($res['location'] ?? ''),
+        'error' => (string) ($res['error'] ?? ''),
+    ]);
+}
+
+if ($action === 'log') {
+    $id = (int) post('room_id');
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_access($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    $kind = preg_replace('/[^a-z0-9_]/', '', strtolower(post('kind'))) ?: 'info';
+    live_log_event($id, $kind, post('message'), post('detail'), (int) $u['id']);
+    json_out(['ok' => true]);
+}
+
 if ($action === 'start' && $u['role'] === 'ogretmen') {
     $gid = (int) post('group_id');
     $st = $pdo->prepare('SELECT * FROM class_groups WHERE id = ?');
@@ -150,6 +194,9 @@ if ($action === 'chat') {
     $room = $st->fetch();
     if (!$room || !live_user_can_access($u, $room)) {
         json_out(['ok' => false], 403);
+    }
+    if (($u['role'] ?? '') === 'admin' && !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false, 'error' => 'observe'], 403);
     }
     $label = $u['role'] === 'ogretmen' ? 'Hoca' : ($u['role'] === 'admin' ? 'Yönetici' : $u['name']);
     $pdo->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')

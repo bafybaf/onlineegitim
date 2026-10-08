@@ -148,10 +148,56 @@
     };
   }
 
+  let lastPubLog = {};
+  function reportPublish(kind, message, detail) {
+    const api = liveApi();
+    const rid = liveRoomId();
+    if (!api || !rid) return;
+    const now = Date.now();
+    if (lastPubLog[kind] && now - lastPubLog[kind] < 90000) return;
+    lastPubLog[kind] = now;
+    const body = new URLSearchParams();
+    body.set('action', 'log');
+    body.set('room_id', String(rid));
+    body.set('kind', kind);
+    body.set('message', message || kind);
+    body.set('detail', detail || '');
+    fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() }).catch(() => {});
+  }
+
+  function liveApi() {
+    return cfg.api || (typeof base === 'string' ? base + 'api/live.php' : '');
+  }
+
+  function liveRoomId() {
+    return cfg.roomId || (typeof roomId !== 'undefined' ? roomId : 0);
+  }
+
+  async function whipProxy(method, target, sdp) {
+    const api = liveApi();
+    if (!api || !target) {
+      return { ok: false, status: 0, sdp: '', location: '' };
+    }
+    const body = new URLSearchParams();
+    body.set('action', 'whip');
+    body.set('room_id', String(liveRoomId()));
+    body.set('method', method);
+    body.set('target', target);
+    if (sdp) {
+      body.set('sdp', sdp);
+    }
+    const res = await fetch(api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    return res.json().catch(() => ({ ok: false, status: 0, sdp: '', location: '' }));
+  }
+
   async function deleteWhip(url) {
     if (!url) return;
     try {
-      await fetch(url, { method: 'DELETE', mode: 'cors', credentials: 'omit' });
+      await whipProxy('DELETE', url, '');
     } catch (e) {}
   }
 
@@ -274,9 +320,6 @@
     const oldPc = pc;
     pc = null;
     await deleteWhip(oldLoc);
-    for (let i = 0; i < whipUrls.length; i++) {
-      await deleteWhip(whipUrls[i]);
-    }
     if (oldPc) {
       try { oldPc.close(); } catch (e) {}
     }
@@ -305,20 +348,16 @@
     setWait('Kamera', '', true);
   }
 
-  function fetchSdp(url, body, ms) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), ms);
-    return fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/sdp',
-        Accept: 'application/sdp'
-      },
-      body: body,
-      mode: 'cors',
-      credentials: 'omit',
-      signal: ctrl.signal
-    }).finally(() => clearTimeout(timer));
+  async function fetchSdp(url, body) {
+    const j = await whipProxy('POST', url, body);
+    return {
+      ok: !!j.ok,
+      status: j.status || 0,
+      location: j.location || '',
+      text: async function () {
+        return j.sdp || '';
+      }
+    };
   }
 
   async function captureMedia() {
@@ -376,10 +415,10 @@
     }
     const offer = await conn.createOffer();
     await conn.setLocalDescription(offer);
-    await waitIceGather(conn, 800);
+    await waitIceGather(conn, 2000);
     const offerSdp = conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp;
     let lastErr = '';
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 4; attempt++) {
       if (conn !== pc) {
         throw new Error('stale');
       }
@@ -387,35 +426,28 @@
         const url = whipUrls[i];
         let res;
         try {
-          res = await fetchSdp(url, offerSdp, 10000);
+          res = await fetchSdp(url, offerSdp);
         } catch (e) {
           lastErr = 'offline';
           continue;
         }
         if (res.status === 409) {
           lastErr = '409';
-          await deleteWhip(url);
-          await new Promise((r) => setTimeout(r, 1200 + attempt * 700));
+          await new Promise((r) => setTimeout(r, 1000 + attempt * 800));
           continue;
         }
         if (!res.ok) {
-          lastErr = String(res.status);
+          lastErr = String(res.status || 'whip');
           continue;
         }
-        loc = publicWhipUrl(url, res.headers.get('Location') || '') || '';
+        loc = res.location || publicWhipUrl(url, res.location || '') || '';
         const sdp = await res.text();
         if (!sdp || !/v=0/i.test(sdp)) {
           lastErr = 'empty';
           continue;
         }
         await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
-        const ready = await waitPcReady(conn, 8000);
-        if (!ready && conn.connectionState !== 'connected') {
-          lastErr = 'ice';
-          await deleteWhip(loc);
-          loc = '';
-          continue;
-        }
+        waitPcReady(conn, 8000);
         return true;
       }
     }
@@ -469,6 +501,7 @@
       if (!stream) {
         setWait('Kamera açılamadı', '', true);
         btn.textContent = 'Kamera';
+        reportPublish('camera', 'Hoca kamerası açılamadı.', msg);
       } else if (msg === '409') {
         setWait('Yayın meşgul', 'Önceki oturum kapanıyor, tekrar deniyor…', true);
         setProto('Yeniden bağlanıyor…');
@@ -511,18 +544,18 @@
     }
     const offer = await screenPc.createOffer();
     await screenPc.setLocalDescription(offer);
-    await waitIceGather(screenPc, 400);
+    await waitIceGather(screenPc, 2000);
     const offerSdp = screenPc.localDescription && screenPc.localDescription.sdp ? screenPc.localDescription.sdp : offer.sdp;
     for (let i = 0; i < whipScreenUrls.length; i++) {
       const url = whipScreenUrls[i];
       let res;
       try {
-        res = await fetchSdp(url, offerSdp, 12000);
+        res = await fetchSdp(url, offerSdp);
       } catch (e) {
         continue;
       }
       if (!res.ok) continue;
-      screenLoc = publicWhipUrl(url, res.headers.get('Location') || '');
+      screenLoc = res.location || publicWhipUrl(url, res.location || '') || '';
       const sdp = await res.text();
       if (!sdp || !/v=0/i.test(sdp)) continue;
       await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
@@ -545,7 +578,7 @@
 
   async function stopShare() {
     if (screenLoc) {
-      try { await fetch(screenLoc, { method: 'DELETE', credentials: 'omit' }); } catch (e) {}
+      await deleteWhip(screenLoc);
       screenLoc = '';
     }
     if (screenPc) {
