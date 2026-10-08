@@ -28,6 +28,9 @@
     if (!pip || !stage || !home) {
       return;
     }
+    if (document.body.classList.contains('is-cam-docked')) {
+      return;
+    }
     if (full) {
       if (pip.parentNode !== stage) {
         stage.appendChild(pip);

@@ -7,9 +7,11 @@
   const waitDetail = document.getElementById('wait-detail');
   if (!video) return;
 
+  const board = document.getElementById('board-screen');
   const whepUrls = [cfg.whepUrl, cfg.whepUrlAlt].filter(Boolean);
   const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
   const healthUrl = cfg.healthUrl || '';
+  let screenMode = !cfg.publish && !!window._liveScreenOn;
   let hls = null;
   let pc = null;
   let discTimer = 0;
@@ -39,7 +41,52 @@
     fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() }).catch(() => {});
   }
 
+  function sink() {
+    return (screenMode && board) ? board : video;
+  }
+
+  function applySink() {
+    const dest = sink();
+    const other = dest === video ? board : video;
+    const stream = (video.srcObject instanceof MediaStream && video.srcObject)
+      || (board && board.srcObject instanceof MediaStream && board.srcObject)
+      || null;
+    if (dest && stream && dest.srcObject !== stream) {
+      dest.srcObject = stream;
+      dest.muted = dest === board ? true : video.muted;
+      dest.play().catch(() => {});
+    }
+    if (other && other !== dest) {
+      other.srcObject = null;
+      other.removeAttribute('src');
+    }
+    const stage = document.getElementById('board-stage');
+    if (stage) stage.classList.toggle('is-screen', !!screenMode);
+    if (overlay) {
+      if (screenMode) {
+        if (waitTitle) waitTitle.textContent = 'Ekran paylaşımı';
+        if (waitDetail) {
+          waitDetail.textContent = 'Görüntü solda';
+          waitDetail.hidden = false;
+        }
+        overlay.classList.remove('is-off');
+      } else if (playing && !lessonPaused) {
+        overlay.classList.add('is-off');
+      }
+    }
+  }
+
+  window.liveScreenWatch = function (on) {
+    if (cfg.publish) return;
+    screenMode = !!on;
+    applySink();
+  };
+
   function showWait(on) {
+    if (screenMode) {
+      if (overlay) overlay.classList.remove('is-off');
+      return;
+    }
     if (overlay) overlay.classList.toggle('is-off', !on);
   }
   function setProto(text) {
@@ -72,17 +119,18 @@
 
   function enableViewerSound() {
     if (cfg.publish) return;
-    video.volume = 1;
-    video.muted = false;
-    video.removeAttribute('muted');
-    const playP = video.play();
+    const dest = sink();
+    dest.volume = 1;
+    dest.muted = false;
+    dest.removeAttribute('muted');
+    const playP = dest.play();
     if (playP) {
       playP.catch(() => {
-        video.muted = true;
+        dest.muted = true;
         if (unmuteBtn) unmuteBtn.hidden = false;
       });
     }
-    if (unmuteBtn) unmuteBtn.hidden = !video.muted;
+    if (unmuteBtn) unmuteBtn.hidden = !dest.muted;
   }
 
   if (unmuteBtn) {
@@ -101,10 +149,12 @@
     });
   }
 
-  video.addEventListener('playing', () => {
+  function onDestPlaying() {
     onPlaying();
     enableViewerSound();
-  });
+  }
+  video.addEventListener('playing', onDestPlaying);
+  if (board) board.addEventListener('playing', onDestPlaying);
   video.addEventListener('volumechange', () => {
     if (unmuteBtn && !cfg.publish) unmuteBtn.hidden = !video.muted;
   });
@@ -130,9 +180,8 @@
       try { pc.close(); } catch (e) {}
       pc = null;
     }
-    if (video.srcObject) {
-      video.srcObject = null;
-    }
+    if (video.srcObject) video.srcObject = null;
+    if (board && board.srcObject) board.srcObject = null;
   }
 
   function waitIceGather(conn, ms) {
@@ -172,13 +221,14 @@
   }
 
   function waitForFrames(ms) {
-    if (video.videoWidth > 0 || video.readyState >= 2) {
+    const el = sink();
+    if (el.videoWidth > 0 || el.readyState >= 2) {
       return Promise.resolve(true);
     }
     return new Promise((resolve) => {
       const started = Date.now();
       const tick = setInterval(() => {
-        const ok = video.videoWidth > 0 || video.readyState >= 2 || (!video.paused && video.currentTime > 0);
+        const ok = el.videoWidth > 0 || el.readyState >= 2 || (!el.paused && el.currentTime > 0);
         if (ok || Date.now() - started >= ms) {
           clearInterval(tick);
           resolve(ok);
@@ -247,15 +297,19 @@
     conn.addTransceiver('audio', { direction: 'recvonly' });
     conn.ontrack = (ev) => {
       if (ended || conn !== pc) return;
-      let stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+      const dest = sink();
+      let stream = dest.srcObject instanceof MediaStream ? dest.srcObject : new MediaStream();
       if (!stream.getTracks().includes(ev.track)) {
         stream.addTrack(ev.track);
       }
-      if (video.srcObject !== stream) {
-        video.srcObject = stream;
+      if (dest.srcObject !== stream) {
+        dest.srcObject = stream;
       }
+      if (dest !== video && video.srcObject) video.srcObject = null;
+      if (dest !== board && board && board.srcObject) board.srcObject = null;
       enableViewerSound();
-      video.play().catch(() => {});
+      dest.play().catch(() => {});
+      if (screenMode) applySink();
     };
     conn.onconnectionstatechange = () => {
       if (conn !== pc) return;
@@ -315,10 +369,12 @@
       return 'ice';
     }
     const framed = await waitForFrames(4000);
-    if (!framed || !video.srcObject) {
+    if (!framed || !sink().srcObject) {
       stopWhep();
       return 'notrack';
     }
+    applySink();
+    playing = true;
     playMode = 'webrtc';
     setProto('Canlı');
     enableViewerSound();
@@ -486,55 +542,6 @@
     return;
   }
 
+  if (screenMode) applySink();
   tryWhepOrHls();
-})();
-
-(function () {
-  const cfg = window.LIVE_PLAYER || {};
-  const el = document.getElementById('board-screen');
-  if (!el || cfg.publish) return;
-
-  let want = false;
-
-  function attach() {
-    const cam = document.getElementById('live-video');
-    if (!cam || !want) return;
-    if (cam.srcObject) {
-      if (el.srcObject !== cam.srcObject) {
-        el.srcObject = cam.srcObject;
-      }
-      el.muted = true;
-      el.play().catch(() => {});
-      return;
-    }
-    if (cam.currentSrc) {
-      if (el.src !== cam.currentSrc) {
-        el.src = cam.currentSrc;
-      }
-      el.muted = true;
-      el.play().catch(() => {});
-    }
-  }
-
-  window.liveScreenWatch = function (on) {
-    want = !!on;
-    if (!want) {
-      el.srcObject = null;
-      el.removeAttribute('src');
-      return;
-    }
-    attach();
-  };
-
-  const cam = document.getElementById('live-video');
-  if (cam) {
-    ['playing', 'loadeddata', 'resize'].forEach((ev) => {
-      cam.addEventListener(ev, function () {
-        if (want) attach();
-      });
-    });
-  }
-  setInterval(function () {
-    if (want) attach();
-  }, 1500);
 })();

@@ -2,23 +2,57 @@
   const cfg = window.LIVE_PLAYER || {};
   if (!cfg.publish) return;
 
+  const pip = document.getElementById('live-cam-pip');
+  const pipHome = document.getElementById('live-stage');
   let dockWin = null;
   let dockKind = '';
   let syncTimer = 0;
   let wantDock = false;
+  let camInDock = false;
 
   function cssUrl() {
     const link = document.querySelector('link[href*="site.css"]');
     return link ? link.href : '';
   }
 
-  function camMedia() {
-    const video = document.getElementById('live-video');
-    return (video && video.srcObject) || null;
-  }
-
   function dockDoc() {
     return dockWin && !dockWin.closed ? dockWin.document : null;
+  }
+
+  function playPip() {
+    const v = pip && pip.querySelector('video');
+    if (v) v.play().catch(function () {});
+  }
+
+  function parkCam(inDock) {
+    if (!pip || !pipHome) return;
+    const doc = dockDoc();
+    const slot = doc && doc.getElementById('dock-cam-slot');
+    if (inDock && slot) {
+      if (pip.parentNode !== slot) {
+        slot.appendChild(pip);
+        pip.style.left = '';
+        pip.style.top = '';
+        pip.style.right = '';
+      }
+      camInDock = true;
+      document.body.classList.add('is-cam-docked');
+      playPip();
+      return;
+    }
+    if (pip.parentNode !== pipHome) {
+      pipHome.insertBefore(pip, pipHome.firstChild);
+      pip.style.left = '';
+      pip.style.top = '';
+    }
+    camInDock = false;
+    document.body.classList.remove('is-cam-docked');
+    playPip();
+  }
+
+  function syncCamPlace() {
+    const dockOpen = !!(wantDock && dockWin && !dockWin.closed);
+    parkCam(dockOpen && document.hidden);
   }
 
   function fillDock(doc) {
@@ -30,7 +64,7 @@
       '<div class="live-dock">' +
         '<div class="live-dock-bar"><b>Sunum</b><span id="dock-n"></span>' +
           '<button type="button" id="dock-stop">Paylaşımı durdur</button></div>' +
-        '<video id="dock-cam" playsinline autoplay muted></video>' +
+        '<div id="dock-cam-slot" class="live-dock-cam"><p class="live-dock-cam-hint">Kamera canlı sekmede</p></div>' +
         '<div id="dock-chat" class="chat-log text-sm"></div>' +
         '<div id="dock-people" class="live-present-list"></div>' +
         '<form id="dock-form" class="live-dock-form">' +
@@ -64,16 +98,11 @@
       };
     }
     syncDock();
+    syncCamPlace();
   }
 
   function paintDock(doc) {
     if (!doc) return;
-    const cam = doc.getElementById('dock-cam');
-    const media = camMedia();
-    if (cam && media && cam.srcObject !== media) {
-      cam.srcObject = media;
-      cam.play().catch(function () {});
-    }
     const srcChat = document.getElementById('chat-log');
     const dstChat = doc.getElementById('dock-chat');
     if (srcChat && dstChat && dstChat.innerHTML !== srcChat.innerHTML) {
@@ -104,7 +133,16 @@
 
   function startSync() {
     stopSync();
-    syncTimer = setInterval(syncDock, 1000);
+    syncTimer = setInterval(function () {
+      syncDock();
+      if (dockWin && dockWin.closed) {
+        dockWin = null;
+        dockKind = '';
+        wantDock = false;
+        parkCam(false);
+        stopSync();
+      }
+    }, 1000);
   }
 
   function stopSync() {
@@ -115,6 +153,7 @@
   }
 
   function closeDock() {
+    parkCam(false);
     stopSync();
     const win = dockWin;
     dockWin = null;
@@ -131,6 +170,7 @@
     if (!win) return;
     win.addEventListener('pagehide', function () {
       if (dockWin === win) {
+        parkCam(false);
         dockWin = null;
         dockKind = '';
         stopSync();
@@ -152,13 +192,13 @@
 
   async function openDocPip() {
     if (!('documentPictureInPicture' in window)) return false;
-    const pip = await window.documentPictureInPicture.requestWindow({
+    const pipWin = await window.documentPictureInPicture.requestWindow({
       width: 380,
       height: 720
     });
-    dockWin = pip;
+    dockWin = pipWin;
     dockKind = 'doc';
-    const doc = pip.document;
+    const doc = pipWin.document;
     if (cssUrl()) {
       const link = doc.createElement('link');
       link.rel = 'stylesheet';
@@ -168,7 +208,7 @@
     doc.documentElement.style.height = '100%';
     doc.body.style.cssText = 'margin:0;height:100%;background:#111;color:#fff;';
     fillDock(doc);
-    bindClose(pip);
+    bindClose(pipWin);
     startSync();
     return true;
   }
@@ -192,6 +232,9 @@
     if (!video.srcObject) return false;
     await video.requestPictureInPicture();
     dockKind = 'video';
+    video.addEventListener('leavepictureinpicture', function () {
+      if (dockKind === 'video') dockKind = '';
+    }, { once: true });
     return true;
   }
 
@@ -203,6 +246,7 @@
     }
     if (dockWin && !dockWin.closed) {
       syncDock();
+      syncCamPlace();
       try { dockWin.focus(); } catch (e) {}
       return true;
     }
@@ -218,9 +262,17 @@
 
   window.livePresentSync = function () {
     syncDock();
+    syncCamPlace();
   };
+
+  document.addEventListener('visibilitychange', syncCamPlace);
+  window.addEventListener('focus', syncCamPlace);
+  window.addEventListener('blur', function () {
+    setTimeout(syncCamPlace, 80);
+  });
 
   window.addEventListener('pagehide', function () {
     if (wantDock) closeDock();
+    else parkCam(false);
   });
 })();

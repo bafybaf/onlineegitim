@@ -333,13 +333,11 @@ setInterval(async () => {
   if (Array.isArray(j.present)) renderPresent(j.present);
   if (j.screen != null && !(window.LIVE_PLAYER && window.LIVE_PLAYER.publish)) {
     var screenOn = !!Number(j.screen);
-    if (window._liveScreenOn !== screenOn) {
-      window._liveScreenOn = screenOn;
-      var stageEl = document.getElementById('board-stage');
-      if (stageEl) stageEl.classList.toggle('is-screen', screenOn);
-      if (typeof window.liveScreenWatch === 'function') {
-        window.liveScreenWatch(screenOn);
-      }
+    window._liveScreenOn = screenOn;
+    var stageEl = document.getElementById('board-stage');
+    if (stageEl) stageEl.classList.toggle('is-screen', screenOn);
+    if (typeof window.liveScreenWatch === 'function') {
+      window.liveScreenWatch(screenOn);
     }
   }
   if (j.room && typeof window.livePauseApply === 'function') {

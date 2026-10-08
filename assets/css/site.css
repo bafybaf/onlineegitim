@@ -654,6 +654,21 @@ body:has(.live-shell) {
   border: 0; border-radius: 6px; background: #e8232a; color: #fff;
   font-weight: 800; font-size: 12px; padding: 6px 10px; cursor: pointer;
 }
+.live-dock-cam {
+  position: relative; width: 100%; aspect-ratio: 16 / 9;
+  background: #000; flex-shrink: 0; overflow: hidden;
+}
+.live-dock-cam-hint {
+  margin: 0; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.45); font-size: 13px; font-weight: 700;
+}
+.live-dock-cam #live-cam-pip {
+  position: relative; width: 100%; height: 100%; max-width: none;
+  min-height: 0; aspect-ratio: auto; border-radius: 0; box-shadow: none;
+}
+.live-dock-cam #live-cam-pip .live-wait { padding: 1rem; }
+body.is-cam-docked #live-stage #live-cam-pip { display: none; }
 .live-dock video {
   width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
   background: #000; flex-shrink: 0;
