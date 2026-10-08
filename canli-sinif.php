@@ -105,7 +105,7 @@ if ($screenNow === 0) {
   <?php endif; ?>
 </head>
 <body class="bg-black">
-<div class="live-shell<?= $boardOn ? '' : ' is-board-off' ?><?= $canPublish ? '' : ' is-viewer' ?>">
+<div class="live-shell<?= $boardOn ? '' : ' is-board-off' ?><?= $canPublish ? '' : ' is-viewer' ?><?= $screenNow ? ' is-sharing' : '' ?>">
   <?php if ($lives): ?>
   <div class="live-strip">
     <?php foreach ($lives as $l): ?>
@@ -337,8 +337,9 @@ setInterval(async () => {
     var screenOn = !!Number(j.screen);
     window._liveScreenOn = screenOn;
     var stageEl = document.getElementById('board-stage');
-    var boardOffShell = document.querySelector('.live-shell.is-board-off');
-    if (stageEl && !boardOffShell) stageEl.classList.toggle('is-screen', screenOn);
+    if (stageEl) stageEl.classList.toggle('is-screen', screenOn);
+    var shellEl = document.querySelector('.live-shell');
+    if (shellEl) shellEl.classList.toggle('is-sharing', screenOn);
     if (typeof window.liveScreenWatch === 'function') {
       window.liveScreenWatch(screenOn);
     }
@@ -349,7 +350,7 @@ setInterval(async () => {
   if (j.room && j.room.status === 'ended') {
     if (typeof window.livePlayerMarkEnded === 'function') window.livePlayerMarkEnded();
   }
-}, 6000);
+}, 2000);
 </script>
 <script>
 window._liveScreenOn = <?= $screenNow ? 'true' : 'false' ?>;

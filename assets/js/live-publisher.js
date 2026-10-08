@@ -39,7 +39,6 @@
   let meterTimer = 0;
   let audioCtx = null;
   let sendPaused = false;
-  let camOnShare = false;
   const protoEl = document.getElementById('live-proto');
   const screenWhipUrls = whipScreenUrls.filter((u) => whipUrls.indexOf(u) === -1);
 
@@ -127,35 +126,6 @@
       return true;
     } catch (e) {
       return false;
-    }
-  }
-
-  async function publishScreenOnCam() {
-    const track = displayStream && displayStream.getVideoTracks().find((t) => t.readyState === 'live');
-    if (!track) return false;
-    try {
-      await connectWhip(track);
-      camOnShare = true;
-      publishing = true;
-      applySendPause();
-      video.srcObject = camStream || stream;
-      await video.play().catch(() => {});
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  async function restoreCamPublish() {
-    if (!camOnShare) return;
-    camOnShare = false;
-    if (!wantPublish) return;
-    try {
-      await connectWhip();
-      publishing = true;
-      applySendPause();
-    } catch (e) {
-      queueReconnect(1500);
     }
   }
 
@@ -419,6 +389,9 @@
     if (listenBtn) listenBtn.hidden = true;
     stopMeter();
     setProto('');
+    if (sharing || displayStream || screenPc) {
+      await stopShare();
+    }
     await stopWhipOnly();
     if (camStream && camStream !== stream) {
       camStream.getTracks().forEach((t) => t.stop());
@@ -473,13 +446,11 @@
     return media;
   }
 
-  async function connectWhip(videoTrack) {
+  async function connectWhip() {
     await stopWhipOnly();
     await new Promise((r) => setTimeout(r, 400));
     const cam = camStream || stream;
-    const vTrack = (videoTrack && videoTrack.readyState === 'live')
-      ? videoTrack
-      : (cam && cam.getVideoTracks().find((t) => t.readyState === 'live')) || null;
+    const vTrack = (cam && cam.getVideoTracks().find((t) => t.readyState === 'live')) || null;
     if (!vTrack) {
       throw new Error('nocam');
     }
@@ -488,9 +459,8 @@
     });
     const conn = pc;
     bindPublisherPc(conn);
-    const vPack = (videoTrack && displayStream) ? displayStream : cam;
     const vOpts = { direction: 'sendonly' };
-    if (vPack) vOpts.streams = [vPack];
+    if (cam) vOpts.streams = [cam];
     conn.addTransceiver(vTrack, vOpts);
     if (cam) {
       cam.getAudioTracks().forEach((t) => {
@@ -576,11 +546,10 @@
       }
       setWait('Yayına bağlanılıyor…', 'Öğrenciler bağlanınca görüntü açılır.', true);
       setProto('Bağlanıyor…');
-      const shareTrack = sharing && displayStream
-        ? displayStream.getVideoTracks().find((t) => t.readyState === 'live')
-        : null;
-      await connectWhip(shareTrack || undefined);
-      if (shareTrack) camOnShare = true;
+      await connectWhip();
+      if (sharing && displayStream) {
+        await connectWhipScreen();
+      }
       publishing = true;
       btn.textContent = 'Kapat';
       if (listenBtn) listenBtn.hidden = false;
@@ -615,11 +584,14 @@
   }
 
   async function connectWhipScreen() {
+    const oldLoc = screenLoc;
+    screenLoc = '';
     if (screenPc) {
       try { screenPc.close(); } catch (e) {}
       screenPc = null;
     }
-    screenLoc = '';
+    if (oldLoc) await deleteWhip(oldLoc);
+    await new Promise((r) => setTimeout(r, 300));
     if (!displayStream) return false;
     if (!screenWhipUrls.length) {
       return false;
@@ -641,22 +613,28 @@
     await screenPc.setLocalDescription(offer);
     await waitIceGather(screenPc, 2000);
     const offerSdp = screenPc.localDescription && screenPc.localDescription.sdp ? screenPc.localDescription.sdp : offer.sdp;
-    for (let i = 0; i < screenWhipUrls.length; i++) {
-      const url = screenWhipUrls[i];
-      let res;
-      try {
-        res = await fetchSdp(url, offerSdp);
-      } catch (e) {
-        continue;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      for (let i = 0; i < screenWhipUrls.length; i++) {
+        const url = screenWhipUrls[i];
+        let res;
+        try {
+          res = await fetchSdp(url, offerSdp);
+        } catch (e) {
+          continue;
+        }
+        if (res.status === 409) {
+          await new Promise((r) => setTimeout(r, 800 + attempt * 600));
+          continue;
+        }
+        if (!res.ok) continue;
+        screenLoc = res.location || publicWhipUrl(url, res.location || '') || '';
+        const sdp = await res.text();
+        if (!sdp || !/v=0/i.test(sdp)) continue;
+        await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
+        waitPcReady(screenPc, 4000);
+        applySendPause();
+        return true;
       }
-      if (!res.ok) continue;
-      screenLoc = res.location || publicWhipUrl(url, res.location || '') || '';
-      const sdp = await res.text();
-      if (!sdp || !/v=0/i.test(sdp)) continue;
-      await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
-      waitPcReady(screenPc, 4000);
-      applySendPause();
-      return true;
     }
     try { screenPc.close(); } catch (e) {}
     screenPc = null;
@@ -683,6 +661,8 @@
   }
 
   async function stopShare() {
+    sharing = false;
+    showBoardScreen(false);
     if (screenLoc) {
       await deleteWhip(screenLoc);
       screenLoc = '';
@@ -696,9 +676,7 @@
       displayStream.getTracks().forEach((t) => t.stop());
       displayStream = null;
     }
-    sharing = false;
     if (screenEl) screenEl.srcObject = null;
-    await restoreCamPublish();
     if (typeof window.liveRecordOnShare === 'function') {
       window.liveRecordOnShare(null);
     }
@@ -803,10 +781,10 @@
       window.liveRecordOnShare(displayStream);
     }
     shareStarting = false;
-    const sent = await publishScreenOnCam();
+    const sent = await connectWhipScreen();
     if (typeof window.livePresentSync === 'function') window.livePresentSync();
     if (sent && !sendPaused) {
-      setProto('Ekran yayında — PDF’yi açın; kamera ve sohbet üstte kalır');
+      setProto('Ekran yayında — kamera ayrı kalır');
     } else if (!displayStream.getAudioTracks().length) {
       setProto('Ekran sesi yok — Chrome’da Sekme seçip “Sekme sesini paylaş”ı işaretleyin');
     } else {

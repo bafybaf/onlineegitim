@@ -9,12 +9,16 @@
 
   const board = document.getElementById('board-screen');
   const whepUrls = [cfg.whepUrl, cfg.whepUrlAlt].filter(Boolean);
+  const whepScreenUrls = [cfg.whepScreenUrl, cfg.whepScreenUrlAlt].filter((u) => u && whepUrls.indexOf(u) === -1);
   const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
   const healthUrl = cfg.healthUrl || '';
-  const boardOff = !!(document.querySelector('.live-shell.is-board-off'));
   let screenMode = !cfg.publish && !!window._liveScreenOn;
   let hls = null;
   let pc = null;
+  let screenPc = null;
+  let screenBusy = false;
+  let screenPlaying = false;
+  let screenRetry = 0;
   let discTimer = 0;
   let playing = false;
   let playMode = 'none';
@@ -42,80 +46,150 @@
     fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() }).catch(() => {});
   }
 
-  function sink() {
-    if (!cfg.publish && board && boardOff) {
-      return board;
-    }
-    if (!cfg.publish && board && screenMode) {
-      return board;
-    }
-    return video;
+  function setSharingClass(on) {
+    const shell = document.querySelector('.live-shell');
+    if (shell) shell.classList.toggle('is-sharing', !!on);
   }
 
-  function parkViewerChrome() {
-    if (cfg.publish || !boardOff) return;
+  function placeSharePip(on) {
+    const home = document.getElementById('live-stage');
     const stage = document.getElementById('board-stage');
-    if (!stage) return;
-    if (overlay && overlay.parentElement !== stage) {
-      stage.appendChild(overlay);
-    }
-    if (unmuteBtn && unmuteBtn.parentElement !== stage) {
-      stage.appendChild(unmuteBtn);
+    const pip = document.getElementById('live-cam-pip');
+    if (!pip || !home || !stage) return;
+    if (on) {
+      if (pip.parentNode !== stage) stage.appendChild(pip);
+    } else if (pip.parentNode !== home) {
+      home.insertBefore(pip, home.firstChild);
+      pip.style.left = '';
+      pip.style.top = '';
+      pip.style.right = '';
     }
   }
 
-  function applySink() {
-    const dest = sink();
-    const other = dest === video ? board : video;
-    const stream = (video.srcObject instanceof MediaStream && video.srcObject)
-      || (board && board.srcObject instanceof MediaStream && board.srcObject)
-      || null;
-    if (dest && stream && dest.srcObject !== stream) {
-      dest.srcObject = stream;
-      dest.muted = dest === board ? true : video.muted;
-      dest.play().catch(() => {});
-    }
-    if (other && other !== dest && !(!cfg.publish && boardOff && dest === board)) {
-      other.srcObject = null;
-      other.removeAttribute('src');
-    }
+  function applyShareLayout(on) {
+    screenMode = !!on;
     const stage = document.getElementById('board-stage');
-    if (stage) stage.classList.toggle('is-screen', boardOff || !!screenMode);
-    parkViewerChrome();
-    if (overlay && !boardOff) {
-      if (screenMode) {
-        if (waitTitle) waitTitle.textContent = 'Ekran paylaşımı';
-        if (waitDetail) {
-          waitDetail.textContent = 'Görüntü solda';
-          waitDetail.hidden = false;
-        }
-        overlay.classList.remove('is-off');
-      } else if (playing && !lessonPaused) {
-        overlay.classList.add('is-off');
+    if (stage) stage.classList.toggle('is-screen', !!on);
+    setSharingClass(on);
+    placeSharePip(on);
+  }
+
+  function stopScreenWhep() {
+    if (screenRetry) {
+      clearTimeout(screenRetry);
+      screenRetry = 0;
+    }
+    if (screenPc) {
+      try { screenPc.close(); } catch (e) {}
+      screenPc = null;
+    }
+    if (board) {
+      board.srcObject = null;
+      board.removeAttribute('src');
+    }
+    screenPlaying = false;
+    screenBusy = false;
+  }
+
+  function scheduleScreenRetry() {
+    if (ended || !screenMode || screenPlaying) return;
+    if (screenRetry) clearTimeout(screenRetry);
+    screenRetry = setTimeout(() => {
+      screenRetry = 0;
+      tryScreenWhep();
+    }, 2500);
+  }
+
+  async function startScreenWhep(url) {
+    if (!url || !board || typeof RTCPeerConnection === 'undefined') return 'unsupported';
+    if (screenPc && ['new', 'connecting', 'connected'].indexOf(screenPc.connectionState) !== -1) {
+      return 'busy';
+    }
+    if (screenPc) {
+      try { screenPc.close(); } catch (e) {}
+      screenPc = null;
+    }
+    const conn = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.l.google.com:19302' }]
+    });
+    screenPc = conn;
+    conn.addTransceiver('video', { direction: 'recvonly' });
+    conn.addTransceiver('audio', { direction: 'recvonly' });
+    conn.ontrack = (ev) => {
+      if (ended || conn !== screenPc || !board) return;
+      let stream = board.srcObject instanceof MediaStream ? board.srcObject : new MediaStream();
+      if (!stream.getTracks().includes(ev.track)) {
+        stream.addTrack(ev.track);
       }
+      if (board.srcObject !== stream) board.srcObject = stream;
+      board.muted = true;
+      board.play().catch(() => {});
+    };
+    const offer = await conn.createOffer();
+    await conn.setLocalDescription(offer);
+    await waitIceGather(conn, 400);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp', Accept: 'application/sdp' },
+        body: conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp
+      });
+    } catch (e) {
+      if (conn === screenPc) stopScreenWhep();
+      return 'offline';
+    }
+    if (!res.ok) {
+      if (conn === screenPc) {
+        try { conn.close(); } catch (e) {}
+        if (screenPc === conn) screenPc = null;
+      }
+      return res.status;
+    }
+    const sdp = await res.text();
+    if (!sdp) {
+      if (conn === screenPc) stopScreenWhep();
+      return 204;
+    }
+    await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
+    const ready = await waitPcReady(conn, 8000);
+    if (!ready && conn === screenPc && conn.connectionState !== 'connected') {
+      stopScreenWhep();
+      return 'ice';
+    }
+    const framed = await waitForElFrames(board, 4000);
+    if (!framed || !board.srcObject) {
+      stopScreenWhep();
+      return 'notrack';
+    }
+    screenPlaying = true;
+    return true;
+  }
+
+  async function tryScreenWhep() {
+    if (ended || !screenMode || !board || screenBusy || screenPlaying) return;
+    if (!whepScreenUrls.length) return;
+    screenBusy = true;
+    try {
+      for (let i = 0; i < whepScreenUrls.length; i++) {
+        const result = await startScreenWhep(whepScreenUrls[i]);
+        if (result === true) return;
+        if (isWaitStatus(result) || result === 'notrack' || result === 'ice') break;
+      }
+    } finally {
+      screenBusy = false;
+      if (screenMode && !screenPlaying && !ended) scheduleScreenRetry();
     }
   }
 
   window.liveScreenWatch = function (on) {
     if (cfg.publish) return;
-    screenMode = !!on;
-    if (boardOff) {
-      const stage = document.getElementById('board-stage');
-      if (stage) stage.classList.toggle('is-screen', true);
-      return;
-    }
-    applySink();
+    applyShareLayout(!!on);
+    if (on) tryScreenWhep();
+    else stopScreenWhep();
   };
 
   function showWait(on) {
-    if (boardOff && !cfg.publish) {
-      if (overlay) overlay.classList.toggle('is-off', !on);
-      return;
-    }
-    if (screenMode) {
-      if (overlay) overlay.classList.remove('is-off');
-      return;
-    }
     if (overlay) overlay.classList.toggle('is-off', !on);
   }
   function setProto(text) {
@@ -148,18 +222,17 @@
 
   function enableViewerSound() {
     if (cfg.publish) return;
-    const dest = sink();
-    dest.volume = 1;
-    dest.muted = false;
-    dest.removeAttribute('muted');
-    const playP = dest.play();
+    video.volume = 1;
+    video.muted = false;
+    video.removeAttribute('muted');
+    const playP = video.play();
     if (playP) {
       playP.catch(() => {
-        dest.muted = true;
+        video.muted = true;
         if (unmuteBtn) unmuteBtn.hidden = false;
       });
     }
-    if (unmuteBtn) unmuteBtn.hidden = !dest.muted;
+    if (unmuteBtn) unmuteBtn.hidden = !video.muted;
   }
 
   if (unmuteBtn) {
@@ -183,7 +256,6 @@
     enableViewerSound();
   }
   video.addEventListener('playing', onDestPlaying);
-  if (board) board.addEventListener('playing', onDestPlaying);
   video.addEventListener('volumechange', () => {
     if (unmuteBtn && !cfg.publish) unmuteBtn.hidden = !video.muted;
   });
@@ -210,7 +282,6 @@
       pc = null;
     }
     if (video.srcObject) video.srcObject = null;
-    if (board && board.srcObject) board.srcObject = null;
   }
 
   function waitIceGather(conn, ms) {
@@ -253,21 +324,24 @@
     return !!(el && (el.videoWidth > 0 || el.readyState >= 2 || (!el.paused && el.currentTime > 0)));
   }
 
-  function waitForFrames(ms) {
-    const els = [sink(), video, board].filter(Boolean);
-    if (els.some(hasFrames)) {
+  function waitForElFrames(el, ms) {
+    if (hasFrames(el)) {
       return Promise.resolve(true);
     }
     return new Promise((resolve) => {
       const started = Date.now();
       const tick = setInterval(() => {
-        const ok = els.some(hasFrames);
+        const ok = hasFrames(el);
         if (ok || Date.now() - started >= ms) {
           clearInterval(tick);
           resolve(ok);
         }
       }, 200);
     });
+  }
+
+  function waitForFrames(ms) {
+    return waitForElFrames(video, ms);
   }
 
   async function pingMtx() {
@@ -330,19 +404,15 @@
     conn.addTransceiver('audio', { direction: 'recvonly' });
     conn.ontrack = (ev) => {
       if (ended || conn !== pc) return;
-      const dest = sink();
-      let stream = dest.srcObject instanceof MediaStream ? dest.srcObject : new MediaStream();
+      let stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
       if (!stream.getTracks().includes(ev.track)) {
         stream.addTrack(ev.track);
       }
-      if (dest.srcObject !== stream) {
-        dest.srcObject = stream;
+      if (video.srcObject !== stream) {
+        video.srcObject = stream;
       }
-      if (dest !== video && video.srcObject) video.srcObject = null;
-      if (dest !== board && board && board.srcObject) board.srcObject = null;
       enableViewerSound();
-      dest.play().catch(() => {});
-      if (screenMode) applySink();
+      video.play().catch(() => {});
     };
     conn.onconnectionstatechange = () => {
       if (conn !== pc) return;
@@ -402,11 +472,10 @@
       return 'ice';
     }
     const framed = await waitForFrames(4000);
-    if (!framed || !sink().srcObject) {
+    if (!framed || !video.srcObject) {
       stopWhep();
       return 'notrack';
     }
-    applySink();
     playing = true;
     playMode = 'webrtc';
     setProto('Canlı');
@@ -444,17 +513,16 @@
           manifestLoadingTimeOut: 6000,
           startPosition: -1
         });
-        const dest = sink();
         hls.loadSource(url);
-        hls.attachMedia(dest);
+        hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setProto('Canlı');
           enableViewerSound();
           const edge = hls.liveSyncPosition;
           if (Number.isFinite(edge) && edge > 0) {
-            try { dest.currentTime = edge; } catch (e) {}
+            try { video.currentTime = edge; } catch (e) {}
           }
-          dest.play().catch(() => {});
+          video.play().catch(() => {});
           done(true);
         });
         hls.on(Hls.Events.ERROR, (_, data) => {
@@ -466,13 +534,12 @@
         setTimeout(() => done(playing), 9000);
       });
     }
-    const dest = sink();
-    if (dest.canPlayType('application/vnd.apple.mpegurl')) {
-      dest.srcObject = null;
-      dest.src = url;
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.srcObject = null;
+      video.src = url;
       setProto('Canlı');
       enableViewerSound();
-      return dest.play().then(() => true).catch(() => false);
+      return video.play().then(() => true).catch(() => false);
     }
     setWait('Tarayıcı desteklemiyor', '');
     return Promise.resolve(false);
@@ -555,9 +622,8 @@
     lessonPaused = false;
     stopWhep();
     stopHls();
-    if (typeof window.liveScreenWatch === 'function') {
-      window.liveScreenWatch(false);
-    }
+    stopScreenWhep();
+    applyShareLayout(false);
     setWait('Ders bitti', '');
     setProto('');
   };
@@ -577,7 +643,7 @@
     return;
   }
 
-  parkViewerChrome();
-  applySink();
+  applyShareLayout(screenMode);
   tryWhepOrHls();
+  if (screenMode) tryScreenWhep();
 })();
