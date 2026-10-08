@@ -34,6 +34,8 @@
   let hearing = false;
   let reconnectTimer = 0;
   let dropTimer = 0;
+  let reconnectN = 0;
+  let everConnected = false;
   let meterTimer = 0;
   let audioCtx = null;
   let sendPaused = false;
@@ -105,6 +107,15 @@
 
   function queueReconnect(ms) {
     if (!wantPublish || starting) return;
+    if (reconnectN >= 3) {
+      wantPublish = false;
+      setProto('Bağlanamadı — Tekrar’a basın');
+      setWait('Yayın bağlanamadı', 'Kamerayı kapatıp Tekrar’a basın. Otomatik deneme durdu.', true);
+      btn.textContent = 'Tekrar';
+      reportPublish('ice', 'Otomatik yeniden bağlanma durdu.', 'cap');
+      return;
+    }
+    reconnectN += 1;
     clearReconnect();
     reconnectTimer = setTimeout(() => {
       reconnectTimer = 0;
@@ -121,6 +132,8 @@
           clearTimeout(dropTimer);
           dropTimer = 0;
         }
+        reconnectN = 0;
+        everConnected = true;
         publishing = true;
         btn.textContent = 'Kapat';
         setProto(sendPaused ? 'Mola' : 'Yayındasınız');
@@ -135,7 +148,7 @@
         }
         return;
       }
-      if (conn.connectionState === 'disconnected') {
+      if (conn.connectionState === 'disconnected' && everConnected) {
         if (dropTimer) clearTimeout(dropTimer);
         dropTimer = setTimeout(() => {
           dropTimer = 0;
@@ -178,18 +191,16 @@
     if (!api || !target) {
       return { ok: false, status: 0, sdp: '', location: '' };
     }
-    const body = new URLSearchParams();
-    body.set('action', 'whip');
-    body.set('room_id', String(liveRoomId()));
-    body.set('method', method);
-    body.set('target', target);
-    if (sdp) {
-      body.set('sdp', sdp);
-    }
     const res = await fetch(api, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString()
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        action: 'whip',
+        room_id: liveRoomId(),
+        method,
+        target,
+        sdp: sdp || ''
+      })
     });
     return res.json().catch(() => ({ ok: false, status: 0, sdp: '', location: '' }));
   }
@@ -327,6 +338,8 @@
 
   async function stopPublish() {
     wantPublish = false;
+    reconnectN = 0;
+    everConnected = false;
     clearReconnect();
     publishing = false;
     starting = false;
@@ -418,7 +431,7 @@
     await waitIceGather(conn, 2000);
     const offerSdp = conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp;
     let lastErr = '';
-    for (let attempt = 0; attempt < 4; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       if (conn !== pc) {
         throw new Error('stale');
       }
@@ -447,7 +460,6 @@
           continue;
         }
         await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
-        waitPcReady(conn, 8000);
         return true;
       }
     }
@@ -464,6 +476,9 @@
     wantPublish = true;
     starting = true;
     publishing = false;
+    if (reconnectN === 0) {
+      everConnected = false;
+    }
     clearReconnect();
     btn.textContent = 'Bağlanıyor…';
     try {
@@ -688,6 +703,7 @@
       stopPublish();
       return;
     }
+    reconnectN = 0;
     startPublish();
   });
 
@@ -706,12 +722,6 @@
   if (listenBtn) {
     listenBtn.addEventListener('click', () => setHearing(!hearing));
   }
-
-  setInterval(() => {
-    if (wantPublish && camLive() && !whipAlive() && !starting && !publishing) {
-      queueReconnect(800);
-    }
-  }, 8000);
 
   window.addEventListener('pagehide', () => {
     if (sharing) stopShare();

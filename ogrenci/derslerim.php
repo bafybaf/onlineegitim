@@ -15,9 +15,24 @@ $mineGroups = group_apply_teacher_labels($st->fetchAll());
 panel_head('ogrenci', 'dersler', 'Derslerim | Öğrenci Paneli', $u);
 membership_panel_banner($u);
 foreach ($mineGroups as $g) {
-    $live = db()->prepare("SELECT * FROM live_rooms WHERE group_id=? AND status='live'");
+    $live = db()->prepare("SELECT * FROM live_rooms WHERE group_id=? AND status='live' ORDER BY id DESC");
     $live->execute([$g['id']]);
-    $r = $live->fetch();
+    $roomRows = $live->fetchAll();
+    $r = null;
+    foreach ($roomRows as $cand) {
+        if (live_student_watch_reason($cand, (int) $u['id']) === null) {
+            $r = $cand;
+            break;
+        }
+    }
+    if (!$r) {
+        foreach ($roomRows as $cand) {
+            if (!live_room_is_test($cand)) {
+                $r = $cand;
+                break;
+            }
+        }
+    }
     $videoOnly = ($g['access_type'] ?? 'canli_video') === 'sadece_video';
     $reason = ($r && !$videoOnly) ? live_student_watch_reason($r, (int) $u['id']) : ($videoOnly ? live_video_only_message() : null);
     $open = $r && !$videoOnly && $reason === null;

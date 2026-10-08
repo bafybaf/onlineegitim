@@ -27,6 +27,17 @@ $all = db()->query(
      ORDER BY r.status = 'live' DESC, r.id DESC
      LIMIT 120"
 )->fetchAll();
+$groups = db()->query('SELECT id, name FROM class_groups ORDER BY name')->fetchAll();
+$enrollSql = 'SELECT e.group_id, u.id, u.name FROM enrollments e JOIN users u ON u.id = e.student_id WHERE 1=1';
+$enCols = function_exists('live_enrollment_columns') ? live_enrollment_columns() : [];
+if (isset($enCols['status'])) {
+    $enrollSql .= " AND (e.status = 'aktif' OR e.status IS NULL)";
+}
+if (isset($enCols['expires_at'])) {
+    $enrollSql .= ' AND (e.expires_at IS NULL OR e.expires_at > NOW())';
+}
+$enrollSql .= ' ORDER BY u.name';
+$enrollRows = db()->query($enrollSql)->fetchAll();
 panel_head('admin', 'canli', 'Canlı dersler | Admin', $u);
 $ok = flash_ok();
 $err = flash_error();
@@ -34,7 +45,7 @@ $err = flash_error();
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <?php $liveErrN = function_exists('live_log_recent_error_count') ? live_log_recent_error_count() : 0; ?>
-<p class="mb-4 text-sm text-muted">İzle ile derse öğrenci gibi girersiniz: hocayı, tahtayı ve sohbeti görürsünüz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır.</p>
+<p class="mb-4 text-sm text-muted">Test yayını yalnızca seçtiğiniz öğrencileri alır; grubun geri kalanı odayı görmez. Kamerayı sizin açmanız için oda size bağlanır. Gözlemle ile normal derse öğrenci gibi girersiniz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır.</p>
 <p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
 <div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Cloudflare Stream</h2>
@@ -56,6 +67,57 @@ $err = flash_error();
     </label>
     <button class="btn-primary h-10 w-fit text-sm">Kaydet</button>
   </form>
+</div>
+<div class="card mb-6 p-5">
+  <h2 class="font-display text-xl">Canlı yayın testi</h2>
+  <p class="mt-1 text-sm text-muted">Kayıtlı grubun tamamı girmez. Öğrenci seçmezseniz oda yalnız sizde kalır; kamerayı deneyebilirsiniz.</p>
+  <?php if (!$groups): ?>
+    <p class="mt-3 text-sm text-muted">Önce bir sınıf grubu oluşturun.</p>
+  <?php else: ?>
+  <form method="post" action="<?= e(url('api/live.php')) ?>" class="mt-4 grid gap-3">
+    <input type="hidden" name="action" value="start">
+    <input type="hidden" name="html" value="1">
+    <input type="hidden" name="test" value="1">
+    <input type="hidden" name="record" value="1">
+    <label class="text-sm font-bold">Grup
+      <select id="test-group" name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
+        <?php foreach ($groups as $g): ?>
+          <option value="<?= (int) $g['id'] ?>"><?= e((string) $g['name']) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label class="text-sm font-bold">Konu
+      <input name="topic" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="Test yayını">
+    </label>
+    <label class="text-sm font-bold">Girebilecek öğrenciler
+      <select id="test-students" name="student_ids[]" multiple size="8" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
+        <?php foreach ($enrollRows as $s): ?>
+          <option value="<?= (int) $s['id'] ?>" data-group="<?= (int) $s['group_id'] ?>"><?= e((string) $s['name']) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <p class="text-xs text-muted">Ctrl veya Cmd ile birden çok kişi seçin. Boş bırakılırsa kimse giremez.</p>
+    <button class="btn-primary h-10 w-fit text-sm">Test odasını aç</button>
+  </form>
+  <script>
+  (function () {
+    var g = document.getElementById('test-group');
+    var s = document.getElementById('test-students');
+    if (!g || !s) return;
+    function filt() {
+      var id = String(g.value);
+      Array.prototype.forEach.call(s.options, function (o) {
+        var ok = o.getAttribute('data-group') === id;
+        o.hidden = !ok;
+        o.disabled = !ok;
+        if (!ok) o.selected = false;
+      });
+    }
+    g.addEventListener('change', filt);
+    filt();
+  })();
+  </script>
+  <?php endif; ?>
 </div>
 <div class="card overflow-hidden">
   <table class="table">
@@ -83,8 +145,13 @@ $err = flash_error();
         <td>
           <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-oda.php?id=' . (int) $r['id'])) ?>"><?= e($r['title']) ?></a>
           <p class="text-xs text-muted"><?= e((string) $r['gname']) ?><?php
+            if (function_exists('live_room_is_test') && live_room_is_test($r)) {
+                echo ' · test';
+                $nAllow = function_exists('live_allow_ids') ? count(live_allow_ids($r)) : 0;
+                echo ' · ' . (int) $nAllow . ' öğrenci';
+            }
             $topic = trim((string) ($r['topic'] ?? ''));
-            echo ($topic !== '' && $topic !== 'Ders') ? ' · ' . e($topic) : '';
+            echo ($topic !== '' && $topic !== 'Ders' && $topic !== 'Test yayını') ? ' · ' . e($topic) : '';
           ?></p>
         </td>
         <td><?= e($r['teacher_name']) ?></td>
@@ -97,7 +164,7 @@ $err = flash_error();
         <td>
           <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-oda.php?id=' . (int) $r['id'])) ?>">Girenler</a>
           <?php if (($r['status'] ?? '') === 'live'): ?>
-            · <a class="font-extrabold text-accent" href="<?= e(canli_url((int) $r['id'])) ?>">Gözlemle</a>
+            · <a class="font-extrabold text-accent" href="<?= e(canli_url((int) $r['id'])) ?>"><?= live_user_can_publish($u, $r) ? 'Yayına gir' : 'Gözlemle' ?></a>
             · <form class="inline" method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="admin/canli.php"><button class="font-extrabold text-muted">Kapat</button></form>
           <?php endif; ?>
         </td>

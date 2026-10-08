@@ -7,6 +7,9 @@ if (!$u) {
 if (!in_array($u['role'], ['ogrenci', 'ogretmen', 'admin'], true)) {
     json_out(['ok' => false, 'error' => 'edu_account'], 403);
 }
+if (function_exists('live_merge_json_body')) {
+    live_merge_json_body();
+}
 $action = post('action') ?: ($_GET['action'] ?? '');
 $pdo = db();
 ensure_live_attendance_schema();
@@ -21,7 +24,7 @@ if ($action === 'whip') {
     }
     $method = strtoupper(trim((string) post('method')));
     $target = trim((string) post('target'));
-    $sdp = (string) post('sdp');
+    $sdp = function_exists('live_request_sdp') ? live_request_sdp() : (string) ($_POST['sdp'] ?? '');
     $res = live_whip_proxy($method, $target, $sdp);
     if (empty($res['ok']) && $method !== 'DELETE' && function_exists('live_log_event')) {
         $code = (int) ($res['status'] ?? 0);
@@ -55,12 +58,13 @@ if ($action === 'log') {
     json_out(['ok' => true]);
 }
 
-if ($action === 'start' && $u['role'] === 'ogretmen') {
+if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
     $gid = (int) post('group_id');
     $st = $pdo->prepare('SELECT * FROM class_groups WHERE id = ?');
     $st->execute([$gid]);
     $g = $st->fetch();
-    if ($g && !group_has_teacher($gid, (int) $u['id'])) {
+    $isTest = $u['role'] === 'admin' && post('test') === '1';
+    if ($g && $u['role'] === 'ogretmen' && !group_has_teacher($gid, (int) $u['id'])) {
         $g = false;
     }
     if (!$g) {
@@ -68,32 +72,88 @@ if ($action === 'start' && $u['role'] === 'ogretmen') {
     }
     ensure_live_play_mode_schema();
     $mode = live_remember_play_mode('browser');
-    $ex = $pdo->prepare("SELECT * FROM live_rooms WHERE group_id = ? AND status = 'live'");
-    $ex->execute([$gid]);
-    $room = $ex->fetch();
+    $allow = [];
+    if ($isTest) {
+        $raw = $_POST['student_ids'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [$raw];
+        }
+        $chk = $pdo->prepare('SELECT student_id FROM enrollments WHERE group_id = ? AND student_id = ? LIMIT 1');
+        foreach ($raw as $sid) {
+            $sid = (int) $sid;
+            if ($sid < 1) {
+                continue;
+            }
+            $chk->execute([$gid, $sid]);
+            if ($chk->fetch()) {
+                $allow[] = $sid;
+            }
+        }
+        $allow = array_values(array_unique($allow));
+        $ex = $pdo->prepare("SELECT * FROM live_rooms WHERE group_id = ? AND teacher_id = ? AND status = 'live' AND access_mode = 'allow' LIMIT 1");
+        $ex->execute([$gid, (int) $u['id']]);
+        $room = $ex->fetch();
+    } else {
+        $ex = $pdo->prepare("SELECT * FROM live_rooms WHERE group_id = ? AND status = 'live' AND (access_mode IS NULL OR access_mode = '' OR access_mode = 'all') LIMIT 1");
+        $ex->execute([$gid]);
+        $room = $ex->fetch();
+    }
+    $topic = post('topic') ?: ($isTest ? 'Test yayını' : 'Ders');
+    $title = $isTest ? ('Test · ' . (string) $g['name']) : (string) $g['name'];
+    $allowJson = $isTest ? json_encode($allow) : null;
     if (!$room) {
         $key = live_new_stream_key($pdo);
+        $inserted = false;
         try {
-            $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode) VALUES (?,?,?,?,?,?,?,?)')
-                ->execute([$u['id'], $gid, $g['name'], post('topic') ?: 'Ders', post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key, $mode]);
+            $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode, access_mode, allow_student_ids) VALUES (?,?,?,?,?,?,?,?,?,?)')
+                ->execute([(int) $u['id'], $gid, $title, $topic, post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key, $mode, $isTest ? 'allow' : 'all', $allowJson]);
+            $inserted = true;
         } catch (Throwable $e) {
-            $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key) VALUES (?,?,?,?,?,?,?)')
-                ->execute([$u['id'], $gid, $g['name'], post('topic') ?: 'Ders', post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key]);
+            try {
+                $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode) VALUES (?,?,?,?,?,?,?,?)')
+                    ->execute([(int) $u['id'], $gid, $title, $topic, post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key, $mode]);
+                $inserted = true;
+            } catch (Throwable $e2) {
+                $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key) VALUES (?,?,?,?,?,?,?)')
+                    ->execute([(int) $u['id'], $gid, $title, $topic, post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key]);
+                $inserted = true;
+            }
+        }
+        if (!$inserted) {
+            json_out(['ok' => false, 'error' => 'room']);
         }
         $rid = (int) $pdo->lastInsertId();
+        $hello = $isTest
+            ? 'Test yayını açıldı. Yalnız seçilen öğrenciler girebilir.'
+            : live_start_chat_message($mode);
         $pdo->prepare('INSERT INTO live_chat (room_id, user_id, who_label, body) VALUES (?,?,?,?)')
-            ->execute([$rid, $u['id'], 'Sistem', live_start_chat_message($mode)]);
-        $stu = $pdo->prepare('SELECT student_id FROM enrollments WHERE group_id = ?');
-        $stu->execute([$gid]);
+            ->execute([$rid, $u['id'], 'Sistem', $hello]);
         $att = $pdo->prepare('INSERT INTO attendance (room_id, student_id, present) VALUES (?,?,0)');
-        foreach ($stu as $row) {
-            $att->execute([$rid, $row['student_id']]);
+        if ($isTest) {
+            foreach ($allow as $sid) {
+                $att->execute([$rid, $sid]);
+            }
+        } else {
+            $stu = $pdo->prepare('SELECT student_id FROM enrollments WHERE group_id = ?');
+            $stu->execute([$gid]);
+            foreach ($stu as $row) {
+                $att->execute([$rid, $row['student_id']]);
+            }
         }
         $room = ['id' => $rid];
     } else {
         live_ensure_stream_key($pdo, $room);
         try {
-            $pdo->prepare('UPDATE live_rooms SET play_mode = ? WHERE id = ?')->execute([$mode, (int) $room['id']]);
+            if ($isTest) {
+                $pdo->prepare('UPDATE live_rooms SET play_mode = ?, topic = ?, allow_student_ids = ? WHERE id = ?')
+                    ->execute([$mode, $topic, $allowJson, (int) $room['id']]);
+                $att = $pdo->prepare('INSERT INTO attendance (room_id, student_id, present) VALUES (?,?,0) ON DUPLICATE KEY UPDATE student_id = student_id');
+                foreach ($allow as $sid) {
+                    $att->execute([(int) $room['id'], $sid]);
+                }
+            } else {
+                $pdo->prepare('UPDATE live_rooms SET play_mode = ? WHERE id = ?')->execute([$mode, (int) $room['id']]);
+            }
         } catch (Throwable $e) {
         }
     }

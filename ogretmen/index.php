@@ -8,6 +8,7 @@ $mine->execute([$u['id']]);
 $mine = $mine->fetchAll();
 $others = db()->prepare("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id=r.teacher_id WHERE r.status='live' AND r.teacher_id<>?");
 $others->execute([$u['id']]);
+$others = array_values(array_filter($others->fetchAll(), static fn(array $r): bool => !live_room_is_test($r)));
 $nStu = db()->query('SELECT COUNT(DISTINCT e.student_id) FROM enrollments e JOIN class_groups g ON g.id=e.group_id WHERE g.id IN (' . group_owned_in_sql((int) $u['id']) . ')')->fetchColumn();
 $allLive = (int) db()->query("SELECT COUNT(*) FROM live_rooms WHERE status='live'")->fetchColumn();
 $qPending = function_exists('question_teacher_pending_count') ? question_teacher_pending_count((int) $u['id']) : 0;

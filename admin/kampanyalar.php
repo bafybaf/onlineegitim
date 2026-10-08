@@ -23,8 +23,25 @@ $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = post('action');
     if ($action === 'delete') {
-        db()->prepare('DELETE FROM campaigns WHERE id = ?')->execute([(int) post('id')]);
-        flash_ok('Kampanya silindi.');
+        $delId = (int) post('id');
+        if ($delId < 1 && $edit) {
+            $delId = (int) $edit['id'];
+        }
+        if ($delId < 1) {
+            flash_error('Kampanya seçilmedi.');
+            redirect('admin/kampanyalar');
+        }
+        try {
+            $st = db()->prepare('DELETE FROM campaigns WHERE id = ?');
+            $st->execute([$delId]);
+            if ($st->rowCount() < 1) {
+                flash_error('Kampanya silinemedi veya zaten yok.');
+            } else {
+                flash_ok('Kampanya silindi.');
+            }
+        } catch (Throwable $e) {
+            flash_error('Kampanya silinemedi.');
+        }
         redirect('admin/kampanyalar');
     }
     $title = post('title');
@@ -160,10 +177,10 @@ panel_head('admin', 'kampanyalar', 'Kampanyalar | Admin', $u);
               </td>
               <td class="whitespace-nowrap">
                 <a class="font-extrabold text-navy" href="<?= e(url('admin/kampanyalar') . '?id=' . (int) $c['id']) ?>">Düzenle</a>
-                <form method="post" class="mt-1" onsubmit="return confirm('Kampanyayı silmek istiyor musunuz?');">
+                <form method="post" action="<?= e(url('admin/kampanyalar')) ?>" class="mt-1 inline" onsubmit="return confirm('Kampanyayı silmek istiyor musunuz?');">
                   <input type="hidden" name="action" value="delete">
                   <input type="hidden" name="id" value="<?= (int) $c['id'] ?>">
-                  <button class="text-xs font-extrabold text-accent">Sil</button>
+                  <button type="submit" class="text-xs font-extrabold text-accent">Sil</button>
                 </form>
               </td>
             </tr>
@@ -172,7 +189,10 @@ panel_head('admin', 'kampanyalar', 'Kampanyalar | Admin', $u);
       </table>
     <?php endif; ?>
   </div>
-  <form method="post" class="card grid gap-3 p-5 h-fit">
+  <form method="post" action="<?= e(url('admin/kampanyalar')) ?>" class="card grid gap-3 p-5 h-fit">
+    <?php if ($edit): ?>
+      <input type="hidden" name="id" value="<?= (int) $edit['id'] ?>">
+    <?php endif; ?>
     <p class="stat-label"><?= $edit ? 'Düzenle' : 'Yeni kampanya' ?></p>
     <h2 class="font-display text-xl"><?= $edit ? e((string) $edit['title']) : 'Kampanya ekle' ?></h2>
     <label class="text-sm font-bold">Başlık
@@ -234,8 +254,9 @@ panel_head('admin', 'kampanyalar', 'Kampanyalar | Admin', $u);
       <input type="checkbox" name="active" value="1" <?= (int) ($form['active'] ?? 1) === 1 ? 'checked' : '' ?>>
       Aktif
     </label>
-    <button class="btn-primary"><?= $edit ? 'Kaydet' : 'Ekle' ?></button>
+    <button type="submit" name="action" value="save" class="btn-primary"><?= $edit ? 'Kaydet' : 'Ekle' ?></button>
     <?php if ($edit): ?>
+      <button type="submit" name="action" value="delete" class="text-sm font-extrabold text-accent" onclick="return confirm('Kampanyayı silmek istiyor musunuz?');">Kampanyayı sil</button>
       <a class="text-sm font-extrabold text-navy" href="<?= e(url('admin/kampanyalar')) ?>">Yeni kampanya</a>
     <?php endif; ?>
   </form>

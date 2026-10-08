@@ -5,6 +5,12 @@ $u = require_role('ogretmen');
 $groups = teacher_groups((int) $u['id']);
 $owned = group_owned_ids((int) $u['id']);
 $all = db()->query("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id=r.teacher_id WHERE r.status='live' ORDER BY r.id")->fetchAll();
+$all = array_values(array_filter($all, static function (array $r) use ($u): bool {
+    if (!live_room_is_test($r)) {
+        return true;
+    }
+    return (int) ($r['teacher_id'] ?? 0) === (int) $u['id'];
+}));
 panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
 ?>
 <div class="grid gap-6 lg:grid-cols-2">

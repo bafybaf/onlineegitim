@@ -2,9 +2,7 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogrenci');
-$lives = db()->prepare("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id=r.teacher_id JOIN enrollments e ON e.group_id=r.group_id AND e.student_id=? AND (e.status='aktif' OR e.status IS NULL) AND (e.expires_at IS NULL OR e.expires_at > NOW()) WHERE r.status='live'");
-$lives->execute([$u['id']]);
-$lives = $lives->fetchAll();
+$lives = live_student_live_rooms((int) $u['id']);
 $groups = db()->prepare("SELECT g.*, t.name teacher_name, e.progress FROM enrollments e JOIN class_groups g ON g.id=e.group_id JOIN users t ON t.id=g.teacher_id WHERE e.student_id=? AND (e.status='aktif' OR e.status IS NULL) AND (e.expires_at IS NULL OR e.expires_at > NOW())");
 $groups->execute([$u['id']]);
 $groups = group_apply_teacher_labels($groups->fetchAll());

@@ -199,6 +199,8 @@ CREATE TABLE live_rooms (
   yoklama TINYINT(1) NOT NULL DEFAULT 1,
   stream_key VARCHAR(80) NULL,
   play_mode VARCHAR(20) NOT NULL DEFAULT 'browser',
+  access_mode VARCHAR(12) NOT NULL DEFAULT 'all',
+  allow_student_ids TEXT NULL,
   broadcasting TINYINT(1) NOT NULL DEFAULT 0,
   paused TINYINT(1) NOT NULL DEFAULT 0,
   pause_ends_at DATETIME NULL,

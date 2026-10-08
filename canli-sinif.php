@@ -39,9 +39,10 @@ if ($u['role'] === 'ogrenci') {
 }
 $endGo = $u['role'] === 'ogretmen' ? 'ogretmen/kayit-yukle.php' : $back;
 if ($u['role'] === 'ogrenci') {
-    $ls = db()->prepare("SELECT r.id, r.title, u.name teacher FROM live_rooms r JOIN users u ON u.id=r.teacher_id JOIN enrollments e ON e.group_id=r.group_id AND e.student_id=? AND (e.status='aktif' OR e.status IS NULL) AND (e.expires_at IS NULL OR e.expires_at > NOW()) WHERE r.status='live' ORDER BY r.id");
-    $ls->execute([(int) $u['id']]);
-    $lives = $ls->fetchAll();
+    $lives = [];
+    foreach (live_student_live_rooms((int) $u['id']) as $lr) {
+        $lives[] = ['id' => (int) $lr['id'], 'title' => (string) $lr['title'], 'teacher' => (string) ($lr['teacher_name'] ?? '')];
+    }
 } elseif ($u['role'] === 'ogretmen') {
     $ls = db()->prepare("SELECT r.id, r.title, u.name teacher FROM live_rooms r JOIN users u ON u.id=r.teacher_id WHERE r.status='live' AND r.teacher_id=? ORDER BY r.id");
     $ls->execute([(int) $u['id']]);

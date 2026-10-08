@@ -209,6 +209,36 @@ function live_whip_http(string $method, string $url, string $sdp = ''): array
     ];
 }
 
+function live_merge_json_body(): void
+{
+    $ct = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? ''));
+    if (!str_contains($ct, 'application/json')) {
+        return;
+    }
+    $raw = file_get_contents('php://input');
+    $j = json_decode((string) $raw, true);
+    if (!is_array($j)) {
+        return;
+    }
+    foreach ($j as $k => $v) {
+        if (!is_string($k) || $k === '') {
+            continue;
+        }
+        if (is_bool($v)) {
+            $_POST[$k] = $v ? '1' : '0';
+        } elseif (is_int($v) || is_float($v)) {
+            $_POST[$k] = (string) $v;
+        } elseif (is_string($v)) {
+            $_POST[$k] = $v;
+        }
+    }
+}
+
+function live_request_sdp(): string
+{
+    return (string) ($_POST['sdp'] ?? '');
+}
+
 function live_whip_proxy(string $method, string $target, string $sdp = ''): array
 {
     $method = strtoupper($method) === 'DELETE' ? 'DELETE' : 'POST';
@@ -317,6 +347,106 @@ function ensure_live_play_mode_schema(): void
     } catch (Throwable $e) {
         $done = false;
     }
+    ensure_live_access_schema();
+}
+
+function ensure_live_access_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $cols = [];
+        foreach (db()->query('SHOW COLUMNS FROM live_rooms')->fetchAll() as $row) {
+            $cols[(string) ($row['Field'] ?? '')] = true;
+        }
+        if (empty($cols['access_mode'])) {
+            db()->exec("ALTER TABLE live_rooms ADD COLUMN access_mode VARCHAR(12) NOT NULL DEFAULT 'all'");
+        }
+        if (empty($cols['allow_student_ids'])) {
+            db()->exec('ALTER TABLE live_rooms ADD COLUMN allow_student_ids TEXT NULL');
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function live_room_is_test(array $room): bool
+{
+    return ($room['access_mode'] ?? 'all') === 'allow';
+}
+
+function live_allow_ids(array $room): array
+{
+    $raw = trim((string) ($room['allow_student_ids'] ?? ''));
+    if ($raw === '') {
+        return [];
+    }
+    $j = json_decode($raw, true);
+    if (is_array($j)) {
+        return array_values(array_unique(array_filter(array_map('intval', $j))));
+    }
+    return array_values(array_unique(array_filter(array_map('intval', explode(',', $raw)))));
+}
+
+function live_student_on_allowlist(array $room, int $studentId): bool
+{
+    if ($studentId < 1) {
+        return false;
+    }
+    return in_array($studentId, live_allow_ids($room), true);
+}
+
+function live_student_live_rooms(int $studentId): array
+{
+    ensure_live_access_schema();
+    if ($studentId < 1) {
+        return [];
+    }
+    $cols = live_enrollment_columns();
+    $sql = "SELECT r.*, t.name teacher_name FROM live_rooms r
+         JOIN users t ON t.id = r.teacher_id
+         JOIN enrollments e ON e.group_id = r.group_id AND e.student_id = ?";
+    if (isset($cols['status'])) {
+        $sql .= " AND (e.status = 'aktif' OR e.status IS NULL)";
+    }
+    if (isset($cols['expires_at'])) {
+        $sql .= ' AND (e.expires_at IS NULL OR e.expires_at > NOW())';
+    }
+    $sql .= " WHERE r.status = 'live' ORDER BY r.id";
+    try {
+        $st = db()->prepare($sql);
+        $st->execute([$studentId]);
+        $out = [];
+        foreach ($st->fetchAll() as $r) {
+            if (live_student_watch_reason($r, $studentId) === null) {
+                $out[] = $r;
+            }
+        }
+        return $out;
+    } catch (Throwable) {
+        return [];
+    }
+}
+
+function live_nav_open_count(string $role, int $userId = 0): int
+{
+    ensure_live_access_schema();
+    try {
+        if ($role === 'ogrenci' && $userId > 0) {
+            return count(live_student_live_rooms($userId));
+        }
+        if ($role === 'ogretmen' && $userId > 0) {
+            $st = db()->prepare("SELECT COUNT(*) FROM live_rooms WHERE status = 'live' AND teacher_id = ?");
+            $st->execute([$userId]);
+            return (int) $st->fetchColumn();
+        }
+        return (int) db()->query("SELECT COUNT(*) FROM live_rooms WHERE status = 'live'")->fetchColumn();
+    } catch (Throwable) {
+        return 0;
+    }
 }
 
 function live_room_play_mode(array $room): string
@@ -352,6 +482,7 @@ function ensure_live_attendance_schema(): void
         $done = false;
     }
     ensure_live_log_schema();
+    ensure_live_access_schema();
 }
 
 function ensure_live_log_schema(): void
@@ -744,7 +875,13 @@ function live_user_can_access(array $u, array $room): bool
         if (($u['status'] ?? '') !== 'aktif') {
             return false;
         }
-        return live_student_enrolled((int) $u['id'], (int) $room['group_id']);
+        if (!live_student_enrolled((int) $u['id'], (int) $room['group_id'])) {
+            return false;
+        }
+        if (live_room_is_test($room) && !live_student_on_allowlist($room, (int) $u['id'])) {
+            return false;
+        }
+        return true;
     }
     return false;
 }
@@ -890,6 +1027,12 @@ function live_student_watch_reason(array $room, int $studentId): ?string
     if ($studentId < 1 || $groupId < 1) {
         return live_full_watch_message();
     }
+    if (live_room_is_test($room)) {
+        if (!live_student_on_allowlist($room, $studentId)) {
+            return 'Bu yayın bir testtir. Yalnız davet edilen öğrenciler girebilir.';
+        }
+        return null;
+    }
     if (function_exists('student_can_join_live') && !student_can_join_live($studentId, $groupId)) {
         return live_video_only_message();
     }
@@ -938,6 +1081,15 @@ function live_student_try_enter(array $room, int $studentId): bool
     $pdo = db();
     $pdo->beginTransaction();
     try {
+        if (live_room_is_test($room)) {
+            if (!live_student_on_allowlist($room, $studentId)) {
+                $pdo->rollBack();
+                return false;
+            }
+            live_mark_student_present($roomId, $studentId);
+            $pdo->commit();
+            return true;
+        }
         $lock = $pdo->prepare('SELECT cap FROM class_groups WHERE id = ? FOR UPDATE');
         $lock->execute([$groupId]);
         $row = $lock->fetch();

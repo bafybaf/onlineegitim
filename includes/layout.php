@@ -255,9 +255,9 @@ function public_foot(): void
 <?php
 }
 
-function panel_nav(string $role, string $page): array
+function panel_nav(string $role, string $page, int $userId = 0): array
 {
-    $liveN = (int) db()->query("SELECT COUNT(*) FROM live_rooms WHERE status='live'")->fetchColumn();
+    $liveN = live_nav_open_count($role, $userId);
     if ($role === 'ogrenci') {
         return [
             ['label' => 'Ders', 'items' => [
@@ -430,8 +430,8 @@ function panel_head(string $role, string $page, string $title, array $user): voi
     }
     $titles = ['ogrenci' => 'Öğrenci Paneli', 'ogretmen' => 'Öğretmen Paneli', 'admin' => 'Yönetim Paneli', 'musteri' => 'Mağaza Hesabım'];
     $chips = ['ogrenci' => 'Öğrenci', 'ogretmen' => 'Hoca', 'admin' => 'Yönetici', 'musteri' => 'Mağaza'];
-    $liveN = (int) db()->query("SELECT COUNT(*) FROM live_rooms WHERE status='live'")->fetchColumn();
-    $nav = panel_nav($role, $page);
+    $liveN = live_nav_open_count($role, (int) ($user['id'] ?? 0));
+    $nav = panel_nav($role, $page, (int) ($user['id'] ?? 0));
     $pageTitle = trim(explode('|', $title)[0]);
     ?>
 <!DOCTYPE html>
@@ -521,6 +521,9 @@ function live_pill(array $r): string
 {
     if (($r['status'] ?? '') !== 'live') {
         return '<span class="text-muted">Kapalı</span>';
+    }
+    if (function_exists('live_room_is_test') && live_room_is_test($r)) {
+        return '<span class="live-pill"><i></i> Test</span>';
     }
     return '<span class="live-pill"><i></i> Canlı</span>';
 }

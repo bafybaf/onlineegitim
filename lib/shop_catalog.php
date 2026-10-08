@@ -240,6 +240,9 @@ function shop_backfill_book_categories(): void
 
 function shop_seed_campaigns(): void
 {
+    if (function_exists('setting') && setting('shop_campaigns_seeded') === '1') {
+        return;
+    }
     $year = date('Y-m-d H:i:s', time() + 86400 * 365);
     $now = date('Y-m-d H:i:s');
     $st = db()->prepare('SELECT id FROM campaigns WHERE code = ? OR slug = ? LIMIT 1');
@@ -276,6 +279,9 @@ function shop_seed_campaigns(): void
             $now,
             $year,
         ]);
+    }
+    if (function_exists('setting_set')) {
+        setting_set('shop_campaigns_seeded', '1');
     }
 }
 

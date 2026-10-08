@@ -36,6 +36,7 @@
       camX = xy[0];
       camY = xy[1];
       pip.style.left = (camX * 100) + '%';
+      pip.style.right = 'auto';
       pip.style.top = (camY * 100) + '%';
     } else if (pip.parentNode !== home) {
       home.insertBefore(pip, home.firstChild);

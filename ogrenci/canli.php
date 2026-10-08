@@ -2,11 +2,10 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogrenci');
-$mine = db()->prepare("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id=r.teacher_id JOIN enrollments e ON e.group_id=r.group_id AND e.student_id=? AND (e.status='aktif' OR e.status IS NULL) AND (e.expires_at IS NULL OR e.expires_at > NOW()) WHERE r.status='live'");
-$mine->execute([$u['id']]);
-$mine = $mine->fetchAll();
+$mine = live_student_live_rooms((int) $u['id']);
 $ids = array_column($mine, 'id') ?: [0];
 $others = db()->query("SELECT r.*, t.name teacher_name FROM live_rooms r JOIN users t ON t.id=r.teacher_id WHERE r.status='live' AND r.id NOT IN (" . implode(',', array_map('intval', $ids)) . ")")->fetchAll();
+$others = array_values(array_filter($others, static fn(array $r): bool => !live_room_is_test($r)));
 panel_head('ogrenci', 'canli', 'Canlı dersler | Öğrenci Paneli', $u);
 membership_panel_banner($u);
 ?>
