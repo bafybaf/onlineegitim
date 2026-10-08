@@ -639,14 +639,6 @@ body:has(.live-shell) {
 .live-shell.is-board-off .live-board-stage #board-screen { display: none; object-fit: contain; }
 .live-shell.is-board-off .live-board-stage.is-screen #board-screen,
 .live-shell.is-sharing .live-board-stage #board-screen { display: block; }
-.live-shell.is-sharing .live-board-stage #live-cam-pip {
-  position: absolute; z-index: 6; top: 4%; right: 2%; left: auto;
-  width: min(22%, 260px); min-height: 0;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, .35), 0 0 0 2px #2a2a2a;
-}
-.live-shell.is-sharing.is-viewer .live-stage { display: none; }
-.live-shell.is-sharing.is-viewer .live-side { grid-template-rows: 1fr; }
-.live-shell.is-sharing .live-board-stage #live-cam-pip .live-unmute-btn { right: 12px; bottom: 12px; }
 .live-dock {
   height: 100%; min-height: 100%;
   display: flex; flex-direction: column;

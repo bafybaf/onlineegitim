@@ -51,27 +51,11 @@
     if (shell) shell.classList.toggle('is-sharing', !!on);
   }
 
-  function placeSharePip(on) {
-    const home = document.getElementById('live-stage');
-    const stage = document.getElementById('board-stage');
-    const pip = document.getElementById('live-cam-pip');
-    if (!pip || !home || !stage) return;
-    if (on) {
-      if (pip.parentNode !== stage) stage.appendChild(pip);
-    } else if (pip.parentNode !== home) {
-      home.insertBefore(pip, home.firstChild);
-      pip.style.left = '';
-      pip.style.top = '';
-      pip.style.right = '';
-    }
-  }
-
   function applyShareLayout(on) {
     screenMode = !!on;
     const stage = document.getElementById('board-stage');
     if (stage) stage.classList.toggle('is-screen', !!on);
     setSharingClass(on);
-    placeSharePip(on);
   }
 
   function stopScreenWhep() {

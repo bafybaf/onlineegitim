@@ -186,7 +186,7 @@ if ($screenNow === 0) {
     <div class="live-side">
       <div class="live-stage" id="live-stage">
         <div class="live-stage-oval" id="live-cam-pip">
-          <video id="live-video" playsinline autoplay muted controls></video>
+          <video id="live-video" playsinline autoplay muted></video>
           <div id="wait-overlay" class="live-wait">
             <p id="wait-title" class="font-display text-2xl"><?= e($waitTitle) ?></p>
             <p id="wait-detail" hidden></p>
