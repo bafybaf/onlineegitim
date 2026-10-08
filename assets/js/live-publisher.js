@@ -130,19 +130,16 @@
     }
   }
 
-  function videoSender() {
-    if (!pc) return null;
-    return pc.getSenders().find((s) => s.track && s.track.kind === 'video')
-      || pc.getSenders().find((s) => !s.track) || null;
-  }
-
   async function publishScreenOnCam() {
-    const track = displayStream && displayStream.getVideoTracks()[0];
-    const sender = videoSender();
-    if (!track || !sender) return false;
+    const track = displayStream && displayStream.getVideoTracks().find((t) => t.readyState === 'live');
+    if (!track) return false;
     try {
-      await sender.replaceTrack(track);
+      await connectWhip(track);
       camOnShare = true;
+      publishing = true;
+      applySendPause();
+      video.srcObject = camStream || stream;
+      await video.play().catch(() => {});
       return true;
     } catch (e) {
       return false;
@@ -151,12 +148,15 @@
 
   async function restoreCamPublish() {
     if (!camOnShare) return;
-    const track = camTrack();
-    const sender = videoSender();
-    if (sender && track) {
-      try { await sender.replaceTrack(track); } catch (e) {}
-    }
     camOnShare = false;
+    if (!wantPublish) return;
+    try {
+      await connectWhip();
+      publishing = true;
+      applySendPause();
+    } catch (e) {
+      queueReconnect(1500);
+    }
   }
 
   function whipAlive() {
@@ -188,7 +188,9 @@
     clearReconnect();
     reconnectTimer = setTimeout(() => {
       reconnectTimer = 0;
-      if (!wantPublish || starting || whipAlive() || !camLive()) return;
+      if (!wantPublish || starting || whipAlive()) return;
+      const shareLive = !!(sharing && displayStream && displayStream.getVideoTracks().some((t) => t.readyState === 'live'));
+      if (!camLive() && !shareLive) return;
       startPublish().catch(() => {});
     }, ms || 2000);
   }
@@ -471,9 +473,14 @@
     return media;
   }
 
-  async function connectWhip() {
+  async function connectWhip(videoTrack) {
     await stopWhipOnly();
-    if (!stream) {
+    await new Promise((r) => setTimeout(r, 400));
+    const cam = camStream || stream;
+    const vTrack = (videoTrack && videoTrack.readyState === 'live')
+      ? videoTrack
+      : (cam && cam.getVideoTracks().find((t) => t.readyState === 'live')) || null;
+    if (!vTrack) {
       throw new Error('nocam');
     }
     pc = new RTCPeerConnection({
@@ -481,17 +488,18 @@
     });
     const conn = pc;
     bindPublisherPc(conn);
-    stream.getVideoTracks().forEach((t) => {
-      if (t.readyState === 'live') {
-        conn.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
-      }
-    });
-    stream.getAudioTracks().forEach((t) => {
-      t.enabled = true;
-      if (t.readyState === 'live') {
-        conn.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
-      }
-    });
+    const vPack = (videoTrack && displayStream) ? displayStream : cam;
+    const vOpts = { direction: 'sendonly' };
+    if (vPack) vOpts.streams = [vPack];
+    conn.addTransceiver(vTrack, vOpts);
+    if (cam) {
+      cam.getAudioTracks().forEach((t) => {
+        t.enabled = true;
+        if (t.readyState === 'live') {
+          conn.addTransceiver(t, { direction: 'sendonly', streams: [cam] });
+        }
+      });
+    }
     if (!conn.getTransceivers().length) {
       throw new Error('nocam');
     }
@@ -568,7 +576,11 @@
       }
       setWait('Yayına bağlanılıyor…', 'Öğrenciler bağlanınca görüntü açılır.', true);
       setProto('Bağlanıyor…');
-      await connectWhip();
+      const shareTrack = sharing && displayStream
+        ? displayStream.getVideoTracks().find((t) => t.readyState === 'live')
+        : null;
+      await connectWhip(shareTrack || undefined);
+      if (shareTrack) camOnShare = true;
       publishing = true;
       btn.textContent = 'Kapat';
       if (listenBtn) listenBtn.hidden = false;
@@ -780,13 +792,7 @@
       window.liveRecordOnShare(displayStream);
     }
     shareStarting = false;
-    let sent = false;
-    if (screenWhipUrls.length) {
-      sent = await connectWhipScreen();
-    }
-    if (!sent) {
-      sent = await publishScreenOnCam();
-    }
+    const sent = await publishScreenOnCam();
     if (typeof window.livePresentSync === 'function') window.livePresentSync();
     if (sent && !sendPaused) {
       setProto('Ekran yayında — PDF’yi açın; kamera ve sohbet üstte kalır');

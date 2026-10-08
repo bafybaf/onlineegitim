@@ -494,190 +494,47 @@
   const el = document.getElementById('board-screen');
   if (!el || cfg.publish) return;
 
-  const camWhep = cfg.whepUrl || '';
-  const whepUrls = [cfg.whepScreenUrl, cfg.whepScreenUrlAlt].filter((u) => u && u !== camWhep);
-  const hlsUrls = [cfg.hlsScreenUrl, cfg.hlsScreenUrlAlt].filter(Boolean);
   let want = false;
-  let pc = null;
-  let hls = null;
-  let busy = false;
-  let usingCam = false;
 
-  function waitIceGather(conn, ms) {
-    if (!conn || conn.iceGatheringState === 'complete') {
-      return Promise.resolve();
-    }
-    return new Promise((resolve) => {
-      const t = setTimeout(resolve, ms);
-      conn.addEventListener('icegatheringstatechange', () => {
-        if (conn.iceGatheringState === 'complete') {
-          clearTimeout(t);
-          resolve();
-        }
-      });
-    });
-  }
-
-  function stop() {
-    if (pc) {
-      try { pc.close(); } catch (e) {}
-      pc = null;
-    }
-    if (hls) {
-      try { hls.destroy(); } catch (e) {}
-      hls = null;
-    }
-    usingCam = false;
-    el.srcObject = null;
-    el.removeAttribute('src');
-  }
-
-  function attachFromCam() {
+  function attach() {
     const cam = document.getElementById('live-video');
-    if (!cam || !want) return false;
+    if (!cam || !want) return;
     if (cam.srcObject) {
       if (el.srcObject !== cam.srcObject) {
         el.srcObject = cam.srcObject;
-        el.muted = true;
-        el.play().catch(() => {});
       }
-      usingCam = true;
-      return el.videoWidth > 1 || cam.readyState >= 2;
-    }
-    if (!usingCam) {
-      cam.addEventListener('playing', () => {
-        if (want) attachFromCam();
-      }, { once: true });
-    }
-    return false;
-  }
-
-  async function startWhep(url) {
-    if (!url || typeof RTCPeerConnection === 'undefined') return false;
-    stop();
-    const conn = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    });
-    pc = conn;
-    conn.addTransceiver('video', { direction: 'recvonly' });
-    conn.addTransceiver('audio', { direction: 'recvonly' });
-    conn.ontrack = (ev) => {
-      if (conn !== pc || !want) return;
-      const cur = el.srcObject instanceof MediaStream ? el.srcObject : new MediaStream();
-      if (ev.streams && ev.streams[0]) {
-        el.srcObject = ev.streams[0];
-      } else {
-        cur.addTrack(ev.track);
-        el.srcObject = cur;
-      }
-      const cam = document.getElementById('live-video');
-      el.muted = !!(cam && cam.muted);
-      el.play().catch(() => {});
-    };
-    const offer = await conn.createOffer();
-    await conn.setLocalDescription(offer);
-    await waitIceGather(conn, 400);
-    let res;
-    try {
-      res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/sdp', Accept: 'application/sdp' },
-        body: conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp
-      });
-    } catch (e) {
-      stop();
-      return false;
-    }
-    if (!res.ok) {
-      stop();
-      return false;
-    }
-    const sdp = await res.text();
-    if (!sdp) {
-      stop();
-      return false;
-    }
-    await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
-    return true;
-  }
-
-  function startHls(url) {
-    if (!url) return false;
-    stop();
-    if (window.Hls && Hls.isSupported()) {
-      hls = new Hls({ lowLatencyMode: false, liveSyncDurationCount: 2, maxBufferLength: 4 });
-      hls.loadSource(url);
-      hls.attachMedia(el);
       el.muted = true;
       el.play().catch(() => {});
-      return true;
+      return;
     }
-    if (el.canPlayType('application/vnd.apple.mpegurl')) {
-      el.src = url;
+    if (cam.currentSrc) {
+      if (el.src !== cam.currentSrc) {
+        el.src = cam.currentSrc;
+      }
       el.muted = true;
       el.play().catch(() => {});
-      return true;
-    }
-    return false;
-  }
-
-  function hasScreenFrames() {
-    return el.videoWidth > 1 || (el.srcObject && el.readyState >= 2 && el.videoWidth > 1);
-  }
-
-  function waitFrames(ms) {
-    if (hasScreenFrames()) return Promise.resolve(true);
-    return new Promise((resolve) => {
-      const t = setTimeout(() => resolve(hasScreenFrames()), ms);
-      const done = () => {
-        if (!hasScreenFrames()) return;
-        clearTimeout(t);
-        el.removeEventListener('playing', done);
-        el.removeEventListener('loadeddata', done);
-        resolve(true);
-      };
-      el.addEventListener('playing', done);
-      el.addEventListener('loadeddata', done);
-    });
-  }
-
-  async function connect() {
-    if (!want || busy) return;
-    if (hasScreenFrames()) return;
-    if ((pc || hls) && !hasScreenFrames()) {
-      stop();
-    }
-    busy = true;
-    try {
-      for (let i = 0; i < whepUrls.length; i++) {
-        if (await startWhep(whepUrls[i]) && await waitFrames(2500)) return;
-        stop();
-      }
-      for (let i = 0; i < hlsUrls.length; i++) {
-        if (startHls(hlsUrls[i]) && await waitFrames(2500)) return;
-        stop();
-      }
-      attachFromCam();
-    } finally {
-      busy = false;
     }
   }
 
   window.liveScreenWatch = function (on) {
-    on = !!on;
-    if (on === want) {
-      if (on) connect();
-      return;
-    }
-    want = on;
+    want = !!on;
     if (!want) {
-      stop();
+      el.srcObject = null;
+      el.removeAttribute('src');
       return;
     }
-    connect();
+    attach();
   };
 
-  setInterval(() => {
-    if (want) connect();
-  }, 4000);
+  const cam = document.getElementById('live-video');
+  if (cam) {
+    ['playing', 'loadeddata', 'resize'].forEach((ev) => {
+      cam.addEventListener(ev, function () {
+        if (want) attach();
+      });
+    });
+  }
+  setInterval(function () {
+    if (want) attach();
+  }, 1500);
 })();
