@@ -666,6 +666,17 @@
   function showBoardScreen(on) {
     const stage = document.getElementById('board-stage');
     if (stage) stage.classList.toggle('is-screen', !!on);
+    if (cfg.api && cfg.roomId) {
+      const body = new URLSearchParams();
+      body.set('action', 'screen');
+      body.set('id', String(cfg.roomId));
+      body.set('on', on ? '1' : '0');
+      fetch(cfg.api, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      }).catch(function () {});
+    }
     if (typeof window.liveBoardSetScreen === 'function') {
       window.liveBoardSetScreen(!!on);
     }

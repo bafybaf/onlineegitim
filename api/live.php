@@ -318,11 +318,13 @@ if ($action === 'poll') {
     $key = live_ensure_stream_key($pdo, $room);
     $chat = $pdo->prepare('SELECT id, who_label, body FROM live_chat WHERE room_id = ? ORDER BY id DESC LIMIT 50');
     $chat->execute([$id]);
-    $screenOn = 0;
-    try {
-        $board = live_board_row($pdo, $id);
-        $screenOn = (int) ($board['screen'] ?? 0);
-    } catch (Throwable) {
+    $screenOn = (int) ($room['screen_on'] ?? 0);
+    if ($screenOn === 0) {
+        try {
+            $board = live_board_row($pdo, $id);
+            $screenOn = (int) ($board['screen'] ?? 0);
+        } catch (Throwable) {
+        }
     }
     $payload = [
         'ok' => true,
@@ -346,6 +348,19 @@ if ($action === 'poll') {
         $payload['whip_url_alt'] = live_whip_url($key, 1);
     }
     json_out($payload);
+}
+
+if ($action === 'screen') {
+    $id = (int) (post('id') ?: post('room_id'));
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_publish($u, $room)) {
+        json_out(['ok' => false], 403);
+    }
+    $on = !empty(post('on'));
+    live_room_set_screen($pdo, $id, $on);
+    json_out(['ok' => true, 'screen' => $on ? 1 : 0]);
 }
 
 if ($action === 'board') {

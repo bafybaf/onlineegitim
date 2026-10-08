@@ -373,8 +373,27 @@ function ensure_live_access_schema(): void
         if (empty($cols['allow_student_ids'])) {
             db()->exec('ALTER TABLE live_rooms ADD COLUMN allow_student_ids TEXT NULL');
         }
+        if (empty($cols['screen_on'])) {
+            db()->exec('ALTER TABLE live_rooms ADD COLUMN screen_on TINYINT NOT NULL DEFAULT 0');
+        }
     } catch (Throwable $e) {
         $done = false;
+    }
+}
+
+function live_room_set_screen(PDO $pdo, int $roomId, bool $on): void
+{
+    ensure_live_access_schema();
+    $v = $on ? 1 : 0;
+    try {
+        $pdo->prepare('UPDATE live_rooms SET screen_on=? WHERE id=?')->execute([$v, $roomId]);
+    } catch (Throwable $e) {
+    }
+    try {
+        if (function_exists('live_board_save')) {
+            live_board_save($pdo, $roomId, ['screen' => $v]);
+        }
+    } catch (Throwable $e) {
     }
 }
 
@@ -1148,5 +1167,6 @@ function live_public_room(array $room): array
         'paused' => (int) $pause['paused'],
         'started_at' => (string) ($room['started_at'] ?? ''),
         'play_mode' => live_room_play_mode($room),
+        'screen' => (int) ($room['screen_on'] ?? 0),
     ];
 }

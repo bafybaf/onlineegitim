@@ -78,12 +78,14 @@ $waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
 $showRoster = in_array($u['role'], ['ogretmen', 'admin'], true);
 $presentN = count($students);
 $boardOn = function_exists('live_board_enabled') && live_board_enabled();
-$screenNow = 0;
-try {
-    $boardRow = function_exists('live_board_row') ? live_board_row(db(), $id) : null;
-    $screenNow = (int) ($boardRow['screen'] ?? 0);
-} catch (Throwable $e) {
-    $screenNow = 0;
+$screenNow = (int) ($room['screen_on'] ?? 0);
+if ($screenNow === 0) {
+    try {
+        $boardRow = function_exists('live_board_row') ? live_board_row(db(), $id) : null;
+        $screenNow = (int) ($boardRow['screen'] ?? 0);
+    } catch (Throwable $e) {
+        $screenNow = 0;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -103,7 +105,7 @@ try {
   <?php endif; ?>
 </head>
 <body class="bg-black">
-<div class="live-shell<?= $boardOn ? '' : ' is-board-off' ?>">
+<div class="live-shell<?= $boardOn ? '' : ' is-board-off' ?><?= $canPublish ? '' : ' is-viewer' ?>">
   <?php if ($lives): ?>
   <div class="live-strip">
     <?php foreach ($lives as $l): ?>
@@ -348,9 +350,11 @@ setInterval(async () => {
   }
 }, 6000);
 </script>
-<script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
 <script>
 window._liveScreenOn = <?= $screenNow ? 'true' : 'false' ?>;
+</script>
+<script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
+<script>
 if (window._liveScreenOn && !(window.LIVE_PLAYER && window.LIVE_PLAYER.publish) && typeof window.liveScreenWatch === 'function') {
   window.liveScreenWatch(true);
 }

@@ -11,7 +11,8 @@
   const whepUrls = [cfg.whepUrl, cfg.whepUrlAlt].filter(Boolean);
   const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
   const healthUrl = cfg.healthUrl || '';
-  let screenMode = !cfg.publish && !!window._liveScreenOn;
+  const boardOff = !!(document.querySelector('.live-shell.is-board-off'));
+  let screenMode = !cfg.publish && (!!window._liveScreenOn || boardOff);
   let hls = null;
   let pc = null;
   let discTimer = 0;
@@ -42,7 +43,10 @@
   }
 
   function sink() {
-    return (screenMode && board) ? board : video;
+    if (!cfg.publish && board && (screenMode || boardOff)) {
+      return board;
+    }
+    return video;
   }
 
   function applySink() {

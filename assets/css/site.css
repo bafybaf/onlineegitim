@@ -636,6 +636,9 @@ body:has(.live-shell) {
 .live-board-stage.is-screen #board-screen { display: block; }
 .live-board-stage.is-screen #board-bg { opacity: 0; }
 .live-shell.is-board-off .live-board-stage { background: #111111; }
+.live-shell.is-board-off .live-board-stage #board-screen { display: block; }
+.live-shell.is-board-off.is-viewer .live-stage { display: none; }
+.live-shell.is-board-off.is-viewer .live-side { grid-template-rows: 1fr; }
 .live-dock {
   height: 100%; min-height: 100%;
   display: flex; flex-direction: column;
