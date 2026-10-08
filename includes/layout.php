@@ -169,7 +169,7 @@ function public_foot(): void
         <img src="<?= e(brand_logo_url('logo_footer.png')) ?>" alt="Online İlahiyat" class="footer-logo">
       </p>
       <p class="site-footer-lead"><?= shop_books_visible() ? 'Canlı ilahiyat dersleri, küçük gruplar ve kitap mağazası. Evden, gerçek takip ile.' : 'Canlı ilahiyat dersleri ve küçük gruplar. Evden, gerçek takip ile.' ?></p>
-      <p class="site-footer-mail">info@onlineilahiyat.com</p>
+      <p class="site-footer-mail">info@onlineilahiyat.com.tr</p>
     </div>
     <div>
       <p class="site-footer-label">Eğitimler</p>

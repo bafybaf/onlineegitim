@@ -18,12 +18,12 @@ $mine = array_values(array_filter($rows, static fn(array $r): bool => (int) $r['
 $att = [];
 try {
     $as = db()->prepare(
-        "SELECT r.title, r.started_at, a.present, g.name gname
+        "SELECT r.id room_id, r.title, r.topic, r.started_at, r.status, a.present, a.entered_at, g.name gname
          FROM attendance a
          JOIN live_rooms r ON r.id = a.room_id
          JOIN class_groups g ON g.id = r.group_id
          WHERE a.student_id = ? AND (g.teacher_id = ? OR EXISTS (SELECT 1 FROM class_group_teachers cgt WHERE cgt.group_id = g.id AND cgt.teacher_id = ?))
-         ORDER BY r.started_at DESC LIMIT 12"
+         ORDER BY r.started_at DESC LIMIT 40"
     );
     $as->execute([$id, (int) $u['id'], (int) $u['id']]);
     $att = $as->fetchAll();
@@ -109,7 +109,13 @@ panel_head('ogretmen', 'ogrenciler', (string) $person['name'] . ' | Öğrenciler
     <?php else: ?>
       <ul class="px-5 pb-5 text-sm">
         <?php foreach ($att as $a): ?>
-          <li class="border-t py-2"><b><?= ((int) $a['present']) ? 'Var' : 'Yok' ?></b> · <?= e($a['gname']) ?> · <?= e(profile_dt((string) $a['started_at'])) ?></li>
+          <li class="border-t py-2">
+            <b><?= e(function_exists('live_attendance_status_label') ? live_attendance_status_label($a, ($a['status'] ?? '') === 'live') : (((int) $a['present']) ? 'Var' : 'Yok')) ?></b>
+            · <?= e((string) ($a['topic'] ?: $a['title'])) ?>
+            · <?= e($a['gname']) ?>
+            · <?= e(profile_dt((string) ($a['entered_at'] ?: $a['started_at']))) ?>
+            <a class="ml-1 font-extrabold text-navy" href="<?= e(url('ogretmen/yoklama.php?oda=' . (int) $a['room_id'])) ?>">Ders</a>
+          </li>
         <?php endforeach; ?>
       </ul>
     <?php endif; ?>

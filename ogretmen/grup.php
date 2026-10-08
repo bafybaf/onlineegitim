@@ -55,7 +55,7 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/canli')) ?>">Canlı odalar</a>
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/odevler')) ?>">Ödevler (<?= (int) $counts['hw'] ?>)</a>
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/testler')) ?>">Testler (<?= (int) $counts['test'] ?>)</a>
-    <a class="btn-outline text-sm" href="<?= e(url('ogretmen/yoklama')) ?>">Yoklama</a>
+    <a class="btn-outline text-sm" href="<?= e(url('ogretmen/yoklama.php?grup=' . (int) $g['id'])) ?>">Yoklama</a>
     <?php if ($live): ?>
       <a class="btn-primary text-sm" href="<?= e(canli_url((int) $live['id'])) ?>">Odada devam et</a>
     <?php else: ?>

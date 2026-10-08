@@ -706,6 +706,7 @@ body:has(.live-shell) {
   font-weight: 700;
 }
 .live-present-empty { margin: 0; color: rgba(255,255,255,.45); }
+.live-present-time { margin-left: auto; color: rgba(255,255,255,.5); font-weight: 700; font-size: 11px; }
 .ctrl { display: flex; justify-content: center; gap: 0.6rem; align-items: center; background: #0a0a0a; border-top: 1px solid #2a2a2a; }
 
 .panel-mobile-nav { display: none; }

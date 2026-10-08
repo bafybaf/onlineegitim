@@ -18,7 +18,7 @@ legal_page_open(
 
 <h2>Cayma hakkı</h2>
 <p>Alıcı; malın kendisine veya gösterdiği adrese tesliminden itibaren 14 gün içinde, hiçbir gerekçe göstermeksizin malı reddederek sözleşmeden cayabilir. Hizmet sözleşmelerinde süre, sözleşmenin kurulmasından başlar.</p>
-<p>Cayma bildirimi <?= e($c['email']) ?> adresine veya <?= e($c['phone']) ?> numarasına yazılı iletilir. Cayma hakkının kullanımından kaynaklanan masraflar Satıcı’ya aittir.</p>
+<p>Cayma bildirimi <?= e($c['email']) ?> adresine yazılı iletilir. Cayma hakkının kullanımından kaynaklanan masraflar Satıcı’ya aittir.</p>
 <p>Cayma için 14 gün içinde yazılı bildirim ve ürünün kullanılmamış / aşağıda sayılan istisnalara girmemiş olması gerekir. İade edilecek basılı üründe fatura, ambalaj ve varsa aksesuar eksiksiz gönderilir.</p>
 <p>Satıcı, cayma bildiriminin ulaşmasından itibaren en geç 10 gün içinde bedeli iade eder ve 20 gün içinde malı teslim alır. Alıcı’nın kusuruyla malın değerinde azalma olursa Alıcı kusuru oranında zararları karşılar. Usulüne uygun incelemeden doğan değişikliklerden Alıcı sorumlu değildir.</p>
 

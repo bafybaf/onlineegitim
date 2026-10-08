@@ -589,6 +589,52 @@ function live_entered_students(int $roomId): array
     }
 }
 
+function live_room_attendance_roster(int $roomId, int $groupId): array
+{
+    ensure_live_attendance_schema();
+    try {
+        $st = db()->prepare(
+            'SELECT u.id, u.name, u.email, u.phone,
+                    COALESCE(a.present, 0) AS present, a.entered_at
+             FROM enrollments e
+             JOIN users u ON u.id = e.student_id
+             LEFT JOIN attendance a ON a.room_id = ? AND a.student_id = u.id
+             WHERE e.group_id = ?
+             ORDER BY (a.entered_at IS NULL AND COALESCE(a.present, 0) = 0), a.entered_at ASC, u.name'
+        );
+        $st->execute([$roomId, $groupId]);
+        return $st->fetchAll();
+    } catch (Throwable) {
+        return [];
+    }
+}
+
+function live_attendance_status_label(array $row, bool $live = false): string
+{
+    $in = !empty($row['entered_at']) || (int) ($row['present'] ?? 0) === 1;
+    if (!$in) {
+        return 'Girmedi';
+    }
+    if ($live && (int) ($row['present'] ?? 0) === 1) {
+        return 'Derste';
+    }
+    if ($live) {
+        return 'Çıktı';
+    }
+    return 'Katıldı';
+}
+
+function live_teacher_can_see_room(array $room, int $teacherId): bool
+{
+    if ($teacherId < 1) {
+        return false;
+    }
+    if ((int) ($room['teacher_id'] ?? 0) === $teacherId) {
+        return true;
+    }
+    return function_exists('group_has_teacher') && group_has_teacher((int) ($room['group_id'] ?? 0), $teacherId);
+}
+
 function live_student_has_seat(int $roomId, int $studentId): bool
 {
     try {

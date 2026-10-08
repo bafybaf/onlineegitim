@@ -28,7 +28,8 @@ panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
         <?php $mineRoom = (int) $r['teacher_id'] === (int) $u['id'] || in_array((int) $r['group_id'], $owned, true); ?>
         <p class="text-sm text-muted"><?= e($r['teacher_name']) ?><?= $mineRoom ? ' · sizin odanız' : '' ?></p>
         <?php if ($mineRoom): ?>
-          <div class="mt-3 flex gap-2"><a class="btn-primary text-sm" href="<?= e(canli_url((int) $r['id'])) ?>">Gir</a>
+          <div class="mt-3 flex flex-wrap gap-2"><a class="btn-primary text-sm" href="<?= e(canli_url((int) $r['id'])) ?>">Gir</a>
+          <a class="btn-outline text-sm" href="<?= e(url('ogretmen/yoklama.php?oda=' . (int) $r['id'])) ?>">Kim girdi</a>
           <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="ogretmen/kayit-yukle.php"><button class="btn-outline text-sm">Bitir</button></form></div>
         <?php endif; ?>
       </div>

@@ -12,7 +12,7 @@ legal_page_open(
 <?php legal_company_block(); ?>
 
 <h2>Veri sorumlusu</h2>
-<p><?= e($c['unvan']) ?> — <?= e($c['brand']) ?>. Başvurular: <?= e($c['email']) ?> · <?= e($c['phone']) ?> · <?= e($c['address']) ?>.</p>
+<p><?= e($c['unvan']) ?> — <?= e($c['brand']) ?>. Başvurular: <?= e($c['email']) ?> · <?= e($c['address']) ?>.</p>
 
 <h2>İşlenen kişisel veriler</h2>
 <ul>

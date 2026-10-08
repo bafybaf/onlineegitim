@@ -179,12 +179,13 @@ $presentN = count($students);
       <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet<?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?> · Derstekiler <span id="live-present-n"><?= (int) $presentN ?></span><?php endif; ?></div>
       <div id="chat-log" class="chat-log text-sm"><?php foreach ($msgs as $m): ?><p><b><?= e($m['who_label']) ?>:</b> <?= e($m['body']) ?></p><?php endforeach; ?></div>
       <?php if (in_array($u['role'], ['ogretmen', 'admin'], true)): ?>
+      <p class="px-4 pt-2"><a class="text-xs font-extrabold text-accent" href="<?= e(url(($u['role'] === 'admin' ? 'admin/canli-oda.php?id=' : 'ogretmen/yoklama.php?oda=') . $id)) ?>">Kim girdi (yoklama)</a></p>
       <div id="live-present-list" class="live-present-list">
         <?php if (!$students): ?>
           <p class="live-present-empty">Henüz öğrenci girmedi</p>
         <?php else: ?>
           <?php foreach ($students as $s): ?>
-            <label class="live-present-row"><input type="checkbox" class="att" data-sid="<?= (int) $s['id'] ?>" checked> <?= e($s['name']) ?></label>
+            <label class="live-present-row"><input type="checkbox" class="att" data-sid="<?= (int) $s['id'] ?>" checked> <?= e($s['name']) ?><?php if (!empty($s['entered_at'])): ?> <span class="live-present-time"><?= e(date('H:i', strtotime((string) $s['entered_at']))) ?></span><?php endif; ?></label>
           <?php endforeach; ?>
         <?php endif; ?>
       </div>
@@ -275,7 +276,10 @@ function renderPresent(rows) {
     list.innerHTML = '<p class="live-present-empty">Henüz öğrenci girmedi</p>';
     return;
   }
-  list.innerHTML = rows.map((s) => '<label class="live-present-row"><input type="checkbox" class="att" data-sid="'+s.id+'" checked> '+esc(s.name)+'</label>').join('');
+  list.innerHTML = rows.map((s) => {
+    var t = s.entered_at ? String(s.entered_at).slice(11, 16) : '';
+    return '<label class="live-present-row"><input type="checkbox" class="att" data-sid="'+s.id+'" checked> '+esc(s.name)+(t ? ' <span class="live-present-time">'+esc(t)+'</span>' : '')+'</label>';
+  }).join('');
   list.querySelectorAll('.att').forEach(bindAtt);
 }
 let chatSig = '';

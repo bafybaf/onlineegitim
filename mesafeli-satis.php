@@ -31,7 +31,6 @@ legal_page_open(
 <ul>
   <li>Unvan: <?= e($c['unvan']) ?></li>
   <li>Adres: <?= e($c['address']) ?></li>
-  <li>Telefon: <?= e($c['phone']) ?></li>
   <li>E-posta: <?= e($c['email']) ?></li>
   <li>Vergi dairesi / no: <?= e($c['vergi_daire']) ?> · <?= e($c['vergi_no']) ?></li>
 </ul>
@@ -54,7 +53,7 @@ legal_page_open(
 <p>7.9. Alıcı, Site’yi kamu düzenine, genel ahlaka ve üçüncü kişilerin haklarına aykırı kullanamaz; hesabını başkasıyla paylaşamaz; ders kaydı, not ve dijital içeriği izinsiz kopyalayamaz, yayamaz.</p>
 
 <h2>8. Cayma hakkı</h2>
-<p>Alıcı; mal satışında teslimden, hizmette sözleşmenin kurulmasından itibaren 14 gün içinde gerekçe göstermeksizin cayabilir. Cayma masrafı Satıcı’ya aittir. Bildirim <?= e($c['email']) ?> veya <?= e($c['phone']) ?> üzerinden yazılı yapılır.</p>
+<p>Alıcı; mal satışında teslimden, hizmette sözleşmenin kurulmasından itibaren 14 gün içinde gerekçe göstermeksizin cayabilir. Cayma masrafı Satıcı’ya aittir. Bildirim <?= e($c['email']) ?> adresine yazılı yapılır.</p>
 <p>Cayma hakkı süresi dolmadan tüketicinin onayıyla ifasına başlanan hizmetlerde ve elektronik ortamda anında ifa edilen hizmetler ile anında teslim edilen gayri maddi mallarda (canlı ders, dijital kitap, ders kaydı, yazılım benzeri içerik) Yönetmelik gereği cayma hakkı kullanılamaz. Ambalajı açılmış basılı kitaplar da aynı kapsamda iade edilemez.</p>
 <p>Ayrıntı için <?= legal_link('iptal-iade', 'İptal ve İade Şartları') ?> sayfasına bakınız.</p>
 

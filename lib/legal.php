@@ -7,9 +7,7 @@ function legal_company(): array
         'brand' => 'Online İlahiyat',
         'unvan' => 'Aydıner Basım İç ve Dış Ticaret Ltd. Şti.',
         'address' => 'Zübeyde Hanım Mahallesi Elif Sokak No:7 /70 Altındağ / Ankara',
-        'email' => 'info@onlineilahiyat.com',
-        'phone' => '0505 309 61 15',
-        'phone_href' => 'tel:+905053096115',
+        'email' => 'info@onlineilahiyat.com.tr',
         'site' => 'https://www.onlineilahiyat.com',
         'vergi_no' => '1161000406',
         'vergi_daire' => 'Kızılbey Vergi Dairesi',
@@ -149,8 +147,7 @@ function legal_company_block(): void
       <p class="mt-1 text-muted">Ticari unvan · <?= e($c['brand']) ?></p>
       <p class="mt-3"><?= e($c['address']) ?></p>
       <p class="mt-1">Vergi dairesi / no: <?= e($c['vergi_daire']) ?> · <?= e($c['vergi_no']) ?></p>
-      <p class="mt-1"><a class="font-extrabold text-navy" href="mailto:<?= e($c['email']) ?>"><?= e($c['email']) ?></a>
-        · <a class="font-extrabold text-navy" href="<?= e($c['phone_href']) ?>"><?= e($c['phone']) ?></a></p>
+      <p class="mt-1"><a class="font-extrabold text-navy" href="mailto:<?= e($c['email']) ?>"><?= e($c['email']) ?></a></p>
       <p class="mt-1"><a class="font-extrabold text-navy" href="<?= e($c['site']) ?>"><?= e($c['site']) ?></a></p>
     </div>
     <?php
