@@ -2,7 +2,7 @@
   const cfg = window.LIVE_RECORD || {};
   if (!cfg.roomId) return;
 
-  const W = 1280;
+  let W = 1280;
   const api = cfg.url || '';
   const video = document.getElementById('live-video');
   const bg = document.getElementById('board-bg');
@@ -21,7 +21,8 @@
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cssText = 'position:fixed;left:0;top:0;width:320px;height:180px;opacity:0.02;pointer-events:none;z-index:-1';
   document.body.appendChild(canvas);
-  const ctx = canvas.getContext('2d', { alpha: false });
+  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true, colorSpace: 'srgb' })
+    || canvas.getContext('2d', { alpha: false });
 
   let recorder = null;
   let recStream = null;
@@ -62,23 +63,27 @@
 
   function mimeList(hasAudio) {
     var types = hasAudio
-      ? ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8', 'video/webm']
+      ? ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8']
       : ['video/webm;codecs=vp8', 'video/webm'];
     return types.filter(function (t) {
       return window.MediaRecorder && MediaRecorder.isTypeSupported(t);
     }).concat(['']);
   }
 
+  function even(n) {
+    n = Math.max(2, Math.round(n));
+    return n % 2 ? n + 1 : n;
+  }
+
   function calcLayout() {
     if (layoutLocked) return;
-    if (stage && stage.clientWidth > 2 && stage.clientHeight > 2) {
-      var aspect = stage.clientWidth / stage.clientHeight;
-      var next = Math.round(W / aspect);
-      if (next % 2) next += 1;
-      H = Math.max(640, Math.min(800, next));
-    } else {
-      H = 720;
-    }
+    var sw = stage && stage.clientWidth > 2 ? stage.clientWidth : 16;
+    var sh = stage && stage.clientHeight > 2 ? stage.clientHeight : 9;
+    var s = Math.min(1280 / sw, 720 / sh);
+    W = even(sw * s);
+    H = even(sh * s);
+    if (W < 640) { H = even(H * (640 / W)); W = 640; }
+    if (H < 360) { W = even(W * (360 / H)); H = 360; }
     canvas.width = W;
     canvas.height = H;
   }
@@ -140,18 +145,19 @@
 
   function paintBoard(x, y, w, h) {
     var sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'medium';
     if (sharing) {
       ctx.fillStyle = '#0b1020';
       ctx.fillRect(x, y, w, h);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       drawFit(screenVid, x, y, w, h);
     } else {
-      ctx.fillStyle = '#e7e5e4';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(x, y, w, h);
-      drawFit(bg, x, y, w, h);
+      ctx.imageSmoothingEnabled = false;
+      drawStretch(bg, x, y, w, h);
+      drawStretch(draw, x, y, w, h);
     }
-    drawFit(draw, x, y, w, h);
   }
 
   function paint() {
@@ -185,10 +191,10 @@
     stopPaintLoop();
     paint();
     try {
-      var src = 'setInterval(function(){postMessage(1);},125);';
+      var src = 'setInterval(function(){postMessage(1);},83);';
       paintWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
       paintWorker.onmessage = function () { paint(); };
-    } catch (e) { paintTimer = setInterval(paint, 125); }
+    } catch (e) { paintTimer = setInterval(paint, 83); }
   }
 
   function ensureMixer() {
@@ -240,14 +246,18 @@
   function startRecorder(media) {
     if (!armed || !window.MediaRecorder || recorder || done) return !!recorder;
     refreshMix(media);
-    recStream = canvas.captureStream(8);
+    recStream = canvas.captureStream(12);
+    recStream.getVideoTracks().forEach(function (t) {
+      try { t.contentHint = 'detail'; } catch (e) {}
+    });
     if (audioClone && recStream.getAudioTracks().length === 0) recStream.addTrack(audioClone);
     var hasAudio = recStream.getAudioTracks().length > 0;
     var types = mimeList(hasAudio);
     for (var i = 0; i < types.length && !recorder; i++) {
-      var opts = { videoBitsPerSecond: 1600000 };
+      var opts = { videoBitsPerSecond: 4000000 };
       if (types[i]) opts.mimeType = types[i];
       if (hasAudio) opts.audioBitsPerSecond = 128000;
+      try { opts.videoKeyFrameIntervalDuration = 2000; } catch (e) {}
       try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }
     }
     if (!recorder) {
