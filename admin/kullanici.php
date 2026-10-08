@@ -195,6 +195,7 @@ $roles = admin_user_roles();
     </label>
     <label class="text-sm font-bold md:col-span-2">Fotoğraf
       <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
+      <span class="mt-1 block text-xs font-normal text-muted">Yalnızca yöneticiler görür. Sitede ve hoca panelinde görünmez.</span>
     </label>
     <label class="text-sm font-bold md:col-span-2">Not / özgeçmiş
       <textarea name="bio" rows="3" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal"><?= e((string) ($person['bio'] ?? '')) ?></textarea>

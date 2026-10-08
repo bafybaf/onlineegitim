@@ -2,6 +2,7 @@
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
 $err = flash_error();
+$ok = flash_ok();
 $next = safe_next($_GET['next'] ?? $_POST['next'] ?? '');
 $u = current_user();
 if ($u && is_edu_role($u['role'])) {
@@ -32,6 +33,7 @@ public_head('Ders girişi | Online İlahiyat');
   <?php if ($u && is_shop_role($u['role'])): ?>
     <p class="mt-4 rounded-xl bg-soft px-3 py-2 text-center text-sm font-bold">Açık mağaza oturumunuz var. Canlı ders için eğitim üyeliğiyle giriş yapın.</p>
   <?php endif; ?>
+  <?php if ($ok): ?><p class="mt-4 text-center font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
   <?php if ($err): ?><p class="mt-4 text-center font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
   <form method="post" class="card mt-8 grid gap-3 p-6">
     <?= csrf_field() ?>

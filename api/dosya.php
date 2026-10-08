@@ -76,6 +76,28 @@ if ($tur === 'video') {
         exit('Dosya yok.');
     }
     $downloadName = 'tahta';
+} elseif ($tur === 'avatar') {
+    $st = db()->prepare('SELECT id, avatar FROM users WHERE id = ?');
+    $st->execute([$id]);
+    $row = $st->fetch();
+    if (!$row) {
+        http_response_code(404);
+        exit('Dosya yok.');
+    }
+    $avatar = trim((string) ($row['avatar'] ?? ''));
+    $isAdmin = ($u['role'] ?? '') === 'admin';
+    $isOwner = (int) ($u['id'] ?? 0) === $id;
+    if ($avatar === '' || (!$isAdmin && !$isOwner)) {
+        http_response_code(403);
+        exit('Yetkiniz yok.');
+    }
+    $absAvatar = function_exists('user_avatar_file_abs') ? user_avatar_file_abs($avatar) : null;
+    if ($absAvatar === null || !is_file($absAvatar)) {
+        http_response_code(404);
+        exit('Dosya yok.');
+    }
+    $rel = $avatar;
+    $downloadName = 'profil';
 } else {
     http_response_code(404);
     exit('Dosya yok.');
@@ -84,7 +106,11 @@ if ($tur === 'video') {
 if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
-$abs = function_exists('academy_file_readable') ? academy_file_readable($rel) : academy_abs_file($rel);
+if ($tur === 'avatar' && isset($absAvatar) && is_file($absAvatar)) {
+    $abs = $absAvatar;
+} else {
+    $abs = function_exists('academy_file_readable') ? academy_file_readable($rel) : academy_abs_file($rel);
+}
 if ($abs === null || !is_file($abs)) {
     http_response_code(404);
     exit('Dosya bulunamadı.');

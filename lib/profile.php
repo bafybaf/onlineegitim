@@ -105,30 +105,110 @@ function user_initials(string $name): string
 
 function user_avatar_src(?string $avatar): string
 {
-    $avatar = trim((string) $avatar);
-    if ($avatar === '') {
-        return '';
-    }
-    if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://')) {
-        return $avatar;
-    }
-    $rel = ltrim($avatar, '/');
-    $abs = dirname(__DIR__) . '/' . $rel;
-    if (!is_file($abs)) {
-        return '';
-    }
-    return url($rel);
+    return '';
 }
 
-function user_avatar_html(array $u, string $size = 'md'): string
+function user_can_view_avatar(array $subject, bool $ownPreview = false): bool
 {
-    $src = user_avatar_src($u['avatar'] ?? null);
+    $viewer = function_exists('current_user') ? current_user() : null;
+    if (!$viewer) {
+        return false;
+    }
+    if (($viewer['role'] ?? '') === 'admin') {
+        return true;
+    }
+    return $ownPreview && (int) ($viewer['id'] ?? 0) === (int) ($subject['id'] ?? 0);
+}
+
+function user_avatar_url(array $u): string
+{
+    $avatar = trim((string) ($u['avatar'] ?? ''));
+    $id = (int) ($u['id'] ?? $u['student_id'] ?? 0);
+    if ($avatar === '' || $id < 1) {
+        return '';
+    }
+    return rtrim(BASE_URL, '/') . '/api/dosya.php?tur=avatar&id=' . $id;
+}
+
+function user_avatar_html(array $u, string $size = 'md', bool $ownPreview = false): string
+{
+    $src = user_can_view_avatar($u, $ownPreview) ? user_avatar_url($u) : '';
     $cls = 'avatar avatar-' . (in_array($size, ['sm', 'md', 'lg'], true) ? $size : 'md');
     $alt = (string) ($u['name'] ?? '');
     if ($src !== '') {
         return '<span class="' . $cls . '"><img src="' . e($src) . '" alt="' . e($alt) . '"></span>';
     }
     return '<span class="' . $cls . '" aria-hidden="true">' . e(user_initials($alt)) . '</span>';
+}
+
+function user_avatar_file_abs(string $avatar): ?string
+{
+    $avatar = trim(str_replace('\\', '/', $avatar));
+    if ($avatar === '' || preg_match('#^https?://#i', $avatar)) {
+        return null;
+    }
+    $avatar = ltrim($avatar, '/');
+    $ext = strtolower((string) pathinfo($avatar, PATHINFO_EXTENSION));
+    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+        return null;
+    }
+    if (str_starts_with($avatar, 'avatars/')) {
+        $abs = function_exists('academy_file_readable') ? academy_file_readable($avatar) : null;
+        return $abs ?: null;
+    }
+    if (str_starts_with($avatar, 'uploads/avatars/')) {
+        if (function_exists('media_upload_file_abs')) {
+            $p = media_upload_file_abs($avatar);
+            if ($p !== '' && is_file($p)) {
+                return $p;
+            }
+        }
+        $p = dirname(__DIR__) . '/' . $avatar;
+        return is_file($p) ? $p : null;
+    }
+    return null;
+}
+
+function user_delete_avatar_file(string $rel): void
+{
+    $abs = user_avatar_file_abs($rel);
+    if ($abs && is_file($abs)) {
+        @unlink($abs);
+    }
+}
+
+function user_clear_avatar(int $userId, string $oldPath = ''): void
+{
+    if ($oldPath === '') {
+        $st = db()->prepare('SELECT avatar FROM users WHERE id = ?');
+        $st->execute([$userId]);
+        $oldPath = (string) ($st->fetchColumn() ?: '');
+    }
+    user_delete_avatar_file($oldPath);
+    db()->prepare('UPDATE users SET avatar = NULL WHERE id = ?')->execute([$userId]);
+}
+
+function user_store_avatar_upload(int $userId, string $oldPath = ''): ?string
+{
+    if ($userId < 1 || !function_exists('academy_store_upload')) {
+        return null;
+    }
+    $path = academy_store_upload('avatar', 'avatars', [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ], 4);
+    if ($path === null) {
+        return null;
+    }
+    if ($oldPath === '') {
+        $st = db()->prepare('SELECT avatar FROM users WHERE id = ?');
+        $st->execute([$userId]);
+        $oldPath = (string) ($st->fetchColumn() ?: '');
+    }
+    user_delete_avatar_file($oldPath);
+    db()->prepare('UPDATE users SET avatar = ? WHERE id = ?')->execute([$path, $userId]);
+    return $path;
 }
 
 function profile_dt(?string $dt): string
@@ -282,12 +362,12 @@ function admin_active_admin_count(int $exceptId = 0): int
     return (int) $st->fetchColumn();
 }
 
-function admin_delete_user(int $id, int $actorId): string
+function admin_delete_user(int $id, int $actorId, bool $allowSelf = false): string
 {
     if ($id < 1) {
         throw new RuntimeException('Kullanıcı bulunamadı.');
     }
-    if ($id === $actorId) {
+    if ($id === $actorId && !$allowSelf) {
         throw new RuntimeException('Kendi hesabınızı silemezsiniz.');
     }
     $st = db()->prepare('SELECT * FROM users WHERE id = ?');
@@ -351,13 +431,17 @@ function admin_delete_user(int $id, int $actorId): string
     db_try_exec('DELETE FROM class_group_teachers WHERE teacher_id = ?', [$id]);
     db_try_exec('DELETE FROM addresses WHERE user_id = ?', [$id]);
 
+    $avatarRel = trim((string) ($person['avatar'] ?? ''));
     try {
         db()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
     } catch (Throwable) {
         db()->prepare("UPDATE users SET status = 'pasif' WHERE id = ?")->execute([$id]);
         return 'Bağlı kayıtlar var. Silinmedi, hesap pasife alındı.';
     }
-    return 'Kullanıcı silindi.';
+    if ($avatarRel !== '') {
+        user_delete_avatar_file($avatarRel);
+    }
+    return $allowSelf ? 'Hesabınız silindi.' : 'Kullanıcı silindi.';
 }
 
 function admin_save_user(int $id, array $in, int $actorId): int
@@ -473,11 +557,9 @@ function admin_save_user(int $id, array $in, int $actorId): int
         db()->prepare('UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($vals);
     }
 
-    if (isset($cols['avatar']) && function_exists('catalog_store_upload')) {
-        $avatar = catalog_store_upload('avatar', 'avatars', 'u' . $id);
-        if ($avatar !== null) {
-            db()->prepare('UPDATE users SET avatar = ? WHERE id = ?')->execute([$avatar, $id]);
-        }
+    if (isset($cols['avatar'])) {
+        $prevAvatar = !$isNew ? (string) ($prev['avatar'] ?? '') : '';
+        user_store_avatar_upload($id, $prevAvatar);
     }
 
     return $id;
@@ -666,6 +748,139 @@ function handle_own_password_post(array $user, string &$ok, string &$err): bool
         $err = $e->getMessage();
     }
     return true;
+}
+
+function delete_own_account(array $user, string $password): string
+{
+    $id = (int) ($user['id'] ?? 0);
+    if ($id < 1) {
+        throw new RuntimeException('Hesap bulunamadı.');
+    }
+    $hash = (string) ($user['password'] ?? '');
+    $google = !empty($user['google_id']);
+    if ($password === '') {
+        if (!$google || $hash !== '') {
+            throw new RuntimeException('Hesabı silmek için şifrenizi girin.');
+        }
+    } elseif ($hash === '' || !password_verify($password, $hash)) {
+        throw new RuntimeException('Şifre hatalı.');
+    }
+    return admin_delete_user($id, $id, true);
+}
+
+function handle_own_delete_post(array $user, string &$ok, string &$err): bool
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || post('act') !== 'delete_account') {
+        return false;
+    }
+    try {
+        $msg = delete_own_account($user, post('current_password'));
+        $role = (string) ($user['role'] ?? '');
+        logout_user();
+        flash_ok($msg);
+        header('Location: ' . ($role === 'musteri' ? page_url('giris-magaza') : page_url('giris-ders')));
+        exit;
+    } catch (Throwable $e) {
+        $ok = '';
+        $err = $e->getMessage();
+    }
+    return true;
+}
+
+function handle_own_account_post(array &$user, string &$ok, string &$err): bool
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return false;
+    }
+    $act = post('act');
+    if ($act === 'password') {
+        return handle_own_password_post($user, $ok, $err);
+    }
+    if ($act === 'delete_account') {
+        return handle_own_delete_post($user, $ok, $err);
+    }
+    if ($act !== '' && $act !== 'profile') {
+        return false;
+    }
+    try {
+        $name = trim(post('name'));
+        if (mb_strlen($name) < 2) {
+            throw new RuntimeException('Ad soyad en az 2 karakter olmalı.');
+        }
+        update_user_contact((int) $user['id'], post('phone'), post('city'), $name);
+        $stored = user_store_avatar_upload((int) $user['id'], (string) ($user['avatar'] ?? ''));
+        if ($stored === null && post('avatar_remove') === '1') {
+            user_clear_avatar((int) $user['id'], (string) ($user['avatar'] ?? ''));
+        }
+        $fresh = refresh_current_user((int) $user['id']);
+        if ($fresh) {
+            $user = $fresh;
+        }
+        $ok = 'Bilgileriniz kaydedildi.';
+        $err = '';
+    } catch (Throwable $e) {
+        $ok = '';
+        $err = $e->getMessage();
+    }
+    return true;
+}
+
+function profile_contact_form(array $user, string $intro = ''): void
+{
+    $hasPhoto = trim((string) ($user['avatar'] ?? '')) !== '';
+    if ($intro === '') {
+        $intro = 'Ad, telefon, şehir ve profil fotoğrafını güncelleyebilirsiniz. E-posta giriş anahtarıdır, değiştirilemez.';
+    }
+    ?>
+<form method="post" enctype="multipart/form-data" class="card mt-6 grid max-w-xl gap-4 p-6">
+  <?= csrf_field() ?>
+  <input type="hidden" name="act" value="profile">
+  <p class="font-extrabold">Profil</p>
+  <p class="text-sm text-muted"><?= e($intro) ?></p>
+  <label class="text-sm font-bold">Ad soyad
+    <input required name="name" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) $user['name']) ?>">
+  </label>
+  <label class="text-sm font-bold">Telefon
+    <input name="phone" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) ($user['phone'] ?? '')) ?>">
+  </label>
+  <label class="text-sm font-bold">Şehir
+    <input name="city" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) ($user['city'] ?? '')) ?>">
+  </label>
+  <label class="text-sm font-bold">E-posta
+    <input readonly class="mt-1 w-full rounded-xl border bg-soft px-3 py-2 text-muted" value="<?= e((string) $user['email']) ?>">
+  </label>
+  <label class="text-sm font-bold">Profil fotoğrafı
+    <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
+  </label>
+  <p class="text-xs text-muted">JPG, PNG veya WEBP, en fazla 4 MB. Bu fotoğrafı yalnızca yöneticiler görür; sitede ve hocalarda görünmez.</p>
+  <?php if ($hasPhoto): ?>
+  <label class="flex items-center gap-2 text-sm font-bold">
+    <input type="checkbox" name="avatar_remove" value="1"> Fotoğrafı kaldır
+  </label>
+  <?php endif; ?>
+  <button class="btn-primary" type="submit">Kaydet</button>
+</form>
+    <?php
+}
+
+function profile_delete_form(array $user): void
+{
+    $google = !empty($user['google_id']);
+    $needPass = !$google || (string) ($user['password'] ?? '') !== '';
+    ?>
+<section class="card mt-8 max-w-xl border-red-200 p-6">
+  <p class="font-extrabold text-accent">Hesabımı sil</p>
+  <p class="mt-2 text-sm text-muted">Hesabınız ve panel kayıtlarınız silinir. Sipariş veya ödeme varsa hesap silinmez, pasife alınır. Bu işlem geri alınamaz.</p>
+  <form method="post" class="mt-4 grid gap-3" onsubmit="return confirm('Hesabınız kalıcı olarak silinsin mi? Bu işlem geri alınamaz.');">
+    <?= csrf_field() ?>
+    <input type="hidden" name="act" value="delete_account">
+    <label class="text-sm font-bold"><?= $needPass ? 'Onay için şifreniz' : 'Onay (Google hesabı, şifre yoksa boş bırakın)' ?>
+      <input type="password" name="current_password" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="current-password" <?= $needPass ? 'required' : '' ?>>
+    </label>
+    <button type="submit" class="btn-outline text-accent">Hesabımı sil</button>
+  </form>
+</section>
+    <?php
 }
 
 function profile_password_form(array $user): void

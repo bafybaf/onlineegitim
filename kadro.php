@@ -14,10 +14,7 @@ public_head('Kadromuz | Online İlahiyat');
 <main class="mx-auto max-w-7xl px-4 py-12 lg:px-8">
   <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <?php foreach ($hocalar as $i => $h):
-        $photo = function_exists('user_avatar_src') ? user_avatar_src($h['avatar'] ?? null) : '';
-        if ($photo === '') {
-            $photo = url($imgs[$i % 4]);
-        }
+        $photo = url($imgs[$i % 4]);
         ?>
     <a class="card overflow-hidden hover:border-navy" href="<?= e(page_url('hoca', teacher_public_slug($h))) ?>">
       <img src="<?= e($photo) ?>" alt="" class="h-48 w-full object-cover">

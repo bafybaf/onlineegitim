@@ -6,14 +6,7 @@ $ok = '';
 $err = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!handle_own_password_post($u, $ok, $err)) {
-        update_user_contact((int) $u['id'], post('phone'), post('city'));
-        $fresh = refresh_current_user((int) $u['id']);
-        if ($fresh) {
-            $u = $fresh;
-        }
-        $ok = 'Bilgileriniz kaydedildi.';
-    }
+    handle_own_account_post($u, $ok, $err);
 }
 
 $enrolls = user_enrollments((int) $u['id']);
@@ -26,7 +19,7 @@ panel_head('ogrenci', 'hesap', 'Hesabım | Öğrenci Paneli', $u);
 membership_panel_banner($u);
 ?>
 <section class="card profile-hero p-6">
-  <?= user_avatar_html($u, 'lg') ?>
+  <?= user_avatar_html($u, 'lg', true) ?>
   <div>
     <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Öğrenci hesabı</p>
     <h2 class="font-display mt-1 text-3xl"><?= e((string) $u['name']) ?></h2>
@@ -56,20 +49,7 @@ membership_panel_banner($u);
 <?php if ($ok): ?><p class="mt-5 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mt-5 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 
-<form method="post" class="card mt-6 grid max-w-xl gap-4 p-6">
-  <p class="font-extrabold">İletişim</p>
-  <p class="text-sm text-muted">Telefon ve şehri güncelleyebilirsiniz. E-posta giriş anahtarıdır, değiştirilemez.</p>
-  <label class="text-sm font-bold">Telefon
-    <input name="phone" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) ($u['phone'] ?? '')) ?>">
-  </label>
-  <label class="text-sm font-bold">Şehir
-    <input name="city" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e((string) ($u['city'] ?? '')) ?>">
-  </label>
-  <label class="text-sm font-bold">E-posta
-    <input readonly class="mt-1 w-full rounded-xl border bg-soft px-3 py-2 text-muted" value="<?= e((string) $u['email']) ?>">
-  </label>
-  <button class="btn-primary" type="submit">Kaydet</button>
-</form>
+<?php profile_contact_form($u); ?>
 <?php profile_password_form($u); ?>
 
 <section class="card mt-6 overflow-hidden">
@@ -137,4 +117,5 @@ membership_panel_banner($u);
   </table>
 </section>
 <?php endif; ?>
+<?php profile_delete_form($u); ?>
 <?php panel_foot();
