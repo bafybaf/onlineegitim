@@ -165,128 +165,25 @@
     return null;
   }
 
-  function ellip(text, maxW) {
-    text = String(text || '').replace(/\s+/g, ' ').trim();
-    if (!text) return '';
-    if (ctx.measureText(text).width <= maxW) return text;
-    var s = text;
-    while (s.length > 1 && ctx.measureText(s + '…').width > maxW) {
-      s = s.slice(0, -1);
-    }
-    return s + '…';
-  }
-
-  function chatLines() {
-    var log = document.getElementById('chat-log');
-    if (!log) return [];
-    return Array.prototype.map.call(log.querySelectorAll('p'), function (p) {
-      return (p.textContent || '').replace(/\s+/g, ' ').trim();
-    }).filter(Boolean).slice(-10);
-  }
-
-  function rosterLines() {
-    var list = document.getElementById('live-present-list');
-    if (!list) return [];
-    return Array.prototype.map.call(list.querySelectorAll('.live-present-row'), function (row) {
-      return (row.textContent || '').replace(/\s+/g, ' ').trim();
-    }).filter(Boolean).slice(0, 12);
-  }
-
-  function paintBoard(x, y, w, h) {
-    var src = shareSrc();
-    if (src) {
-      ctx.fillStyle = '#0b1020';
-      ctx.fillRect(x, y, w, h);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      drawFit(src, x, y, w, h);
-      return;
-    }
-    var shell = document.querySelector('.live-shell');
-    var boardOn = !!(shell && !shell.classList.contains('is-board-off'));
-    if (boardOn && ((bg && bg.width > 2) || (draw && draw.width > 2))) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x, y, w, h);
-      ctx.imageSmoothingEnabled = false;
-      drawStretch(bg, x, y, w, h);
-      drawStretch(draw, x, y, w, h);
-      return;
-    }
-    ctx.fillStyle = '#0b1020';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = 'rgba(255,255,255,.35)';
-    ctx.font = '700 18px Nunito, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Ekran paylaşımı bekleniyor', x + w / 2, y + h / 2);
-    ctx.textAlign = 'left';
-  }
-
-  function paintSidebar(x, y, w, h) {
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(x, y, 1, h);
-    var pad = 12;
-    var camW = w - pad * 2;
-    var camH = Math.round(camW * 9 / 16);
-    var cx = x + pad;
-    var cy = y + pad;
+  function paintCamPip() {
+    if (!video || video.videoWidth < 2) return;
+    var pw = 240;
+    var ph = 135;
+    var x = W - pw - 20;
+    var y = 20;
     ctx.save();
-    roundRectPath(cx, cy, camW, camH, 16);
+    roundRectPath(x, y, pw, ph, 14);
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.clip();
-    if (video && video.videoWidth > 1) {
-      drawCover(video, cx, cy, camW, camH);
-    }
+    drawCover(video, x, y, pw, ph);
     ctx.restore();
-
-    var ty = cy + camH + 22;
-    var inner = w - pad * 2;
-    var nEl = document.getElementById('live-present-n');
-    var n = nEl ? String(nEl.textContent || '').trim() : '';
-    ctx.font = '800 13px Nunito, sans-serif';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(ellip(n ? ('Sohbet · Derstekiler ' + n) : 'Sohbet', inner), x + pad, ty);
-    ty += 10;
-    ctx.strokeStyle = '#2a2a2a';
-    ctx.beginPath();
-    ctx.moveTo(x + pad, ty);
-    ctx.lineTo(x + w - pad, ty);
+    ctx.save();
+    roundRectPath(x, y, pw, ph, 14);
+    ctx.strokeStyle = 'rgba(255,255,255,.28)';
+    ctx.lineWidth = 2;
     ctx.stroke();
-    ty += 18;
-    ctx.font = '600 12px Nunito, sans-serif';
-    var chats = chatLines();
-    if (!chats.length) {
-      ctx.fillStyle = 'rgba(255,255,255,.4)';
-      ctx.fillText('Henüz mesaj yok', x + pad, ty);
-      ty += 18;
-    } else {
-      ctx.fillStyle = '#e5e7eb';
-      chats.forEach(function (line) {
-        if (ty > y + h - 90) return;
-        ctx.fillText(ellip(line, inner), x + pad, ty);
-        ty += 17;
-      });
-    }
-    ty += 10;
-    ctx.font = '800 12px Nunito, sans-serif';
-    ctx.fillStyle = '#fff';
-    ctx.fillText('Derstekiler', x + pad, ty);
-    ty += 18;
-    ctx.font = '600 12px Nunito, sans-serif';
-    var people = rosterLines();
-    if (!people.length) {
-      ctx.fillStyle = 'rgba(255,255,255,.4)';
-      ctx.fillText('Henüz öğrenci girmedi', x + pad, ty);
-    } else {
-      ctx.fillStyle = '#fff';
-      people.forEach(function (line) {
-        if (ty > y + h - 16) return;
-        ctx.fillText(ellip(line, inner), x + pad, ty);
-        ty += 16;
-      });
-    }
+    ctx.restore();
   }
 
   function paint() {
@@ -294,11 +191,36 @@
     painting = true;
     try {
       syncShareVideo();
-      ctx.fillStyle = '#0b1020';
+      ctx.fillStyle = '#111111';
       ctx.fillRect(0, 0, W, H);
-      var side = 300;
-      paintBoard(0, 0, W - side, H);
-      paintSidebar(W - side, 0, side, H);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      var src = shareSrc();
+      if (src) {
+        drawFit(src, 0, 0, W, H);
+        paintCamPip();
+        return;
+      }
+      var shell = document.querySelector('.live-shell');
+      var boardOn = !!(shell && !shell.classList.contains('is-board-off'));
+      if (boardOn && ((bg && bg.width > 2) || (draw && draw.width > 2))) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+        ctx.imageSmoothingEnabled = false;
+        drawStretch(bg, 0, 0, W, H);
+        drawStretch(draw, 0, 0, W, H);
+        paintCamPip();
+        return;
+      }
+      if (video && video.videoWidth > 1) {
+        drawCover(video, 0, 0, W, H);
+        return;
+      }
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      ctx.font = '700 18px Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Kamera bekleniyor', W / 2, H / 2);
+      ctx.textAlign = 'left';
     } finally {
       painting = false;
     }

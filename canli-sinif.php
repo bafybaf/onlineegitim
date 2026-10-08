@@ -78,6 +78,13 @@ $waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
 $showRoster = in_array($u['role'], ['ogretmen', 'admin'], true);
 $presentN = count($students);
 $boardOn = function_exists('live_board_enabled') && live_board_enabled();
+$screenNow = 0;
+try {
+    $boardRow = function_exists('live_board_row') ? live_board_row(db(), $id) : null;
+    $screenNow = (int) ($boardRow['screen'] ?? 0);
+} catch (Throwable $e) {
+    $screenNow = 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -146,7 +153,8 @@ $boardOn = function_exists('live_board_enabled') && live_board_enabled();
         <span class="live-board-sep"></span>
         <?php endif; ?>
         <button type="button" id="whip-toggle" class="live-cam-btn">Kamera</button>
-        <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranınızı öğrenciler görür; kamera açık kalır">Ekran paylaşımı</button>
+        <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="PDF veya pencere seçin. Canlı sınıfı kapatmayın; kamera ve sohbet üstte kalır">Ekran paylaşımı</button>
+        <button type="button" id="live-present-btn" class="live-cam-btn live-cam-btn--ghost" title="Kamera, sohbet ve öğrenciler üstte kalsın">Sunum</button>
         <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Ses</button>
         <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
         <?php if ($canEnd && $room['status'] === 'live'): ?>
@@ -158,7 +166,7 @@ $boardOn = function_exists('live_board_enabled') && live_board_enabled();
         <a href="<?= e(url($back)) ?>" id="live-leave" class="live-cam-btn">Ayrıl</a>
       </div>
       <?php endif; ?>
-      <div class="live-board-stage" id="board-stage">
+      <div class="live-board-stage<?= $screenNow ? ' is-screen' : '' ?>" id="board-stage">
         <video id="board-screen" playsinline autoplay muted></video>
         <canvas id="board-bg"></canvas>
         <canvas id="board-draw"></canvas>
@@ -207,7 +215,7 @@ $boardOn = function_exists('live_board_enabled') && live_board_enabled();
       <?php endif; ?>
       <?php if (!$isObserver): ?>
       <form id="chat-form" class="flex gap-2 border-t border-[#2a2a2a] p-3">
-        <input name="q" class="flex-1 rounded-lg bg-[#0b1020] px-3 py-2 text-sm outline-none" placeholder="Mesaj yazın" autocomplete="off">
+        <input name="q" class="flex-1 rounded-lg bg-[#0a0a0a] px-3 py-2 text-sm outline-none" placeholder="Mesaj yazın" autocomplete="off">
         <button class="rounded-lg bg-navy px-3 font-extrabold">Gönder</button>
       </form>
       <?php endif; ?>
@@ -343,9 +351,16 @@ setInterval(async () => {
 }, 6000);
 </script>
 <script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
+<script>
+window._liveScreenOn = <?= $screenNow ? 'true' : 'false' ?>;
+if (window._liveScreenOn && !(window.LIVE_PLAYER && window.LIVE_PLAYER.publish) && typeof window.liveScreenWatch === 'function') {
+  window.liveScreenWatch(true);
+}
+</script>
 <script src="<?= e(url('assets/js/live-layout.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-layout.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-board.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-board.js') ?>"></script>
 <?php if ($canPublish): ?>
+<script src="<?= e(url('assets/js/live-present.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-present.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-publisher.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-publisher.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-record.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-record.js') ?>"></script>
 <?php endif; ?>

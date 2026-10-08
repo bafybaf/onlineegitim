@@ -494,12 +494,14 @@
   const el = document.getElementById('board-screen');
   if (!el || cfg.publish) return;
 
-  const whepUrls = [cfg.whepScreenUrl, cfg.whepScreenUrlAlt].filter(Boolean);
+  const camWhep = cfg.whepUrl || '';
+  const whepUrls = [cfg.whepScreenUrl, cfg.whepScreenUrlAlt].filter((u) => u && u !== camWhep);
   const hlsUrls = [cfg.hlsScreenUrl, cfg.hlsScreenUrlAlt].filter(Boolean);
   let want = false;
   let pc = null;
   let hls = null;
   let busy = false;
+  let usingCam = false;
 
   function waitIceGather(conn, ms) {
     if (!conn || conn.iceGatheringState === 'complete') {
@@ -525,8 +527,29 @@
       try { hls.destroy(); } catch (e) {}
       hls = null;
     }
+    usingCam = false;
     el.srcObject = null;
     el.removeAttribute('src');
+  }
+
+  function attachFromCam() {
+    const cam = document.getElementById('live-video');
+    if (!cam || !want) return false;
+    if (cam.srcObject) {
+      if (el.srcObject !== cam.srcObject) {
+        el.srcObject = cam.srcObject;
+        el.muted = true;
+        el.play().catch(() => {});
+      }
+      usingCam = true;
+      return el.videoWidth > 1 || cam.readyState >= 2;
+    }
+    if (!usingCam) {
+      cam.addEventListener('playing', () => {
+        if (want) attachFromCam();
+      }, { once: true });
+    }
+    return false;
   }
 
   async function startWhep(url) {
@@ -598,18 +621,43 @@
     return false;
   }
 
+  function hasScreenFrames() {
+    return el.videoWidth > 1 || (el.srcObject && el.readyState >= 2 && el.videoWidth > 1);
+  }
+
+  function waitFrames(ms) {
+    if (hasScreenFrames()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      const t = setTimeout(() => resolve(hasScreenFrames()), ms);
+      const done = () => {
+        if (!hasScreenFrames()) return;
+        clearTimeout(t);
+        el.removeEventListener('playing', done);
+        el.removeEventListener('loadeddata', done);
+        resolve(true);
+      };
+      el.addEventListener('playing', done);
+      el.addEventListener('loadeddata', done);
+    });
+  }
+
   async function connect() {
     if (!want || busy) return;
-    if (pc || hls) return;
-    if (el.videoWidth > 0 || (el.srcObject && el.readyState >= 2)) return;
+    if (hasScreenFrames()) return;
+    if ((pc || hls) && !hasScreenFrames()) {
+      stop();
+    }
     busy = true;
     try {
       for (let i = 0; i < whepUrls.length; i++) {
-        if (await startWhep(whepUrls[i])) return;
+        if (await startWhep(whepUrls[i]) && await waitFrames(2500)) return;
+        stop();
       }
       for (let i = 0; i < hlsUrls.length; i++) {
-        if (startHls(hlsUrls[i])) return;
+        if (startHls(hlsUrls[i]) && await waitFrames(2500)) return;
+        stop();
       }
+      attachFromCam();
     } finally {
       busy = false;
     }

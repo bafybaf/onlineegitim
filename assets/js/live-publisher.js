@@ -39,7 +39,9 @@
   let meterTimer = 0;
   let audioCtx = null;
   let sendPaused = false;
+  let camOnShare = false;
   const protoEl = document.getElementById('live-proto');
+  const screenWhipUrls = whipScreenUrls.filter((u) => whipUrls.indexOf(u) === -1);
 
   function applySendPause() {
     [pc, screenPc].forEach((conn) => {
@@ -88,6 +90,73 @@
 
   function camLive() {
     return !!(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
+  }
+
+  function camTrack() {
+    const media = camStream || stream;
+    if (!media) return null;
+    return media.getVideoTracks().find((t) => t.readyState === 'live') || null;
+  }
+
+  async function ensureLocalCam() {
+    if (camLive()) {
+      video.srcObject = camStream || stream;
+      await video.play().catch(() => {});
+      if (publishing && overlay) overlay.classList.add('is-off');
+      return true;
+    }
+    try {
+      const media = await captureMedia();
+      if (stream && stream !== media) {
+        stream.getVideoTracks().forEach((t) => {
+          if (t.readyState === 'ended') return;
+          try { t.stop(); } catch (e) {}
+        });
+        media.getTracks().forEach((t) => stream.addTrack(t));
+      } else {
+        stream = media;
+      }
+      camStream = stream;
+      video.srcObject = stream;
+      await video.play().catch(() => {});
+      startMeter(stream);
+      if (publishing && overlay) overlay.classList.add('is-off');
+      if (typeof window.liveRecordOnCam === 'function') {
+        window.liveRecordOnCam(stream);
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function videoSender() {
+    if (!pc) return null;
+    return pc.getSenders().find((s) => s.track && s.track.kind === 'video')
+      || pc.getSenders().find((s) => !s.track) || null;
+  }
+
+  async function publishScreenOnCam() {
+    const track = displayStream && displayStream.getVideoTracks()[0];
+    const sender = videoSender();
+    if (!track || !sender) return false;
+    try {
+      await sender.replaceTrack(track);
+      camOnShare = true;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function restoreCamPublish() {
+    if (!camOnShare) return;
+    const track = camTrack();
+    const sender = videoSender();
+    if (sender && track) {
+      try { await sender.replaceTrack(track); } catch (e) {}
+    }
+    camOnShare = false;
   }
 
   function whipAlive() {
@@ -540,8 +609,7 @@
     }
     screenLoc = '';
     if (!displayStream) return false;
-    if (!whipScreenUrls.length) {
-      setProto('Ekran WHIP yok — Admin → Canlı’da Ekran adreslerini kaydedin');
+    if (!screenWhipUrls.length) {
       return false;
     }
     screenPc = new RTCPeerConnection({
@@ -561,8 +629,8 @@
     await screenPc.setLocalDescription(offer);
     await waitIceGather(screenPc, 2000);
     const offerSdp = screenPc.localDescription && screenPc.localDescription.sdp ? screenPc.localDescription.sdp : offer.sdp;
-    for (let i = 0; i < whipScreenUrls.length; i++) {
-      const url = whipScreenUrls[i];
+    for (let i = 0; i < screenWhipUrls.length; i++) {
+      const url = screenWhipUrls[i];
       let res;
       try {
         res = await fetchSdp(url, offerSdp);
@@ -607,8 +675,12 @@
     }
     sharing = false;
     if (screenEl) screenEl.srcObject = null;
+    await restoreCamPublish();
     if (typeof window.liveRecordOnShare === 'function') {
       window.liveRecordOnShare(null);
+    }
+    if (typeof window.livePresentDock === 'function') {
+      window.livePresentDock(false);
     }
     if (shareBtn) shareBtn.textContent = 'Ekran paylaşımı';
     showBoardScreen(false);
@@ -622,16 +694,29 @@
     }
     shareStarting = true;
     if (shareBtn) shareBtn.textContent = 'Seçin…';
+    if (typeof window.livePresentDock === 'function') {
+      window.livePresentDock(true).catch(function () {});
+    }
+    const shareOpts = {
+      video: {
+        frameRate: { ideal: 10, max: 12 },
+        width: { max: 1280 },
+        height: { max: 720 },
+        displaySurface: 'window'
+      },
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      },
+      systemAudio: 'include',
+      selfBrowserSurface: 'exclude',
+      preferCurrentTab: false,
+      surfaceSwitching: 'include',
+      monitorTypeSurfaces: 'exclude'
+    };
     try {
-      displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 10, max: 12 }, width: { max: 1280 }, height: { max: 720 } },
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
-        },
-        systemAudio: 'include'
-      });
+      displayStream = await navigator.mediaDevices.getDisplayMedia(shareOpts);
     } catch (err) {
       if (err && err.name === 'NotAllowedError') throw err;
       try {
@@ -647,6 +732,7 @@
     if (!displayStream) {
       shareStarting = false;
       if (shareBtn) shareBtn.textContent = 'Ekran paylaşımı';
+      if (typeof window.livePresentDock === 'function') window.livePresentDock(false);
       return;
     }
     const screenTrack = displayStream.getVideoTracks()[0];
@@ -678,8 +764,14 @@
     sharing = true;
     if (shareBtn) shareBtn.textContent = 'Durdur';
     showBoardScreen(true);
-    if (!publishing && !stream) {
-      startPublish().catch(() => {});
+    await ensureLocalCam();
+    if (!publishing || !pc) {
+      if (!starting) await startPublish();
+      const readyAt = Date.now();
+      while (starting && Date.now() - readyAt < 8000) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      await ensureLocalCam();
     }
     if (typeof window.liveRecordOnCam === 'function' && (camStream || stream)) {
       window.liveRecordOnCam(camStream || stream);
@@ -687,15 +779,27 @@
     if (typeof window.liveRecordOnShare === 'function') {
       window.liveRecordOnShare(displayStream);
     }
-    if (!displayStream.getAudioTracks().length) {
-      setProto('Ekran sesi yok — Chrome’da Sekme seçip “Sekme sesini paylaş”ı işaretleyin');
-    }
     shareStarting = false;
-    connectWhipScreen().then(function (ok) {
-      if (!ok) setProto('Ekran Cloudflare’a bağlanamadı — Admin’de Ekran WHIP/WHEP dolu olsun');
-      else if (!sendPaused) setProto('Ekran yayında');
-    });
+    let sent = false;
+    if (screenWhipUrls.length) {
+      sent = await connectWhipScreen();
+    }
+    if (!sent) {
+      sent = await publishScreenOnCam();
+    }
+    if (typeof window.livePresentSync === 'function') window.livePresentSync();
+    if (sent && !sendPaused) {
+      setProto('Ekran yayında — PDF’yi açın; kamera ve sohbet üstte kalır');
+    } else if (!displayStream.getAudioTracks().length) {
+      setProto('Ekran sesi yok — Chrome’da Sekme seçip “Sekme sesini paylaş”ı işaretleyin');
+    } else {
+      setProto('Ekran yayına bağlanamadı');
+    }
   }
+
+  window.liveShareStop = function () {
+    return stopShare();
+  };
 
   btn.addEventListener('pointerdown', (ev) => {
     if (ev.pointerType === 'mouse' && ev.button !== 0) return;
@@ -721,6 +825,7 @@
       startShare().catch(() => {
         shareStarting = false;
         if (shareBtn) shareBtn.textContent = 'Ekran paylaşımı';
+        if (typeof window.livePresentDock === 'function') window.livePresentDock(false);
         setProto('Paylaşım iptal');
       });
     });
@@ -728,6 +833,17 @@
 
   if (listenBtn) {
     listenBtn.addEventListener('click', () => setHearing(!hearing));
+  }
+
+  const presentBtn = document.getElementById('live-present-btn');
+  if (presentBtn) {
+    presentBtn.addEventListener('pointerdown', (ev) => {
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+      ev.preventDefault();
+      if (typeof window.livePresentDock === 'function') {
+        window.livePresentDock(true).catch(function () {});
+      }
+    });
   }
 
   window.addEventListener('pagehide', () => {
