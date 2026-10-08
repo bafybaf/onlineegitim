@@ -12,7 +12,7 @@
   const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
   const healthUrl = cfg.healthUrl || '';
   const boardOff = !!(document.querySelector('.live-shell.is-board-off'));
-  let screenMode = !cfg.publish && (!!window._liveScreenOn || boardOff);
+  let screenMode = !cfg.publish && !!window._liveScreenOn;
   let hls = null;
   let pc = null;
   let discTimer = 0;
@@ -43,10 +43,25 @@
   }
 
   function sink() {
-    if (!cfg.publish && board && (screenMode || boardOff)) {
+    if (!cfg.publish && board && boardOff) {
+      return board;
+    }
+    if (!cfg.publish && board && screenMode) {
       return board;
     }
     return video;
+  }
+
+  function parkViewerChrome() {
+    if (cfg.publish || !boardOff) return;
+    const stage = document.getElementById('board-stage');
+    if (!stage) return;
+    if (overlay && overlay.parentElement !== stage) {
+      stage.appendChild(overlay);
+    }
+    if (unmuteBtn && unmuteBtn.parentElement !== stage) {
+      stage.appendChild(unmuteBtn);
+    }
   }
 
   function applySink() {
@@ -60,13 +75,14 @@
       dest.muted = dest === board ? true : video.muted;
       dest.play().catch(() => {});
     }
-    if (other && other !== dest) {
+    if (other && other !== dest && !(!cfg.publish && boardOff && dest === board)) {
       other.srcObject = null;
       other.removeAttribute('src');
     }
     const stage = document.getElementById('board-stage');
-    if (stage) stage.classList.toggle('is-screen', !!screenMode);
-    if (overlay) {
+    if (stage) stage.classList.toggle('is-screen', boardOff || !!screenMode);
+    parkViewerChrome();
+    if (overlay && !boardOff) {
       if (screenMode) {
         if (waitTitle) waitTitle.textContent = 'Ekran paylaşımı';
         if (waitDetail) {
@@ -83,10 +99,19 @@
   window.liveScreenWatch = function (on) {
     if (cfg.publish) return;
     screenMode = !!on;
+    if (boardOff) {
+      const stage = document.getElementById('board-stage');
+      if (stage) stage.classList.toggle('is-screen', true);
+      return;
+    }
     applySink();
   };
 
   function showWait(on) {
+    if (boardOff && !cfg.publish) {
+      if (overlay) overlay.classList.toggle('is-off', !on);
+      return;
+    }
     if (screenMode) {
       if (overlay) overlay.classList.remove('is-off');
       return;
@@ -224,15 +249,19 @@
     });
   }
 
+  function hasFrames(el) {
+    return !!(el && (el.videoWidth > 0 || el.readyState >= 2 || (!el.paused && el.currentTime > 0)));
+  }
+
   function waitForFrames(ms) {
-    const el = sink();
-    if (el.videoWidth > 0 || el.readyState >= 2) {
+    const els = [sink(), video, board].filter(Boolean);
+    if (els.some(hasFrames)) {
       return Promise.resolve(true);
     }
     return new Promise((resolve) => {
       const started = Date.now();
       const tick = setInterval(() => {
-        const ok = el.videoWidth > 0 || el.readyState >= 2 || (!el.paused && el.currentTime > 0);
+        const ok = els.some(hasFrames);
         if (ok || Date.now() - started >= ms) {
           clearInterval(tick);
           resolve(ok);
@@ -415,16 +444,17 @@
           manifestLoadingTimeOut: 6000,
           startPosition: -1
         });
+        const dest = sink();
         hls.loadSource(url);
-        hls.attachMedia(video);
+        hls.attachMedia(dest);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setProto('Canlı');
           enableViewerSound();
           const edge = hls.liveSyncPosition;
           if (Number.isFinite(edge) && edge > 0) {
-            try { video.currentTime = edge; } catch (e) {}
+            try { dest.currentTime = edge; } catch (e) {}
           }
-          video.play().catch(() => {});
+          dest.play().catch(() => {});
           done(true);
         });
         hls.on(Hls.Events.ERROR, (_, data) => {
@@ -436,12 +466,13 @@
         setTimeout(() => done(playing), 9000);
       });
     }
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.srcObject = null;
-      video.src = url;
+    const dest = sink();
+    if (dest.canPlayType('application/vnd.apple.mpegurl')) {
+      dest.srcObject = null;
+      dest.src = url;
       setProto('Canlı');
       enableViewerSound();
-      return video.play().then(() => true).catch(() => false);
+      return dest.play().then(() => true).catch(() => false);
     }
     setWait('Tarayıcı desteklemiyor', '');
     return Promise.resolve(false);
@@ -546,6 +577,7 @@
     return;
   }
 
-  if (screenMode) applySink();
+  parkViewerChrome();
+  applySink();
   tryWhepOrHls();
 })();

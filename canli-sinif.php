@@ -337,7 +337,8 @@ setInterval(async () => {
     var screenOn = !!Number(j.screen);
     window._liveScreenOn = screenOn;
     var stageEl = document.getElementById('board-stage');
-    if (stageEl) stageEl.classList.toggle('is-screen', screenOn);
+    var boardOffShell = document.querySelector('.live-shell.is-board-off');
+    if (stageEl && !boardOffShell) stageEl.classList.toggle('is-screen', screenOn);
     if (typeof window.liveScreenWatch === 'function') {
       window.liveScreenWatch(screenOn);
     }
