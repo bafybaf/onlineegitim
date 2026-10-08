@@ -105,7 +105,7 @@ function request_post_too_large(): bool
     return $len > 1024 && empty($_POST) && empty($_FILES);
 }
 
-function request_upload_limit_message(int $maxMb = 200): string
+function request_upload_limit_message(int $maxMb = 300): string
 {
     return 'Dosya sunucuya sığmadı. En fazla ' . $maxMb . ' MB MP4 yükleyin; başlık ve grup bilgisi büyük dosyada kaybolmaz.';
 }

@@ -25,7 +25,7 @@ if (post('delete_id')) {
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (function_exists('request_post_too_large') && request_post_too_large()) {
-        $err = request_upload_limit_message(200);
+        $err = request_upload_limit_message(300);
     } else {
         $gid = (int) post('group_id');
         $title = post('title');
@@ -46,9 +46,12 @@ if (post('delete_id')) {
             $err = 'Grup ve başlık zorunlu.';
         } else {
             try {
-                $path = academy_store_upload('video', 'vod', academy_mimes_video(), 200);
+                $path = academy_store_upload('video', 'vod', academy_mimes_video(), 300);
                 if ($path === null && $url === '') {
                     throw new RuntimeException('MP4 yükleyin veya harici video adresi girin.');
+                }
+                if ($path && function_exists('vod_optimize_upload')) {
+                    $path = vod_optimize_upload($path);
                 }
                 if ($url !== '' && !filter_var($url, FILTER_VALIDATE_URL)) {
                     throw new RuntimeException('Geçerli bir video adresi girin.');
@@ -91,7 +94,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   <label class="text-sm font-bold">veya harici adres
     <input name="video_url" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="https://..." value="<?= e($urlKeep) ?>">
   </label>
-  <p class="md:col-span-2 text-xs text-muted">Dosyalar public klasöre konulmaz. Siz ve kayıtlı öğrenciler izleyebilir. En fazla 200 MB; yükleme birkaç dakika sürebilir.</p>
+  <p class="md:col-span-2 text-xs text-muted">Dosyalar public klasöre konulmaz. Siz ve kayıtlı öğrenciler izleyebilir. En fazla 300 MB. Yüklerken kalite korunarak 1080p MP4’e sıkıştırılır; bu biraz sürebilir.</p>
   <button class="btn-primary md:col-span-2">Yükle</button>
 </form>
 <script>
@@ -99,10 +102,10 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   var input = document.querySelector('input[name="video"]');
   var form = input && input.form;
   if (!input) return;
-  var max = 200 * 1024 * 1024;
+  var max = 300 * 1024 * 1024;
   function tooBig(file) {
     if (!file || file.size <= max) return false;
-    alert('Dosya en fazla 200 MB olabilir. Seçilen: ' + Math.round(file.size / 1048576) + ' MB.');
+    alert('Dosya en fazla 300 MB olabilir. Seçilen: ' + Math.round(file.size / 1048576) + ' MB.');
     input.value = '';
     return true;
   }

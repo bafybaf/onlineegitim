@@ -548,6 +548,59 @@ function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int
     return vod_recover_pending_rooms($pdo, $teacherId);
 }
 
+function vod_optimize_upload(string $rel): string
+{
+    if ($rel === '' || !function_exists('academy_abs_file')) {
+        return $rel;
+    }
+    $abs = academy_abs_file($rel);
+    if (!is_file($abs) || !is_readable($abs)) {
+        return $rel;
+    }
+    $orig = vod_file_bytes($abs);
+    if ($orig < 8 * 1024 * 1024) {
+        return $rel;
+    }
+    $ff = vod_ffmpeg_bin();
+    if ($ff === '') {
+        return $rel;
+    }
+    @set_time_limit(900);
+    $tmp = $abs . '.opt.mp4';
+    @unlink($tmp);
+    $scale = PHP_OS_FAMILY === 'Windows'
+        ? 'scale=-2:min(1080\\,ih)'
+        : "scale=-2:'min(1080,ih)'";
+    $cmd = escapeshellarg($ff)
+        . ' -y -hide_banner -loglevel error -i ' . escapeshellarg($abs)
+        . ' -map 0:v:0 -map 0:a:0?'
+        . ' -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p'
+        . ' -vf ' . escapeshellarg($scale)
+        . ' -c:a aac -b:a 160k -ac 2 -ar 48000 -movflags +faststart '
+        . escapeshellarg($tmp);
+    $out = [];
+    $code = 1;
+    @exec($cmd . (PHP_OS_FAMILY === 'Windows' ? ' 2>NUL' : ' 2>/dev/null'), $out, $code);
+    $fresh = is_file($tmp) ? vod_file_bytes($tmp) : 0;
+    if ($code !== 0 || $fresh < 80000 || $fresh >= (int) ($orig * 0.97)) {
+        @unlink($tmp);
+        return $rel;
+    }
+    $dir = str_replace('\\', '/', dirname($rel));
+    $base = pathinfo($rel, PATHINFO_FILENAME);
+    $newRel = ($dir === '.' ? '' : $dir . '/') . $base . '.mp4';
+    $newAbs = academy_abs_file($newRel);
+    if (!@rename($tmp, $newAbs)) {
+        @copy($tmp, $newAbs);
+        @unlink($tmp);
+    }
+    if ($newAbs !== $abs && is_file($newAbs)) {
+        @unlink($abs);
+        return $newRel;
+    }
+    return is_file($newAbs) ? $newRel : $rel;
+}
+
 function vod_remux_webm(string $abs): bool
 {
     $ff = vod_ffmpeg_bin();
