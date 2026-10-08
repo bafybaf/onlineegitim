@@ -48,8 +48,7 @@ function public_head(string $title, string $desc = ''): void
   <?php if ($verify): ?><meta name="google-site-verification" content="<?= e($verify) ?>" /><?php endif; ?>
   <link rel="icon" href="<?= e(brand_logo_url('favicon.png')) ?>" type="image/png" />
   <?php if ($ga !== ''): ?>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=<?= e($ga) ?>"></script>
-  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',<?= json_encode($ga, JSON_UNESCAPED_UNICODE) ?>);</script>
+  <script>window.OI_GA=<?= json_encode($ga, JSON_UNESCAPED_UNICODE) ?>;</script>
   <?php endif; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -198,8 +197,11 @@ function public_foot(): void
       <p class="site-footer-label">Yasal</p>
       <div class="site-footer-links">
         <a href="<?= e(page_url('iletisim')) ?>">İletişim</a>
+        <a href="<?= e(page_url('mesafeli-satis')) ?>">Mesafeli satış</a>
+        <a href="<?= e(page_url('iptal-iade')) ?>">İptal ve iade</a>
         <a href="<?= e(page_url('gizlilik')) ?>">Gizlilik</a>
         <a href="<?= e(page_url('kvkk')) ?>">KVKK</a>
+        <a href="<?= e(page_url('cerez-politikasi')) ?>">Çerez politikası</a>
         <a href="<?= e(page_url('blog')) ?>">Duyurular</a>
       </div>
     </div>
@@ -232,13 +234,23 @@ function public_foot(): void
         <option>Genel Arapça</option>
         <option>Kitap siparişi</option>
       </select>
+      <?php if (function_exists('legal_consent_contact')) { legal_consent_contact(); } ?>
       <button class="btn-primary">Beni arayın</button>
       <button type="button" data-close-call class="btn-outline">Vazgeç</button>
     </form>
   </div>
 </div>
+<div id="cookie-bar" class="cookie-bar" hidden role="dialog" aria-label="Çerez onayı">
+  <p>Zorunlu çerezler giriş, sepet ve güvenlik için kullanılır. Analiz çerezleri yalnızca onayınızla açılır.
+    <a href="<?= e(page_url('cerez-politikasi')) ?>">Çerez politikası</a></p>
+  <div class="cookie-bar-actions">
+    <button type="button" class="btn-outline" data-cookie="needed">Yalnızca zorunlu</button>
+    <button type="button" class="btn-primary" data-cookie="all">Tümünü kabul et</button>
+  </div>
+</div>
 <script>window.OI_BASE = <?= json_encode(url('')) ?>; window.OI_CART = <?= (int) cart_count() ?>;</script>
 <script src="<?= e(url('assets/js/app.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/app.js') ?>"></script>
+<script src="<?= e(url('assets/js/cookie-consent.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/cookie-consent.js') ?>"></script>
 </body></html>
 <?php
 }

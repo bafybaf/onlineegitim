@@ -10,6 +10,9 @@ $urls = [
     page_url('iletisim'),
     page_url('kvkk'),
     page_url('gizlilik'),
+    page_url('mesafeli-satis'),
+    page_url('iptal-iade'),
+    page_url('cerez-politikasi'),
     page_url('kayit-ders'),
     page_url('kayit-magaza'),
 ];

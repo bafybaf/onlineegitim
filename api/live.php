@@ -79,10 +79,10 @@ if ($action === 'end') {
     $saved = false;
     if (function_exists('vod_commit_live_room')) {
         try {
-            $saved = vod_commit_live_room($pdo, $room, (int) post('mins'));
+            $saved = vod_commit_live_room($pdo, $room, (int) post('mins'), (int) post('sec'));
             if (!$saved) {
                 usleep(800000);
-                $saved = vod_commit_live_room($pdo, $room, (int) post('mins'));
+                $saved = vod_commit_live_room($pdo, $room, (int) post('mins'), (int) post('sec'));
             }
         } catch (Throwable $e) {
             $saved = false;
@@ -448,7 +448,7 @@ if ($action === 'record_done') {
     if (function_exists('session_write_close')) {
         @session_write_close();
     }
-    $ok = vod_commit_live_room($pdo, $room, (int) post('mins'));
+    $ok = vod_commit_live_room($pdo, $room, (int) post('mins'), (int) post('sec'));
     json_out(['ok' => true, 'saved' => $ok]);
 }
 

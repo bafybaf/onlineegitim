@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pkg = package_by_id((int) post('package_id'));
     if (!$pkg || $pkg['kind'] !== 'ders' || !(int) $pkg['active']) {
         $err = 'Program / grup paketi seçin.';
+    } elseif (!legal_sales_accepted(true)) {
+        $err = legal_sales_error();
     } else {
         try {
             $payment = membership_start_checkout($u, $pkg);
@@ -70,6 +72,7 @@ public_head('Canlı ders üyeliği | Online İlahiyat');
       <?php endforeach; ?>
     </div>
     <p class="mt-3 text-xs text-muted">Satın alınca grup kaydı hemen hesabınıza düşer. Grup henüz yoksa üyelik açılır; grup açılınca yerleştirilirsiniz.</p>
+    <?php legal_consent_sales(true); ?>
     <button id="submit-btn" class="btn-primary mt-5 w-full">Satın al</button>
     <script>
     (function(){

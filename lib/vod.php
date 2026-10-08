@@ -40,6 +40,10 @@ function vod_player_src(array $rec, int $userId): array
     $ext = '';
     if (!empty($rec['video_path'])) {
         $js = vod_play_url((int) $rec['id'], $userId);
+        $abs = vod_abs_from_rec($rec);
+        if ($abs !== '') {
+            $js .= '&v=' . (int) @filemtime($abs);
+        }
     } elseif (!empty($rec['video_url'])) {
         $ext = (string) $rec['video_url'];
     }
@@ -105,10 +109,10 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     if ($ext !== 'webm') {
         return true;
     }
-    if (is_file(vod_marker($abs))) {
+    if (is_file(vod_marker($abs)) && vod_webm_duration_known($abs)) {
         return true;
     }
-    @set_time_limit(12);
+    @set_time_limit(180);
     $lockPath = $abs . '.lock';
     $lock = @fopen($lockPath, 'c');
     if ($lock === false) {
@@ -120,13 +124,9 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     }
     $ok = false;
     try {
-        if (is_file(vod_marker($abs))) {
-            $ok = true;
-        } else {
-            $ok = vod_webm_patch_duration($abs, $hintMs, false);
-            if ($ok) {
-                @file_put_contents(vod_marker($abs), '1');
-            }
+        $ok = vod_stamp_duration($abs, $hintMs);
+        if ($ok) {
+            @file_put_contents(vod_marker($abs), '1');
         }
     } finally {
         flock($lock, LOCK_UN);
@@ -134,6 +134,203 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
         @unlink($lockPath);
     }
     return $ok || is_file($abs);
+}
+
+function vod_webm_duration_known(string $abs): bool
+{
+    if (vod_ffprobe_ms($abs) > 1000) {
+        return true;
+    }
+    $fp = @fopen($abs, 'rb');
+    if ($fp === false) {
+        return false;
+    }
+    $buf = (string) fread($fp, 65536);
+    fclose($fp);
+    return strpos($buf, "\x44\x89") !== false;
+}
+
+function vod_stamp_duration(string $abs, float $hintMs = 0): bool
+{
+    $remuxed = vod_remux_webm($abs);
+    $ms = vod_probe_ms($abs, $hintMs);
+    $patched = vod_webm_patch_duration($abs, $ms > 1000 ? $ms : $hintMs, true);
+    return $remuxed || $patched;
+}
+
+function vod_ffprobe_bin(): string
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+    $cached = '';
+    $ff = vod_ffmpeg_bin();
+    if ($ff !== '') {
+        $p = (string) preg_replace('/ffmpeg(\.exe)?$/i', 'ffprobe$1', $ff);
+        if ($p !== '' && is_file($p)) {
+            $cached = $p;
+            return $cached;
+        }
+    }
+    $cands = [
+        '/usr/bin/ffprobe',
+        '/usr/local/bin/ffprobe',
+        'C:\\ffmpeg\\bin\\ffprobe.exe',
+        'C:\\xampp\\ffmpeg\\bin\\ffprobe.exe',
+        'C:\\xampp\\ffmpeg\\ffprobe.exe',
+    ];
+    foreach ($cands as $c) {
+        if (is_file($c)) {
+            $cached = $c;
+            return $cached;
+        }
+    }
+    $cmd = PHP_OS_FAMILY === 'Windows' ? 'where ffprobe 2>NUL' : 'command -v ffprobe 2>/dev/null';
+    $out = [];
+    $code = 1;
+    @exec($cmd, $out, $code);
+    $found = trim((string) ($out[0] ?? ''));
+    if ($code === 0 && $found !== '' && is_file($found)) {
+        $cached = $found;
+    }
+    return $cached;
+}
+
+function vod_ffprobe_ms(string $abs): float
+{
+    $probe = vod_ffprobe_bin();
+    if ($probe === '' || !is_file($abs)) {
+        return 0.0;
+    }
+    $cmd = escapeshellarg($probe)
+        . ' -v error -analyzeduration 200M -probesize 50M -show_entries format=duration -of default=nk=1:nw=1 '
+        . escapeshellarg($abs);
+    $out = [];
+    $code = 1;
+    @exec($cmd . (PHP_OS_FAMILY === 'Windows' ? ' 2>NUL' : ' 2>/dev/null'), $out, $code);
+    $raw = strtolower(trim((string) ($out[0] ?? '')));
+    if ($raw === '' || $raw === 'n/a' || $raw === 'nan') {
+        return 0.0;
+    }
+    $sec = (float) str_replace(',', '.', $raw);
+    if ($code === 0 && $sec > 1 && $sec < 86400) {
+        return $sec * 1000.0;
+    }
+    return 0.0;
+}
+
+function vod_probe_ms(string $abs, float $hintMs = 0): float
+{
+    $ff = vod_ffprobe_ms($abs);
+    if ($ff > 1000) {
+        return $ff;
+    }
+    $cluster = vod_webm_last_timecode_ms($abs);
+    if ($cluster > 800 && ($hintMs < 2000 || $cluster > $hintMs * 0.25)) {
+        return $cluster;
+    }
+    return $hintMs > 1000 ? $hintMs : $cluster;
+}
+
+function vod_length_label(array $rec): string
+{
+    $sec = (int) ($rec['duration_sec'] ?? 0);
+    if ($sec < 1) {
+        $sec = max(0, (int) ($rec['mins'] ?? 0)) * 60;
+    }
+    if ($sec < 1) {
+        return '1 dk';
+    }
+    if ($sec < 60) {
+        return $sec . ' sn';
+    }
+    $m = intdiv($sec, 60);
+    $s = $sec % 60;
+    return $s > 0 ? ($m . ' dk ' . $s . ' sn') : ($m . ' dk');
+}
+
+function ensure_recordings_duration_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec('ALTER TABLE recordings ADD COLUMN duration_sec INT UNSIGNED NULL');
+    } catch (Throwable) {
+    }
+}
+
+function vod_abs_from_rec(array $rec): string
+{
+    $rel = trim((string) ($rec['video_path'] ?? ''));
+    if ($rel === '') {
+        return '';
+    }
+    if (function_exists('academy_file_readable')) {
+        $p = academy_file_readable($rel);
+        if ($p) {
+            return $p;
+        }
+    }
+    if (function_exists('academy_abs_file')) {
+        $p = academy_abs_file($rel);
+        if (is_file($p)) {
+            return $p;
+        }
+    }
+    return '';
+}
+
+function vod_hint_ms(array $rec): float
+{
+    $sec = (int) ($rec['duration_sec'] ?? 0);
+    if ($sec > 1) {
+        return $sec * 1000.0;
+    }
+    return max(0, (int) ($rec['mins'] ?? 0)) * 60 * 1000.0;
+}
+
+function vod_sync_recording_length(array $rec): array
+{
+    $id = (int) ($rec['id'] ?? 0);
+    $abs = vod_abs_from_rec($rec);
+    if ($id < 1 || $abs === '') {
+        return $rec;
+    }
+    $ms = vod_probe_ms($abs, vod_hint_ms($rec));
+    $sec = $ms > 400 ? (int) max(1, (int) round($ms / 1000)) : 0;
+    if ($sec < 1) {
+        return $rec;
+    }
+    $mins = max(1, min(480, (int) round($sec / 60)));
+    if ((int) ($rec['duration_sec'] ?? 0) === $sec && (int) ($rec['mins'] ?? 0) === $mins) {
+        return $rec;
+    }
+    ensure_recordings_duration_schema();
+    try {
+        db()->prepare('UPDATE recordings SET duration_sec = ?, mins = ? WHERE id = ?')->execute([$sec, $mins, $id]);
+    } catch (Throwable) {
+        try {
+            db()->prepare('UPDATE recordings SET mins = ? WHERE id = ?')->execute([$mins, $id]);
+        } catch (Throwable) {
+        }
+    }
+    $rec['duration_sec'] = $sec;
+    $rec['mins'] = $mins;
+    return $rec;
+}
+
+function vod_prepare_recording(array $rec): array
+{
+    $abs = vod_abs_from_rec($rec);
+    if ($abs !== '') {
+        @set_time_limit(180);
+        vod_ensure_playable($abs, vod_hint_ms($rec));
+    }
+    return vod_sync_recording_length($rec);
 }
 
 function vod_file_bytes(string $path): int
@@ -163,7 +360,7 @@ function vod_clip_title(string $s, int $n = 160): string
     return substr($s, 0, $n);
 }
 
-function vod_commit_live_room(PDO $pdo, array $room, int $mins = 0): bool
+function vod_commit_live_room(PDO $pdo, array $room, int $mins = 0, int $sec = 0): bool
 {
     $id = (int) ($room['id'] ?? 0);
     if ($id < 1) {
@@ -179,7 +376,7 @@ function vod_commit_live_room(PDO $pdo, array $room, int $mins = 0): bool
         return false;
     }
     try {
-        return vod_commit_live_room_locked($pdo, $room, $mins, $id);
+        return vod_commit_live_room_locked($pdo, $room, $mins, $id, $sec);
     } finally {
         flock($lock, LOCK_UN);
         fclose($lock);
@@ -187,7 +384,7 @@ function vod_commit_live_room(PDO $pdo, array $room, int $mins = 0): bool
     }
 }
 
-function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id): bool
+function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, int $sec = 0): bool
 {
     @set_time_limit(180);
     $like = 'vod/oda-' . $id . '-%';
@@ -234,22 +431,31 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id):
         $label .= ' — ' . $teacher;
     }
     $bytes = vod_file_bytes($dest);
-    $fileMs = ($bytes > 0 && $bytes < 80 * 1024 * 1024) ? vod_webm_last_timecode_ms($dest) : 0.0;
-    if ($fileMs > 400) {
-        $mins = max(1, (int) ceil($fileMs / 60000));
-    } else {
-        $mins = max(1, $mins);
+    $hintMs = $sec > 1 ? $sec * 1000.0 : max(0, $mins) * 60 * 1000.0;
+    $stamped = false;
+    if ($bytes > 0) {
+        $stamped = vod_stamp_duration($dest, $hintMs);
+        if ($stamped) {
+            @file_put_contents(vod_marker($dest), '1');
+        }
     }
+    $fileMs = $bytes > 0 ? vod_probe_ms($dest, $hintMs) : 0.0;
+    $jsSec = $sec > 1 ? $sec : ($mins > 0 ? $mins * 60 : 0);
+    $sec = $fileMs > 400 ? (int) max(1, (int) round($fileMs / 1000)) : max(1, $jsSec);
+    $sec = min(28800, $sec);
+    $mins = max(1, (int) round($sec / 60));
     $mins = min(480, $mins);
-    $patchMs = $fileMs > 400 ? $fileMs : ($mins * 60 * 1000.0);
-    if (function_exists('vod_webm_patch_duration') && is_file($dest) && $bytes > 0 && $bytes < 40 * 1024 * 1024) {
-        vod_webm_patch_duration($dest, $patchMs, $bytes < 8 * 1024 * 1024);
-    }
+    ensure_recordings_duration_schema();
     try {
-        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
-            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], vod_clip_title($label), $mins, $name]);
+        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path) VALUES (?,?,?,?,?,CURDATE(),NULL,?)')
+            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], vod_clip_title($label), $mins, $sec, $name]);
     } catch (Throwable $e) {
-        return is_file($dest);
+        try {
+            $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
+                ->execute([(int) $room['group_id'], (int) $room['teacher_id'], vod_clip_title($label), $mins, $name]);
+        } catch (Throwable $e2) {
+            return is_file($dest);
+        }
     }
     if (function_exists('notify_group_students')) {
         notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
@@ -316,7 +522,8 @@ function vod_remux_webm(string $abs): bool
     $tmp = $abs . '.tmp.webm';
     @unlink($tmp);
     $cmd = escapeshellarg($ff)
-        . ' -y -hide_banner -loglevel error -fflags +genpts -i ' . escapeshellarg($abs)
+        . ' -y -hide_banner -loglevel error -analyzeduration 200M -probesize 50M -fflags +genpts -i '
+        . escapeshellarg($abs)
         . ' -c copy -avoid_negative_ts make_zero ' . escapeshellarg($tmp);
     $out = [];
     $code = 1;
@@ -407,7 +614,7 @@ function vod_webm_last_timecode_ms(string $abs): float
     if ($size === false || $size < 32) {
         return 0;
     }
-    $tail = min(4 * 1024 * 1024, (int) $size);
+    $tail = min(12 * 1024 * 1024, (int) $size);
     $fp = @fopen($abs, 'rb');
     if ($fp === false) {
         return 0;
@@ -517,7 +724,10 @@ function vod_webm_patch_duration(string $abs, float $hintMs, bool $allowRewrite 
         $o += $elSize;
     }
     $clusterMs = vod_webm_last_timecode_ms($abs);
-    $ms = $clusterMs > 800 ? $clusterMs + 4000.0 : $hintMs;
+    $ms = max($clusterMs, $hintMs);
+    if ($clusterMs > 800 && $ms < $clusterMs + 250) {
+        $ms = $clusterMs + 250.0;
+    }
     if ($ms < 2000) {
         return false;
     }

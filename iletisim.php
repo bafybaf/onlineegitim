@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = post('message');
         if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $message === '') {
             $err = 'Ad, geçerli e-posta ve mesaj girin.';
+        } elseif (!legal_contact_accepted()) {
+            $err = 'Devam etmek için KVKK aydınlatma metnini onaylayın.';
         } elseif (mb_strlen($name) > 120 || mb_strlen($message) > 4000) {
             $err = 'Mesaj çok uzun.';
         } elseif (security_contact_blocked()) {
@@ -34,6 +36,7 @@ public_head('İletişim | Online İlahiyat');
   </div>
 </header>
 <main class="mx-auto max-w-xl px-4 py-12">
+  <?php if (function_exists('legal_company_block')) { legal_company_block(); } ?>
   <?php if ($ok): ?><p class="mb-4 font-bold text-accent">Mesajınız iletildi.</p><?php endif; ?>
   <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
   <form method="post" class="card grid gap-3 p-6">
@@ -42,6 +45,7 @@ public_head('İletişim | Online İlahiyat');
     <input required name="name" class="rounded-xl border px-3 py-2" placeholder="Ad soyad" autocomplete="name">
     <input required type="email" name="email" class="rounded-xl border px-3 py-2" placeholder="E-posta" autocomplete="email">
     <textarea required name="message" rows="5" maxlength="4000" class="rounded-xl border px-3 py-2" placeholder="Mesajınız"></textarea>
+    <?php legal_consent_contact(); ?>
     <button class="btn-primary">Gönder</button>
   </form>
 </main>

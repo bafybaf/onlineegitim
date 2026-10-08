@@ -70,6 +70,9 @@ if (is_file(__DIR__ . '/vod.php')) {
 if (is_file(__DIR__ . '/questions.php')) {
     require_once __DIR__ . '/questions.php';
 }
+if (is_file(__DIR__ . '/legal.php')) {
+    require_once __DIR__ . '/legal.php';
+}
 seo_hydrate_route();
 maybe_redirect_legacy_url();
 ensure_user_profile_schema();

@@ -100,9 +100,12 @@ $mime = match ($ext) {
 $inline = in_array($ext, ['mp4', 'webm', 'mov', 'pdf', 'jpg', 'jpeg', 'png', 'webp'], true);
 $isVideo = in_array($ext, ['mp4', 'webm', 'mov'], true);
 if ($isVideo && $tur === 'video' && function_exists('vod_ensure_playable')) {
-    $hintMs = max(0, (int) ($row['mins'] ?? 0)) * 60 * 1000.0;
+    $hintMs = function_exists('vod_hint_ms') ? vod_hint_ms($row) : max(0, (int) ($row['mins'] ?? 0)) * 60 * 1000.0;
     vod_ensure_playable($abs, $hintMs);
     $abs = function_exists('academy_file_readable') ? (academy_file_readable($rel) ?: $abs) : $abs;
+    if (function_exists('vod_sync_recording_length')) {
+        vod_sync_recording_length($row);
+    }
 }
 if ($isVideo && function_exists('vod_send_file')) {
     vod_send_file($abs, $mime);

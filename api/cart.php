@@ -108,6 +108,16 @@ if ($action === 'add') {
     if (!$basket) {
         json_out(['ok' => false, 'error' => 'empty']);
     }
+    $hasDigitalLine = false;
+    foreach ($basket as $line) {
+        if (!empty($line['is_digital'])) {
+            $hasDigitalLine = true;
+            break;
+        }
+    }
+    if (function_exists('legal_sales_accepted') && !legal_sales_accepted($hasDigitalLine ?: null)) {
+        json_out(['ok' => false, 'error' => 'consent', 'message' => legal_sales_error()], 422);
+    }
     $coupon = strtoupper(post('coupon'));
     $hasPhysical = false;
     foreach ($basket as $line) {

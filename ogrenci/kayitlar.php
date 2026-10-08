@@ -50,7 +50,7 @@ function ogrenci_kayit_card(array $r, int $backGid): void
     }
     echo '<article class="card mb-3 flex flex-wrap items-center justify-between gap-3 p-5">';
     echo '<div><p class="font-extrabold">' . e($r['title']) . '</p>';
-    echo '<p class="text-sm text-muted">' . e($r['tname']) . ' · ' . e($r['recorded_on']) . ' · ' . (int) $r['mins'] . ' dk</p></div>';
+    echo '<p class="text-sm text-muted">' . e($r['tname']) . ' · ' . e($r['recorded_on']) . ' · ' . e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) . '</p></div>';
     if ($ready) {
         echo '<a class="btn-primary text-sm" href="' . e(url($watch)) . '">İzle</a>';
     } else {

@@ -20,6 +20,10 @@ if ($name === '' || strlen($digits) < 10) {
     flash_error('Ad ve geçerli bir telefon girin.');
     redirect('index.php');
 }
+if (function_exists('legal_contact_accepted') && !legal_contact_accepted()) {
+    flash_error('Devam etmek için KVKK aydınlatma metnini onaylayın.');
+    redirect('index.php');
+}
 if (mb_strlen($name) > 120 || mb_strlen($interest) > 80) {
     flash_error('Form bilgileri geçersiz.');
     redirect('index.php');

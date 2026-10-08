@@ -797,3 +797,38 @@ body.panel-nav-lock { overflow: hidden; }
   .role-chip { display: none; }
   .panel-body { padding: 1.15rem 1rem 2rem; }
 }
+
+.legal-doc h2 {
+  margin-top: 2rem;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 1.35rem;
+}
+.legal-doc p, .legal-doc li { color: var(--muted); line-height: 1.7; }
+.legal-doc ul { margin: 0.6rem 0 0 1.15rem; list-style: disc; }
+.legal-doc li + li { margin-top: 0.35rem; }
+.legal-consents label { line-height: 1.45; color: var(--text); }
+.cookie-bar {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 55;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1.1rem;
+  padding: 1rem 1.15rem;
+  background: #111;
+  color: #ececec;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .28);
+  border: 1px solid rgba(245, 197, 66, .28);
+}
+.cookie-bar[hidden] { display: none !important; }
+.cookie-bar p { margin: 0; font-size: 0.875rem; line-height: 1.5; color: #d4d4d8; max-width: 46rem; }
+.cookie-bar a { color: #f5c542; font-weight: 800; }
+.cookie-bar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.cookie-bar .btn-primary { padding: 0.55rem 0.95rem; font-size: 0.82rem; }
+.cookie-bar .btn-outline { padding: 0.55rem 0.95rem; font-size: 0.82rem; background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
+.cookie-bar .btn-outline:hover { background: rgba(255,255,255,.08); }

@@ -140,6 +140,9 @@ function pretty_path(string $path): string
         'cikis.php' => 'cikis',
         'kvkk.php' => 'kvkk',
         'gizlilik.php' => 'gizlilik',
+        'mesafeli-satis.php' => 'mesafeli-satis',
+        'iptal-iade.php' => 'iptal-iade',
+        'cerez-politikasi.php' => 'cerez-politikasi',
         'blog.php' => 'blog',
         'sitemap.php' => 'sitemap.xml',
         'robots.php' => 'robots.txt',
@@ -246,6 +249,9 @@ function page_url(string $name, string $slug = ''): string
         'cikis' => 'cikis',
         'kvkk' => 'kvkk',
         'gizlilik' => 'gizlilik',
+        'mesafeli-satis' => 'mesafeli-satis',
+        'iptal-iade' => 'iptal-iade',
+        'cerez-politikasi' => 'cerez-politikasi',
         'blog' => 'blog',
     ];
     $path = $routes[$name] ?? ltrim($name, '/');
@@ -440,6 +446,9 @@ function maybe_redirect_legacy_url(): void
         'cikis.php' => 'cikis',
         'kvkk.php' => 'kvkk',
         'gizlilik.php' => 'gizlilik',
+        'mesafeli-satis.php' => 'mesafeli-satis',
+        'iptal-iade.php' => 'iptal-iade',
+        'cerez-politikasi.php' => 'cerez-politikasi',
         'blog.php' => 'blog',
     ];
     $target = null;

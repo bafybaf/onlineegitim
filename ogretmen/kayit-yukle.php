@@ -121,7 +121,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   <article class="card mb-3 flex flex-wrap items-start justify-between gap-3 p-5">
     <div>
     <p class="font-extrabold"><?= e($r['title']) ?></p>
-    <p class="text-sm text-muted"><?= e($r['gname']) ?> · <?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</p>
+    <p class="text-sm text-muted"><?= e($r['gname']) ?> · <?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></p>
     <p class="mt-1 text-xs text-muted"><?= $ready ? 'Video hazır' : 'Video yok' ?></p>
     </div>
     <div class="flex flex-wrap items-center gap-2">

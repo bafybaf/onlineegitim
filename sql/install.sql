@@ -378,6 +378,7 @@ CREATE TABLE recordings (
   teacher_id INT UNSIGNED NOT NULL,
   title VARCHAR(160) NOT NULL,
   mins SMALLINT UNSIGNED NOT NULL,
+  duration_sec INT UNSIGNED NULL,
   recorded_on DATE NOT NULL,
   video_url VARCHAR(500) NULL,
   video_path VARCHAR(255) NULL,

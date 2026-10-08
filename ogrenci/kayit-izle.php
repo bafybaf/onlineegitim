@@ -16,6 +16,9 @@ $r = $st->fetch();
 if (!$r) {
     redirect('ogrenci/kayitlar');
 }
+if (function_exists('vod_prepare_recording')) {
+    $r = vod_prepare_recording($r);
+}
 $backGid = (int) ($_GET['grup'] ?? $r['group_id'] ?? 0);
 $back = $backGid > 0 ? 'ogrenci/kayitlar.php?grup=' . $backGid : 'ogrenci/kayitlar';
 $src = '';
@@ -34,7 +37,7 @@ panel_head('ogrenci', 'kayitlar', (string) $r['title'] . ' | Kayıt', $u);
 <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
   <a class="text-sm font-extrabold text-navy" href="<?= e(url($back)) ?>">← <?= e($r['gname']) ?></a>
   <h2 class="font-display text-lg leading-tight"><?= e($r['title']) ?></h2>
-  <span class="text-xs text-muted"><?= e($r['tname']) ?> · <?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</span>
+  <span class="text-xs text-muted"><?= e($r['tname']) ?> · <?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></span>
 </div>
 <style>.vod-wide{margin-left:-1.5rem;margin-right:-1.5rem;width:calc(100% + 3rem)}@media(min-width:768px){.vod-wide{margin-left:-2.25rem;margin-right:-2.25rem;width:calc(100% + 4.5rem)}}</style>
 <div class="vod-wide" style="background:#000;border-radius:.75rem;overflow:hidden">

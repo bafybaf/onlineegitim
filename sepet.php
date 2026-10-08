@@ -36,6 +36,7 @@ if ($progItems) {
 }
 $save = max(0, $list - $sub);
 $allDigital = ($rows || $progRows) && count(array_filter($rows, static fn(array $b): bool => empty($b['is_digital']))) === 0;
+$needDigital = $progRows || count(array_filter($rows, static fn(array $b): bool => !empty($b['is_digital']))) > 0;
 $ship = ($sub >= 500 || $allDigital) ? 0 : ($rows ? 49 : 0);
 $campLines = array_merge($rows, $progRows);
 $autoCamp = $campLines ? campaign_resolve_for_cart($campLines, $sub, $ship, '') : ['discount' => 0, 'ship' => $ship, 'campaign' => null, 'code' => null, 'label' => ''];
@@ -181,6 +182,7 @@ public_head('Sepet | Online İlahiyat');
         <?php elseif (!$shopReady): ?>
           <p class="rounded-xl bg-soft px-3 py-2 text-sm font-bold">Sepet mağaza hesabıyla ödenir. Eğitim oturumunuz açık; <a class="text-navy" href="<?= e(url('giris-magaza.php?next=sepet')) ?>">mağaza girişini</a> kullanın.</p>
         <?php else: ?>
+          <?php legal_consent_sales($needDigital); ?>
           <button id="checkout" class="btn-primary">Satın al</button>
         <?php endif; ?>
       </div>
@@ -203,8 +205,18 @@ public_head('Sepet | Online İlahiyat');
     document.querySelectorAll('input[name="addr_pick"]').forEach((el) => el.addEventListener('change', syncNewAddr));
     syncNewAddr();
     document.getElementById('checkout')?.addEventListener('click', async () => {
+      const need = ['accept_sales', 'accept_kvkk'<?= !empty($needDigital) ? ", 'accept_digital'" : '' ?>];
+      for (const name of need) {
+        const el = document.querySelector('input[name="' + name + '"]');
+        if (el && !el.checked) {
+          if (typeof el.reportValidity === 'function') el.reportValidity();
+          else alert('Satın almadan önce sözleşmeleri onaylayın.');
+          return;
+        }
+      }
       const pick = document.querySelector('input[name="addr_pick"]:checked');
       const body = new URLSearchParams({ action: 'checkout', coupon: document.getElementById('coupon').value });
+      need.forEach((name) => body.set(name, '1'));
       if (!pick || pick.value === 'new') {
         body.set('address_id', '0');
         body.set('addr_title', document.getElementById('addr_title')?.value || '');
@@ -223,6 +235,7 @@ public_head('Sepet | Online İlahiyat');
       else if (j.error === 'shop_account') alert('Satın alım için mağaza girişi gerekir. Ders hesabı ile sipariş alınmaz.');
       else if (j.error === 'stock') alert('Stok yetersiz. Adedi düşürün.');
       else if (j.error === 'address') alert(j.message || 'Teslimat için telefon, şehir ve açık adres gerekli.');
+      else if (j.error === 'consent') alert(j.message || 'Satın almadan önce sözleşmeleri onaylayın.');
       else alert('Satın alım tamamlanamadı.');
     });
   </script>

@@ -25,6 +25,9 @@ if (post('delete_id')) {
         redirect('ogretmen/kayit-izle.php?id=' . $id);
     }
 }
+if (function_exists('vod_prepare_recording')) {
+    $r = vod_prepare_recording($r);
+}
 [$vodJs, $src] = function_exists('vod_player_src')
     ? vod_player_src($r, (int) $u['id'])
     : ['', (string) ($r['video_url'] ?? '')];
@@ -39,7 +42,7 @@ $err = flash_error();
   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
     <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle')) ?>">← <?= e($r['gname']) ?></a>
     <h2 class="font-display text-lg leading-tight"><?= e($r['title']) ?></h2>
-    <span class="text-xs text-muted"><?= e($r['recorded_on']) ?> · <?= (int) $r['mins'] ?> dk</span>
+    <span class="text-xs text-muted"><?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></span>
   </div>
   <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
 </div>

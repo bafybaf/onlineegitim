@@ -29,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $err = 'Yönetici ve öğretmen üyelik ödemez.';
     } elseif ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $err = 'Ad ve geçerli e-posta girin.';
+    } elseif (!legal_register_accepted() || !legal_sales_accepted(true)) {
+        $err = legal_sales_error();
     } else {
         try {
             $st = db()->prepare('SELECT id, role FROM users WHERE email = ?');
@@ -94,6 +96,7 @@ public_head('Ders kaydı | Online İlahiyat');
         </label>
       <?php endforeach; ?>
     </div>
+    <?php legal_consent_register(); legal_consent_sales(true, false); ?>
     <button id="submit-btn" class="btn-primary mt-5 w-full">Satın al</button>
     <script>
     (function(){
@@ -109,7 +112,7 @@ public_head('Ders kaydı | Online İlahiyat');
     })();
     </script>
     <?php endif; ?>
-    <?php google_button('ders', '', 'mt-4'); ?>
+    <?php google_button('ders', '', 'mt-4'); legal_google_gate(); ?>
     <p class="mt-3 text-center text-sm text-muted">Hesabınız var mı? <a class="font-extrabold text-navy" href="<?= e(page_url('giris-ders')) ?>">Ders girişi</a></p>
   </form>
 </main>

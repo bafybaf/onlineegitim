@@ -34,6 +34,8 @@
   let counting = false;
   let countTimer = 0;
   let startedMs = 0;
+  let recElapsedMs = 0;
+  let recRunMs = 0;
   let raf = 0;
   let paintTimer = 0;
   let paintWorker = null;
@@ -269,6 +271,7 @@
     recPulse = 0;
     if (recPaused) { try { recorder.pause(); } catch (e) {} }
     if (!startedMs) startedMs = Date.now();
+    if (!recPaused) recClockRun();
     return true;
   }
 
@@ -324,9 +327,23 @@
     return queue;
   }
 
+  function recClockFlush() {
+    if (recRunMs) {
+      recElapsedMs += Date.now() - recRunMs;
+      recRunMs = 0;
+    }
+  }
+  function recClockRun() {
+    if (!recRunMs) recRunMs = Date.now();
+  }
+  function recMs() {
+    return recElapsedMs + (recRunMs ? Date.now() - recRunMs : 0);
+  }
+  function secsNow() {
+    return Math.max(1, Math.round(recMs() / 1000));
+  }
   function minsNow() {
-    var from = startedMs || Date.now();
-    return Math.max(1, Math.ceil((Date.now() - from) / 60000));
+    return Math.max(1, Math.round(secsNow() / 60));
   }
 
   function hideCount() { if (countBox) countBox.classList.remove('is-on'); }
@@ -382,7 +399,7 @@
   }
 
   function postDone(useBeacon) {
-    var body = 'action=record_done&id=' + encodeURIComponent(cfg.roomId) + '&mins=' + minsNow();
+    var body = 'action=record_done&id=' + encodeURIComponent(cfg.roomId) + '&mins=' + minsNow() + '&sec=' + secsNow();
     if (csrfToken) body += '&_csrf=' + encodeURIComponent(csrfToken);
     if (useBeacon) {
       try {
@@ -415,6 +432,7 @@
       await sleep(1200);
     }
     finishing = true;
+    recClockFlush();
     if (mixWatch) { clearInterval(mixWatch); mixWatch = 0; }
     if (recPulse) { clearInterval(recPulse); recPulse = 0; }
     if (recorder && recorder.state !== 'inactive') {
@@ -448,6 +466,8 @@
   window.liveRecordFinish = finish;
   window.liveRecordSetPaused = function (on) {
     recPaused = !!on;
+    if (recPaused) recClockFlush();
+    else if (armed && !finishing && !done) recClockRun();
     if (recorder) {
       try {
         if (recPaused && recorder.state === 'recording') recorder.pause();
@@ -493,6 +513,7 @@
           el.value = String(val);
         }
         hid('mins', minsNow());
+        hid('sec', secsNow());
         hid('rec_chunks', uploadedChunks);
         hid('rec_failed', uploadFailed);
         f.submit();

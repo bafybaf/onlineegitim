@@ -33,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($phone === '') {
                 throw new RuntimeException('Telefon girin.');
             }
+            if (!legal_register_accepted()) {
+                throw new RuntimeException(legal_register_error());
+            }
             $st = db()->prepare('SELECT id, role FROM users WHERE email = ?');
             $st->execute([$email]);
             $exists = $st->fetch();
@@ -72,8 +75,9 @@ public_head('Mağaza kaydı | Online İlahiyat');
     <label class="mt-3 block text-sm font-bold">Telefon<input required name="phone" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="tel"></label>
     <label class="mt-3 block text-sm font-bold">E-posta<input type="email" required name="email" class="mt-1 w-full rounded-xl border px-3 py-2" autocomplete="email"></label>
     <label class="mt-3 block text-sm font-bold">Şifre<input type="password" required minlength="8" name="password" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="En az 8 karakter" autocomplete="new-password"></label>
+    <?php legal_consent_register(); ?>
     <button class="btn-primary mt-5 w-full">Hesabı aç</button>
-    <?php google_button('magaza', 'magaza', 'mt-4'); ?>
+    <?php google_button('magaza', 'magaza', 'mt-4'); legal_google_gate(); ?>
     <p class="mt-3 text-center text-sm text-muted">Hesabınız var mı? <a class="font-extrabold text-navy" href="<?= e(page_url('giris-magaza')) ?>">Mağaza girişi</a></p>
   </form>
   <?php endif; ?>
