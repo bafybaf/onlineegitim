@@ -15,8 +15,8 @@ function mail_log(string $message): void
 
 function admin_inbox(): string
 {
-    $to = trim(setting('smtp_to_email', 'info@onlineilahiyat.com'));
-    return $to !== '' ? $to : 'info@onlineilahiyat.com';
+    $to = trim(setting('smtp_to_email', 'info@onlineilahiyat.com.tr'));
+    return $to !== '' ? $to : 'info@onlineilahiyat.com.tr';
 }
 
 function mail_last_error(?string $set = null): string

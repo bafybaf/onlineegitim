@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'smtp_encryption' => $enc,
             'smtp_from_email' => post('smtp_from_email'),
             'smtp_from_name' => post('smtp_from_name') ?: 'Online İlahiyat',
-            'smtp_to_email' => post('smtp_to_email') ?: 'info@onlineilahiyat.com',
+            'smtp_to_email' => post('smtp_to_email') ?: 'info@onlineilahiyat.com.tr',
         ];
         foreach ($pairs as $k => $v) {
             setting_set($k, $v);
@@ -93,7 +93,7 @@ panel_head('admin', 'smtp', 'SMTP ayarları | Admin', $u);
       <input name="smtp_from_name" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e(setting('smtp_from_name', 'Online İlahiyat')) ?>">
     </label>
     <label class="text-sm font-bold">Form gelen kutusu
-      <input type="email" name="smtp_to_email" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e(setting('smtp_to_email', 'info@onlineilahiyat.com')) ?>">
+      <input type="email" name="smtp_to_email" class="mt-1 w-full rounded-xl border px-3 py-2" value="<?= e(setting('smtp_to_email', 'info@onlineilahiyat.com.tr')) ?>">
       <span class="mt-1 block text-xs font-normal text-muted">İletişim ve arama talepleri bu adrese düşer.</span>
     </label>
     <button class="btn-primary">Kaydet</button>
