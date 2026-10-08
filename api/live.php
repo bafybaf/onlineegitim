@@ -205,8 +205,11 @@ if ($action === 'poll') {
     if (!live_user_can_access($u, $room)) {
         json_out(['ok' => false], 403);
     }
+    if (function_exists('session_write_close')) {
+        @session_write_close();
+    }
     $key = live_ensure_stream_key($pdo, $room);
-    $chat = $pdo->prepare('SELECT who_label, body FROM live_chat WHERE room_id = ? ORDER BY id DESC LIMIT 80');
+    $chat = $pdo->prepare('SELECT id, who_label, body FROM live_chat WHERE room_id = ? ORDER BY id DESC LIMIT 50');
     $chat->execute([$id]);
     $payload = [
         'ok' => true,
@@ -247,6 +250,9 @@ if ($action === 'board') {
     }
     if (!live_user_can_access($u, $room)) {
         json_out(['ok' => false], 403);
+    }
+    if (function_exists('session_write_close')) {
+        @session_write_close();
     }
     if ($method === 'GET') {
         $row = live_board_row($pdo, $id);
@@ -356,7 +362,7 @@ if ($action === 'board') {
             'pan_x' => $body['panX'] ?? 0,
             'pan_y' => $body['panY'] ?? 0,
         ]);
-        json_out(array_merge(['ok' => true], live_board_public($saved, $id)));
+        json_out(['ok' => true, 'rev' => (int) ($saved['rev'] ?? 0)]);
     }
 
     if ($op === 'screen') {

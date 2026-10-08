@@ -97,7 +97,7 @@
     originX -= dx / Math.max(0.01, zoom);
     originY -= (dy * aspect()) / Math.max(0.01, zoom);
     clampPan();
-    paintAll();
+    paintAll(true);
     scheduleView();
   }
 
@@ -139,7 +139,7 @@
     clearTimeout(viewTimer);
     viewTimer = setTimeout(() => {
       send({ op: 'view', zoom: zoom, panX: originX, panY: originY });
-    }, 180);
+    }, 400);
   }
 
   function fit() {
@@ -203,7 +203,7 @@
     if (!pdfDoc || gen !== pageGen) return;
     const cssW = bg.clientWidth || bg.width || 1;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const targetW = Math.min(3600, Math.max(360, Math.floor(cssW * Math.min(zoom, 12) * dpr)));
+    const targetW = Math.min(1600, Math.max(360, Math.floor(cssW * Math.min(zoom, 3) * Math.min(dpr, 1.5))));
     const key = targetW;
     const cached = pageCache[lay.n];
     if (cached && cached.key === key) return;
@@ -219,7 +219,7 @@
       const octx = off.getContext('2d', { alpha: false });
       octx.fillStyle = '#ffffff';
       octx.fillRect(0, 0, off.width, off.height);
-      return pg.render({ canvasContext: octx, viewport: vp, intent: 'print' }).promise.then(() => {
+      return pg.render({ canvasContext: octx, viewport: vp, intent: 'display' }).promise.then(() => {
         if (gen !== pageGen) return;
         pageCache[lay.n] = { canvas: off, key: key };
         const keep = {};
@@ -239,9 +239,9 @@
     });
   }
 
-  function paintBg() {
+  function paintBg(lite) {
     blitBg();
-    if (!pdfDoc || !layouts.length) return;
+    if (lite || drawing || panning || !pdfDoc || !layouts.length) return;
     const gen = pageGen;
     visibleLayouts().forEach((lay) => renderPage(lay, gen));
   }
@@ -306,8 +306,8 @@
     if (current) paintStroke(ctx, current, destW, destH, px);
   }
 
-  function paintAll() {
-    paintBg();
+  function paintAll(lite) {
+    paintBg(!!lite);
     paintDraw();
     if (pageEl) {
       pageEl.textContent = pages > 0 ? (pages + ' syf') : '';
@@ -374,9 +374,19 @@
     run(1);
   }
 
-  function applyState(j) {
+  function applyState(j, ownSend) {
     if (!j || !j.ok) return;
-    if (j.same) return;
+    if (j.same) {
+      if (j.rev != null) rev = Number(j.rev);
+      return;
+    }
+    if (ownSend && publish) {
+      if (j.rev != null) rev = Number(j.rev);
+      if (typeof window.liveLayoutApply === 'function' && (j.boardFull != null || j.camX != null)) {
+        window.liveLayoutApply(j);
+      }
+      return;
+    }
     const firstView = rev < 0;
     rev = Number(j.rev || 0);
     pages = Math.max(0, Number(j.pages || 0));
@@ -438,7 +448,7 @@
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(payload)
     }).then((r) => r.json()).then((j) => {
-      if (j && j.ok && !j.same) applyState(j);
+      if (j && j.ok && !j.same) applyState(j, true);
       return j;
     }).catch(() => null);
   }
@@ -577,7 +587,7 @@
         originX = panStart.originX - (ev.clientX - panStart.x) / (Math.max(1, r.width) * zoom);
         originY = panStart.originY - (ev.clientY - panStart.y) / (Math.max(1, r.width) * zoom);
         clampPan();
-        paintAll();
+        paintAll(true);
         scheduleView();
         return;
       }
@@ -625,5 +635,5 @@
   }
   fit();
   pull();
-  setInterval(pull, publish ? 1200 : 1500);
+  setInterval(pull, publish ? 2200 : 2800);
 })();

@@ -12,6 +12,7 @@
   const healthUrl = cfg.healthUrl || '';
   let hls = null;
   let pc = null;
+  let discTimer = 0;
   let playing = false;
   let playMode = 'none';
   let busy = false;
@@ -102,6 +103,10 @@
   }
 
   function stopWhep() {
+    if (discTimer) {
+      clearTimeout(discTimer);
+      discTimer = 0;
+    }
     if (pc) {
       try { pc.close(); } catch (e) {}
       pc = null;
@@ -217,10 +222,27 @@
     };
     conn.onconnectionstatechange = () => {
       if (conn !== pc) return;
-      if (conn.connectionState === 'failed' || conn.connectionState === 'disconnected') {
+      if (conn.connectionState === 'connected') {
+        if (discTimer) {
+          clearTimeout(discTimer);
+          discTimer = 0;
+        }
+        return;
+      }
+      if (conn.connectionState === 'failed') {
         onStall();
         stopWhep();
         if (playMode === 'webrtc') playMode = 'none';
+        return;
+      }
+      if (conn.connectionState === 'disconnected') {
+        if (discTimer) clearTimeout(discTimer);
+        discTimer = setTimeout(() => {
+          if (conn !== pc || conn.connectionState !== 'disconnected') return;
+          onStall();
+          stopWhep();
+          if (playMode === 'webrtc') playMode = 'none';
+        }, 2500);
       }
     };
     const offer = await conn.createOffer();

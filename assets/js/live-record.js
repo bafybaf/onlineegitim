@@ -46,6 +46,7 @@
   let mixNodes = [];
   let mixWatch = 0;
   let recPulse = 0;
+  let painting = false;
   let uploadedChunks = 0;
   let uploadFailed = 0;
   let queued = 0;
@@ -140,7 +141,7 @@
   function paintBoard(x, y, w, h) {
     var sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = 'medium';
     if (sharing) {
       ctx.fillStyle = '#0b1020';
       ctx.fillRect(x, y, w, h);
@@ -154,19 +155,24 @@
   }
 
   function paint() {
-    if (finishing || done || !armed || recPaused) return;
-    paintBoard(0, 0, W, H);
-    var pipW = Math.round(W * 0.22);
-    var pipH = Math.round(pipW * 9 / 16);
-    var ox = W - pipW - 18;
-    var oy = 18;
-    ctx.save();
-    roundRectPath(ox, oy, pipW, pipH, 14);
-    ctx.fillStyle = '#000';
-    ctx.fill();
-    ctx.clip();
-    drawCover(video, ox, oy, pipW, pipH);
-    ctx.restore();
+    if (painting || finishing || done || !armed || recPaused) return;
+    painting = true;
+    try {
+      paintBoard(0, 0, W, H);
+      var pipW = Math.round(W * 0.22);
+      var pipH = Math.round(pipW * 9 / 16);
+      var ox = W - pipW - 18;
+      var oy = 18;
+      ctx.save();
+      roundRectPath(ox, oy, pipW, pipH, 14);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+      ctx.clip();
+      drawCover(video, ox, oy, pipW, pipH);
+      ctx.restore();
+    } finally {
+      painting = false;
+    }
   }
 
   function stopPaintLoop() {
@@ -179,18 +185,10 @@
     stopPaintLoop();
     paint();
     try {
-      var src = 'setInterval(function(){postMessage(1);},66);';
+      var src = 'setInterval(function(){postMessage(1);},125);';
       paintWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
       paintWorker.onmessage = function () { paint(); };
-    } catch (e) { paintTimer = setInterval(paint, 66); }
-    if (screenVid && typeof screenVid.requestVideoFrameCallback === 'function') {
-      var onFrame = function () {
-        if (!armed || finishing || done) return;
-        paint();
-        try { screenVid.requestVideoFrameCallback(onFrame); } catch (err) {}
-      };
-      try { screenVid.requestVideoFrameCallback(onFrame); } catch (e) {}
-    }
+    } catch (e) { paintTimer = setInterval(paint, 125); }
   }
 
   function ensureMixer() {
@@ -242,12 +240,12 @@
   function startRecorder(media) {
     if (!armed || !window.MediaRecorder || recorder || done) return !!recorder;
     refreshMix(media);
-    recStream = canvas.captureStream(12);
+    recStream = canvas.captureStream(8);
     if (audioClone && recStream.getAudioTracks().length === 0) recStream.addTrack(audioClone);
     var hasAudio = recStream.getAudioTracks().length > 0;
     var types = mimeList(hasAudio);
     for (var i = 0; i < types.length && !recorder; i++) {
-      var opts = { videoBitsPerSecond: 2200000 };
+      var opts = { videoBitsPerSecond: 1600000 };
       if (types[i]) opts.mimeType = types[i];
       if (hasAudio) opts.audioBitsPerSecond = 128000;
       try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }

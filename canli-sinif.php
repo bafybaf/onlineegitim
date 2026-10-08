@@ -278,13 +278,19 @@ function renderPresent(rows) {
   list.innerHTML = rows.map((s) => '<label class="live-present-row"><input type="checkbox" class="att" data-sid="'+s.id+'" checked> '+esc(s.name)+'</label>').join('');
   list.querySelectorAll('.att').forEach(bindAtt);
 }
+let chatSig = '';
 setInterval(async () => {
   const r = await fetch(base + 'api/live.php?action=poll&id=' + roomId);
   const j = await r.json();
   if (!j.ok) return;
-  const log = document.getElementById('chat-log');
-  log.innerHTML = (j.chat||[]).map(c => `<p><b>${esc(c.who_label)}:</b> ${esc(c.body)}</p>`).join('');
-  log.scrollTop = log.scrollHeight;
+  const rows = j.chat || [];
+  const sig = rows.map((c) => String(c.id || '') + ':' + (c.body || '')).join('|');
+  if (sig !== chatSig) {
+    chatSig = sig;
+    const log = document.getElementById('chat-log');
+    log.innerHTML = rows.map(c => `<p><b>${esc(c.who_label)}:</b> ${esc(c.body)}</p>`).join('');
+    log.scrollTop = log.scrollHeight;
+  }
   if (Array.isArray(j.present)) renderPresent(j.present);
   if (j.room && typeof window.livePauseApply === 'function') {
     window.livePauseApply(j.room);
@@ -292,7 +298,7 @@ setInterval(async () => {
   if (j.room && j.room.status === 'ended') {
     if (typeof window.livePlayerMarkEnded === 'function') window.livePlayerMarkEnded();
   }
-}, 4000);
+}, 6000);
 </script>
 <script src="<?= e(url('assets/js/live-player.js')) ?>?v=<?= (int) filemtime(__DIR__ . '/assets/js/live-player.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-layout.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-layout.js') ?>"></script>

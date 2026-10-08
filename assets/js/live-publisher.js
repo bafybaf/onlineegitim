@@ -235,9 +235,9 @@
 
   async function captureMedia() {
     const videoConstraints = {
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-      frameRate: { ideal: 30 }
+      width: { ideal: 1280, max: 1280 },
+      height: { ideal: 720, max: 720 },
+      frameRate: { ideal: 24, max: 24 }
     };
     const audioConstraints = {
       echoCancellation: true,
@@ -451,7 +451,7 @@
     if (shareBtn) shareBtn.textContent = 'Seçin…';
     try {
       displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 15 } },
+        video: { frameRate: { ideal: 10, max: 12 }, width: { max: 1280 }, height: { max: 720 } },
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
@@ -477,6 +477,15 @@
       return;
     }
     const screenTrack = displayStream.getVideoTracks()[0];
+    if (screenTrack) {
+      try {
+        screenTrack.applyConstraints({
+          frameRate: { ideal: 10, max: 12 },
+          width: { max: 1280 },
+          height: { max: 720 }
+        });
+      } catch (e) {}
+    }
     if (!screenTrack) {
       shareStarting = false;
       await stopShare();
