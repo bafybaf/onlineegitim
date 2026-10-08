@@ -318,11 +318,18 @@ if ($action === 'poll') {
     $key = live_ensure_stream_key($pdo, $room);
     $chat = $pdo->prepare('SELECT id, who_label, body FROM live_chat WHERE room_id = ? ORDER BY id DESC LIMIT 50');
     $chat->execute([$id]);
+    $screenOn = 0;
+    try {
+        $board = live_board_row($pdo, $id);
+        $screenOn = (int) ($board['screen'] ?? 0);
+    } catch (Throwable) {
+    }
     $payload = [
         'ok' => true,
         'room' => live_public_room($room),
         'chat' => array_reverse($chat->fetchAll()),
         'mins' => live_mins($room['started_at']),
+        'screen' => $screenOn,
         'hls_url' => live_hls_url($key),
         'hls_url_alt' => live_hls_url($key, 1),
         'whep_url' => live_whep_url($key),

@@ -120,6 +120,11 @@ function live_cf_ready(): bool
     return live_cf_url('cam', 'whip') !== '' && live_cf_url('cam', 'whep') !== '';
 }
 
+function live_board_enabled(): bool
+{
+    return function_exists('setting_bool') && setting_bool('live_board_on', false);
+}
+
 function live_whip_url_ok(string $url): bool
 {
     if (!filter_var($url, FILTER_VALIDATE_URL) || !str_starts_with(strtolower($url), 'https://')) {

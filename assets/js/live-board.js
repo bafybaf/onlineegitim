@@ -6,6 +6,7 @@
   if (!stage || !bg || !draw) return;
 
   const publish = !!cfg.publish;
+  const enabled = cfg.enabled !== false;
   const roomId = Number(cfg.roomId || 0);
   const api = cfg.url || '';
   const pageEl = document.getElementById('board-page');
@@ -439,6 +440,27 @@
     }
     pdfUrl = nextPdf || pdfUrl;
     paintAll();
+  }
+
+  function postScreen(on) {
+    if (!publish || !api || !roomId) {
+      return;
+    }
+    fetch(api + '?action=board', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ op: 'screen', on: on ? 1 : 0, id: roomId })
+    }).catch(() => null);
+  }
+
+  if (!enabled) {
+    if (publish) {
+      window.liveBoardSetScreen = function (on) {
+        stage.classList.toggle('is-screen', !!on);
+        postScreen(!!on);
+      };
+    }
+    return;
   }
 
   function send(payload) {

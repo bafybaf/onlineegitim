@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogrenci');
+if (function_exists('ensure_recordings_test_schema')) {
+    ensure_recordings_test_schema();
+}
 $gid = (int) ($_GET['grup'] ?? 0);
 
 $gst = db()->prepare(
@@ -26,10 +29,11 @@ $sql = "SELECT rec.*, g.name gname, t.name tname
      FROM recordings rec
      JOIN class_groups g ON g.id=rec.group_id
      JOIN users t ON t.id=rec.teacher_id
-     JOIN enrollments e ON e.group_id=rec.group_id AND e.student_id=?";
+     JOIN enrollments e ON e.group_id=rec.group_id AND e.student_id=?
+     WHERE (rec.is_test = 0 OR rec.is_test IS NULL)";
 $params = [(int) $u['id']];
 if ($gid) {
-    $sql .= ' AND rec.group_id=?';
+    $sql .= ' AND rec.group_id = ?';
     $params[] = $gid;
 }
 $sql .= ' ORDER BY g.name ASC, rec.recorded_on DESC, rec.id DESC';

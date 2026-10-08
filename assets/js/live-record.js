@@ -21,6 +21,14 @@
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cssText = 'position:fixed;left:0;top:0;width:320px;height:180px;opacity:0.02;pointer-events:none;z-index:-1';
   document.body.appendChild(canvas);
+  const recShare = document.createElement('video');
+  recShare.muted = true;
+  recShare.autoplay = true;
+  recShare.playsInline = true;
+  recShare.setAttribute('playsinline', '');
+  recShare.setAttribute('aria-hidden', 'true');
+  recShare.style.cssText = 'position:fixed;left:0;top:0;width:160px;height:90px;opacity:0.02;pointer-events:none;z-index:-1';
+  document.body.appendChild(recShare);
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true, colorSpace: 'srgb' })
     || canvas.getContext('2d', { alpha: false });
 
@@ -79,13 +87,8 @@
 
   function calcLayout() {
     if (layoutLocked) return;
-    var sw = stage && stage.clientWidth > 2 ? stage.clientWidth : 16;
-    var sh = stage && stage.clientHeight > 2 ? stage.clientHeight : 9;
-    var s = Math.min(1280 / sw, 720 / sh);
-    W = even(sw * s);
-    H = even(sh * s);
-    if (W < 640) { H = even(H * (640 / W)); W = 640; }
-    if (H < 360) { W = even(W * (360 / H)); H = 360; }
+    W = 1280;
+    H = 720;
     canvas.width = W;
     canvas.height = H;
   }
@@ -145,20 +148,144 @@
     try { ctx.drawImage(src, x, y, w, h); } catch (e) {}
   }
 
+  function syncShareVideo() {
+    var media = pendingShare || (screenVid && screenVid.srcObject) || null;
+    if (media && recShare.srcObject !== media) {
+      recShare.srcObject = media;
+      recShare.play().catch(function () {});
+    }
+    if (!media && recShare.srcObject) {
+      recShare.srcObject = null;
+    }
+  }
+
+  function shareSrc() {
+    if (recShare.videoWidth > 1) return recShare;
+    if (screenVid && screenVid.videoWidth > 1) return screenVid;
+    return null;
+  }
+
+  function ellip(text, maxW) {
+    text = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!text) return '';
+    if (ctx.measureText(text).width <= maxW) return text;
+    var s = text;
+    while (s.length > 1 && ctx.measureText(s + '…').width > maxW) {
+      s = s.slice(0, -1);
+    }
+    return s + '…';
+  }
+
+  function chatLines() {
+    var log = document.getElementById('chat-log');
+    if (!log) return [];
+    return Array.prototype.map.call(log.querySelectorAll('p'), function (p) {
+      return (p.textContent || '').replace(/\s+/g, ' ').trim();
+    }).filter(Boolean).slice(-10);
+  }
+
+  function rosterLines() {
+    var list = document.getElementById('live-present-list');
+    if (!list) return [];
+    return Array.prototype.map.call(list.querySelectorAll('.live-present-row'), function (row) {
+      return (row.textContent || '').replace(/\s+/g, ' ').trim();
+    }).filter(Boolean).slice(0, 12);
+  }
+
   function paintBoard(x, y, w, h) {
-    var sharing = !!(stage && stage.classList.contains('is-screen') && screenVid && (screenVid.videoWidth || 0) > 1);
-    if (sharing) {
+    var src = shareSrc();
+    if (src) {
       ctx.fillStyle = '#0b1020';
       ctx.fillRect(x, y, w, h);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      drawFit(screenVid, x, y, w, h);
-    } else {
+      drawFit(src, x, y, w, h);
+      return;
+    }
+    var shell = document.querySelector('.live-shell');
+    var boardOn = !!(shell && !shell.classList.contains('is-board-off'));
+    if (boardOn && ((bg && bg.width > 2) || (draw && draw.width > 2))) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x, y, w, h);
       ctx.imageSmoothingEnabled = false;
       drawStretch(bg, x, y, w, h);
       drawStretch(draw, x, y, w, h);
+      return;
+    }
+    ctx.fillStyle = '#0b1020';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.font = '700 18px Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Ekran paylaşımı bekleniyor', x + w / 2, y + h / 2);
+    ctx.textAlign = 'left';
+  }
+
+  function paintSidebar(x, y, w, h) {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(x, y, 1, h);
+    var pad = 12;
+    var camW = w - pad * 2;
+    var camH = Math.round(camW * 9 / 16);
+    var cx = x + pad;
+    var cy = y + pad;
+    ctx.save();
+    roundRectPath(cx, cy, camW, camH, 16);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.clip();
+    if (video && video.videoWidth > 1) {
+      drawCover(video, cx, cy, camW, camH);
+    }
+    ctx.restore();
+
+    var ty = cy + camH + 22;
+    var inner = w - pad * 2;
+    var nEl = document.getElementById('live-present-n');
+    var n = nEl ? String(nEl.textContent || '').trim() : '';
+    ctx.font = '800 13px Nunito, sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(ellip(n ? ('Sohbet · Derstekiler ' + n) : 'Sohbet', inner), x + pad, ty);
+    ty += 10;
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.beginPath();
+    ctx.moveTo(x + pad, ty);
+    ctx.lineTo(x + w - pad, ty);
+    ctx.stroke();
+    ty += 18;
+    ctx.font = '600 12px Nunito, sans-serif';
+    var chats = chatLines();
+    if (!chats.length) {
+      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.fillText('Henüz mesaj yok', x + pad, ty);
+      ty += 18;
+    } else {
+      ctx.fillStyle = '#e5e7eb';
+      chats.forEach(function (line) {
+        if (ty > y + h - 90) return;
+        ctx.fillText(ellip(line, inner), x + pad, ty);
+        ty += 17;
+      });
+    }
+    ty += 10;
+    ctx.font = '800 12px Nunito, sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('Derstekiler', x + pad, ty);
+    ty += 18;
+    ctx.font = '600 12px Nunito, sans-serif';
+    var people = rosterLines();
+    if (!people.length) {
+      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.fillText('Henüz öğrenci girmedi', x + pad, ty);
+    } else {
+      ctx.fillStyle = '#fff';
+      people.forEach(function (line) {
+        if (ty > y + h - 16) return;
+        ctx.fillText(ellip(line, inner), x + pad, ty);
+        ty += 16;
+      });
     }
   }
 
@@ -166,18 +293,12 @@
     if (painting || finishing || done || !armed || recPaused) return;
     painting = true;
     try {
-      paintBoard(0, 0, W, H);
-      var pipW = Math.round(W * 0.22);
-      var pipH = Math.round(pipW * 9 / 16);
-      var ox = W - pipW - 18;
-      var oy = 18;
-      ctx.save();
-      roundRectPath(ox, oy, pipW, pipH, 14);
-      ctx.fillStyle = '#000';
-      ctx.fill();
-      ctx.clip();
-      drawCover(video, ox, oy, pipW, pipH);
-      ctx.restore();
+      syncShareVideo();
+      ctx.fillStyle = '#0b1020';
+      ctx.fillRect(0, 0, W, H);
+      var side = 300;
+      paintBoard(0, 0, W - side, H);
+      paintSidebar(W - side, 0, side, H);
     } finally {
       painting = false;
     }
@@ -483,6 +604,7 @@
   };
   window.liveRecordOnShare = function (media) {
     pendingShare = media instanceof MediaStream ? media : null;
+    syncShareVideo();
     if (pendingShare) {
       pendingShare.addEventListener('addtrack', function () {
         if (armed) refreshMix(pendingShare);

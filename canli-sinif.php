@@ -37,7 +37,7 @@ if ($u['role'] === 'ogrenci') {
 } else {
     $back = 'admin/canli.php';
 }
-$endGo = $u['role'] === 'ogretmen' ? 'ogretmen/kayit-yukle.php' : $back;
+$endGo = $u['role'] === 'ogretmen' ? 'ogretmen/kayit-yukle.php' : ($u['role'] === 'admin' ? 'admin/kayitlar.php' : $back);
 if ($u['role'] === 'ogrenci') {
     $lives = [];
     foreach (live_student_live_rooms((int) $u['id']) as $lr) {
@@ -77,6 +77,7 @@ $pauseInfo = live_room_pause_state($room);
 $waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
 $showRoster = in_array($u['role'], ['ogretmen', 'admin'], true);
 $presentN = count($students);
+$boardOn = function_exists('live_board_enabled') && live_board_enabled();
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -89,11 +90,13 @@ $presentN = count($students);
   <script>tailwind.config={theme:{extend:{colors:{navy:'#111111',navy3:'#0a0a0a',accent:'#e8232a'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/css/site.css') ?>" />
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+  <?php if ($boardOn): ?>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <?php endif; ?>
 </head>
 <body class="bg-black">
-<div class="live-shell">
+<div class="live-shell<?= $boardOn ? '' : ' is-board-off' ?>">
   <?php if ($lives): ?>
   <div class="live-strip">
     <?php foreach ($lives as $l): ?>
@@ -120,6 +123,7 @@ $presentN = count($students);
       <?php if ($canPublish): ?>
       <div class="live-board-bar">
         <h1 class="live-top-title"><?= e($room['title']) ?></h1>
+        <?php if ($boardOn): ?>
         <button type="button" class="live-board-tool is-on" data-tool="pen">Kalem</button>
         <button type="button" class="live-board-tool" data-tool="erase">Silgi</button>
         <button type="button" class="live-board-tool" data-tool="pan">Kaydır</button>
@@ -140,8 +144,9 @@ $presentN = count($students);
         <button type="button" class="live-board-tool" data-act="zoomreset">1:1</button>
         <span id="board-page"></span>
         <span class="live-board-sep"></span>
+        <?php endif; ?>
         <button type="button" id="whip-toggle" class="live-cam-btn">Kamera</button>
-        <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranı beyaz tahtada gösterin; kamera açık kalır">Ekran</button>
+        <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="Ekranınızı öğrenciler görür; kamera açık kalır">Ekran paylaşımı</button>
         <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Ses</button>
         <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
         <?php if ($canEnd && $room['status'] === 'live'): ?>
@@ -236,6 +241,7 @@ window.LIVE_PLAYER = {
 };
 window.LIVE_BOARD = {
   publish: <?= $canPublish ? 'true' : 'false' ?>,
+  enabled: <?= $boardOn ? 'true' : 'false' ?>,
   roomId: <?= $id ?>,
   url: <?= json_encode(url('api/live.php')) ?>
 };
@@ -317,6 +323,17 @@ setInterval(async () => {
     log.scrollTop = log.scrollHeight;
   }
   if (Array.isArray(j.present)) renderPresent(j.present);
+  if (j.screen != null && !(window.LIVE_PLAYER && window.LIVE_PLAYER.publish)) {
+    var screenOn = !!Number(j.screen);
+    if (window._liveScreenOn !== screenOn) {
+      window._liveScreenOn = screenOn;
+      var stageEl = document.getElementById('board-stage');
+      if (stageEl) stageEl.classList.toggle('is-screen', screenOn);
+      if (typeof window.liveScreenWatch === 'function') {
+        window.liveScreenWatch(screenOn);
+      }
+    }
+  }
   if (j.room && typeof window.livePauseApply === 'function') {
     window.livePauseApply(j.room);
   }

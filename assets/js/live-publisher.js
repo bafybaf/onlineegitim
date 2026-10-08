@@ -610,7 +610,7 @@
     if (typeof window.liveRecordOnShare === 'function') {
       window.liveRecordOnShare(null);
     }
-    if (shareBtn) shareBtn.textContent = 'Ekran';
+    if (shareBtn) shareBtn.textContent = 'Ekran paylaşımı';
     showBoardScreen(false);
   }
 
@@ -646,7 +646,7 @@
     }
     if (!displayStream) {
       shareStarting = false;
-      if (shareBtn) shareBtn.textContent = 'Ekran';
+      if (shareBtn) shareBtn.textContent = 'Ekran paylaşımı';
       return;
     }
     const screenTrack = displayStream.getVideoTracks()[0];
@@ -697,7 +697,9 @@
     });
   }
 
-  btn.addEventListener('click', () => {
+  btn.addEventListener('pointerdown', (ev) => {
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    ev.preventDefault();
     if (starting) return;
     if (publishing || whipAlive()) {
       stopPublish();
@@ -708,12 +710,17 @@
   });
 
   if (shareBtn) {
-    shareBtn.addEventListener('click', () => {
+    shareBtn.addEventListener('pointerdown', (ev) => {
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+      ev.preventDefault();
       if (shareStarting) return;
-      if (sharing) stopShare();
-      else startShare().catch(() => {
+      if (sharing) {
+        stopShare();
+        return;
+      }
+      startShare().catch(() => {
         shareStarting = false;
-        if (shareBtn) shareBtn.textContent = 'Ekran';
+        if (shareBtn) shareBtn.textContent = 'Ekran paylaşımı';
         setProto('Paylaşım iptal');
       });
     });

@@ -261,6 +261,42 @@ function ensure_recordings_duration_schema(): void
         db()->exec('ALTER TABLE recordings ADD COLUMN duration_sec INT UNSIGNED NULL');
     } catch (Throwable) {
     }
+    ensure_recordings_test_schema();
+}
+
+function ensure_recordings_test_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec('ALTER TABLE recordings ADD COLUMN is_test TINYINT(1) NOT NULL DEFAULT 0');
+    } catch (Throwable) {
+    }
+    try {
+        db()->exec("UPDATE recordings SET is_test = 1 WHERE is_test = 0 AND title LIKE 'Test ·%'");
+    } catch (Throwable) {
+    }
+    try {
+        db()->exec(
+            "UPDATE recordings rec
+             JOIN live_rooms r ON rec.video_path LIKE CONCAT('vod/oda-', r.id, '-%')
+             SET rec.is_test = 1
+             WHERE rec.is_test = 0 AND r.access_mode = 'allow'"
+        );
+    } catch (Throwable) {
+    }
+}
+
+function recording_is_test(array $rec): bool
+{
+    if ((int) ($rec['is_test'] ?? 0) === 1) {
+        return true;
+    }
+    $title = (string) ($rec['title'] ?? '');
+    return str_starts_with($title, 'Test ·');
 }
 
 function vod_abs_from_rec(array $rec): string
@@ -440,29 +476,48 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
     $sec = min(28800, $sec);
     $mins = max(1, (int) round($sec / 60));
     $mins = min(480, $mins);
+    $isTest = function_exists('live_room_is_test') && live_room_is_test($room);
+    if ($isTest && !str_starts_with($label, 'Test ·')) {
+        $label = 'Test · ' . $label;
+    }
     ensure_recordings_duration_schema();
+    $title = vod_clip_title($label);
+    $okRow = false;
     try {
-        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path) VALUES (?,?,?,?,?,CURDATE(),NULL,?)')
-            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], vod_clip_title($label), $mins, $sec, $name]);
+        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path, is_test) VALUES (?,?,?,?,?,CURDATE(),NULL,?,?)')
+            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $name, $isTest ? 1 : 0]);
+        $okRow = true;
     } catch (Throwable $e) {
         try {
-            $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
-                ->execute([(int) $room['group_id'], (int) $room['teacher_id'], vod_clip_title($label), $mins, $name]);
+            $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path) VALUES (?,?,?,?,?,CURDATE(),NULL,?)')
+                ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $name]);
+            $okRow = true;
         } catch (Throwable $e2) {
-            return is_file($dest);
+            try {
+                $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),NULL,?)')
+                    ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $name]);
+                $okRow = true;
+            } catch (Throwable $e3) {
+                return is_file($dest);
+            }
         }
     }
-    if (function_exists('notify_group_students')) {
+    if ($okRow && !$isTest && function_exists('notify_group_students')) {
         notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
     }
     return true;
 }
 
-function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int
+function vod_recover_pending_rooms(PDO $pdo, ?int $teacherId = null): int
 {
     $n = 0;
-    foreach (glob(academy_storage('vod') . '/live-*.webm') ?: [] as $file) {
-        if (!preg_match('/live-(\d+)\.webm$/', str_replace('\\', '/', $file), $m)) {
+    $files = array_merge(
+        glob(academy_storage('vod') . '/live-*.webm') ?: [],
+        glob(academy_storage('vod') . '/oda-*.webm') ?: []
+    );
+    foreach ($files as $file) {
+        $base = str_replace('\\', '/', (string) $file);
+        if (!preg_match('/(?:live-|oda-)(\d+)/', basename($base), $m)) {
             continue;
         }
         if (!vod_file_ready($file)) {
@@ -474,38 +529,23 @@ function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int
         if (!$room) {
             continue;
         }
-        $tid = (int) $room['teacher_id'];
-        $gid = (int) $room['group_id'];
-        if ($tid !== $teacherId && !(function_exists('group_has_teacher') && group_has_teacher($gid, $teacherId))) {
-            continue;
-        }
-        if (vod_commit_live_room($pdo, $room, 0)) {
-            $n++;
-        }
-    }
-    foreach (glob(academy_storage('vod') . '/oda-*.webm') ?: [] as $file) {
-        if (!preg_match('/oda-(\d+)-/', basename($file), $m)) {
-            continue;
-        }
-        if (!vod_file_ready($file)) {
-            continue;
-        }
-        $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
-        $st->execute([(int) $m[1]]);
-        $room = $st->fetch();
-        if (!$room) {
-            continue;
-        }
-        $tid = (int) $room['teacher_id'];
-        $gid = (int) $room['group_id'];
-        if ($tid !== $teacherId && !(function_exists('group_has_teacher') && group_has_teacher($gid, $teacherId))) {
-            continue;
+        if ($teacherId !== null) {
+            $tid = (int) $room['teacher_id'];
+            $gid = (int) $room['group_id'];
+            if ($tid !== $teacherId && !(function_exists('group_has_teacher') && group_has_teacher($gid, $teacherId))) {
+                continue;
+            }
         }
         if (vod_commit_live_room($pdo, $room, 0)) {
             $n++;
         }
     }
     return $n;
+}
+
+function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int
+{
+    return vod_recover_pending_rooms($pdo, $teacherId);
 }
 
 function vod_remux_webm(string $abs): bool

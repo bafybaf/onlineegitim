@@ -380,6 +380,7 @@ CREATE TABLE recordings (
   recorded_on DATE NOT NULL,
   video_url VARCHAR(500) NULL,
   video_path VARCHAR(255) NULL,
+  is_test TINYINT(1) NOT NULL DEFAULT 0,
   CONSTRAINT fk_rec_g FOREIGN KEY (group_id) REFERENCES class_groups(id)
 ) ENGINE=InnoDB;
 

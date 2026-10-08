@@ -3,6 +3,13 @@ require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
 ensure_live_attendance_schema();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'live_board') {
+    setting_set('live_board_on', post('live_board_on') === '1' ? '1' : '0');
+    flash_ok(live_board_enabled()
+        ? 'Tahta açıldı. Hocalar kalem ve PDF kullanabilir.'
+        : 'Tahta gizlendi. Derste yalnız kamera ve ekran paylaşımı kalır.');
+    redirect('admin/canli.php');
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'cf_stream') {
     $pairs = [
         'cf_stream_whip' => trim((string) post('cf_stream_whip')),
@@ -46,7 +53,7 @@ $err = flash_error();
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <?php $liveErrN = function_exists('live_log_recent_error_count') ? live_log_recent_error_count() : 0; ?>
 <p class="mb-4 text-sm text-muted">Test yayını yalnızca seçtiğiniz öğrencileri alır; grubun geri kalanı odayı görmez. Kamerayı sizin açmanız için oda size bağlanır. Gözlemle ile normal derse öğrenci gibi girersiniz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır.</p>
-<p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
+<p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/kayitlar')) ?>">Ders kayıtları</a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
 <div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Cloudflare Stream</h2>
   <p class="mt-1 text-sm text-muted">WHIP yayın / WHEP izleme adresleri doluysa kamera ve ekran Cloudflare’a gider; sunucu CPU’su rahatlar. Şu an tek girdi var: aynı anda bir ders yayınlasın. Kayıt yine sitede kalır.</p>
@@ -66,6 +73,19 @@ $err = flash_error();
       <input name="cf_stream_whep_screen" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('cf_stream_whep_screen') ?: (defined('CF_STREAM_WHEP_SCREEN') ? (string) CF_STREAM_WHEP_SCREEN : '')) ?>" autocomplete="off">
     </label>
     <button class="btn-primary h-10 w-fit text-sm">Kaydet</button>
+  </form>
+</div>
+<div class="card mb-6 p-5">
+  <h2 class="font-display text-xl">Beyaz tahta</h2>
+  <p class="mt-1 text-sm text-muted">Kapalıyken kalem, silgi ve PDF görünmez. Derste kamera ve ekran paylaşımı kalır. Açınca hocalar tekrar tahtayı kullanır.</p>
+  <p class="mt-2 text-sm <?= live_board_enabled() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?= live_board_enabled() ? 'Tahta açık.' : 'Tahta gizli.' ?></p>
+  <form method="post" class="mt-4">
+    <input type="hidden" name="action" value="live_board">
+    <label class="flex items-center gap-2 text-sm font-bold">
+      <input type="checkbox" name="live_board_on" value="1" <?= live_board_enabled() ? 'checked' : '' ?>>
+      Tahtayı aç (kalem, PDF)
+    </label>
+    <button class="btn-primary mt-3 h-10 w-fit text-sm">Kaydet</button>
   </form>
 </div>
 <div class="card mb-6 p-5">
@@ -165,7 +185,7 @@ $err = flash_error();
           <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-oda.php?id=' . (int) $r['id'])) ?>">Girenler</a>
           <?php if (($r['status'] ?? '') === 'live'): ?>
             · <a class="font-extrabold text-accent" href="<?= e(canli_url((int) $r['id'])) ?>"><?= live_user_can_publish($u, $r) ? 'Yayına gir' : 'Gözlemle' ?></a>
-            · <form class="inline" method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="admin/canli.php"><button class="font-extrabold text-muted">Kapat</button></form>
+            · <form class="inline" method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="goto" value="admin/kayitlar.php"><button class="font-extrabold text-muted">Kapat</button></form>
           <?php endif; ?>
         </td>
       </tr>

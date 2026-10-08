@@ -286,10 +286,15 @@ function academy_delete_note(int $noteId, int $teacherId): void
     db()->prepare('DELETE FROM lesson_notes WHERE id = ? AND teacher_id = ?')->execute([$noteId, $teacherId]);
 }
 
-function academy_delete_recording(int $recId, int $teacherId): void
+function academy_delete_recording(int $recId, int $teacherId, bool $asAdmin = false): void
 {
-    $st = db()->prepare('SELECT * FROM recordings WHERE id = ? AND teacher_id = ?');
-    $st->execute([$recId, $teacherId]);
+    if ($asAdmin) {
+        $st = db()->prepare('SELECT * FROM recordings WHERE id = ?');
+        $st->execute([$recId]);
+    } else {
+        $st = db()->prepare('SELECT * FROM recordings WHERE id = ? AND teacher_id = ?');
+        $st->execute([$recId, $teacherId]);
+    }
     $row = $st->fetch();
     if (!$row) {
         throw new RuntimeException('Kayıt bulunamadı.');
@@ -299,6 +304,10 @@ function academy_delete_recording(int $recId, int $teacherId): void
     academy_unlink_stored($rel);
     if ($abs) {
         @unlink($abs . '.ok');
+    }
+    if ($asAdmin) {
+        db()->prepare('DELETE FROM recordings WHERE id = ?')->execute([$recId]);
+        return;
     }
     db()->prepare('DELETE FROM recordings WHERE id = ? AND teacher_id = ?')->execute([$recId, $teacherId]);
 }

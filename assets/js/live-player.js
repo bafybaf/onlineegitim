@@ -600,6 +600,7 @@
 
   async function connect() {
     if (!want || busy) return;
+    if (pc || hls) return;
     if (el.videoWidth > 0 || (el.srcObject && el.readyState >= 2)) return;
     busy = true;
     try {
@@ -615,7 +616,12 @@
   }
 
   window.liveScreenWatch = function (on) {
-    want = !!on;
+    on = !!on;
+    if (on === want) {
+      if (on) connect();
+      return;
+    }
+    want = on;
     if (!want) {
       stop();
       return;
