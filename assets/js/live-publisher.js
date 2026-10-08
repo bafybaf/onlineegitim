@@ -30,7 +30,10 @@
   let shareStarting = false;
   let publishing = false;
   let starting = false;
+  let wantPublish = false;
   let hearing = false;
+  let reconnectTimer = 0;
+  let dropTimer = 0;
   let meterTimer = 0;
   let audioCtx = null;
   let sendPaused = false;
@@ -72,6 +75,84 @@
       waitDetail.hidden = !detail;
     }
     if (overlay) overlay.classList.toggle('is-off', !show);
+  }
+
+  function iceServers() {
+    return [
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'stun:stun.l.google.com:19302' }
+    ];
+  }
+
+  function camLive() {
+    return !!(stream && stream.getVideoTracks().some((t) => t.readyState === 'live'));
+  }
+
+  function whipAlive() {
+    return !!(pc && (pc.connectionState === 'connected' || pc.connectionState === 'connecting'));
+  }
+
+  function clearReconnect() {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = 0;
+    }
+    if (dropTimer) {
+      clearTimeout(dropTimer);
+      dropTimer = 0;
+    }
+  }
+
+  function queueReconnect(ms) {
+    if (!wantPublish || starting) return;
+    clearReconnect();
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = 0;
+      if (!wantPublish || starting || whipAlive() || !camLive()) return;
+      startPublish().catch(() => {});
+    }, ms || 2000);
+  }
+
+  function bindPublisherPc(conn) {
+    conn.onconnectionstatechange = () => {
+      if (conn !== pc) return;
+      if (conn.connectionState === 'connected') {
+        if (dropTimer) {
+          clearTimeout(dropTimer);
+          dropTimer = 0;
+        }
+        publishing = true;
+        btn.textContent = 'Kapat';
+        setProto(sendPaused ? 'Mola' : 'Yayındasınız');
+        if (overlay) overlay.classList.add('is-off');
+        return;
+      }
+      if (conn.connectionState === 'failed') {
+        publishing = false;
+        if (wantPublish) {
+          setProto('Yeniden bağlanıyor…');
+          queueReconnect(1500);
+        }
+        return;
+      }
+      if (conn.connectionState === 'disconnected') {
+        if (dropTimer) clearTimeout(dropTimer);
+        dropTimer = setTimeout(() => {
+          dropTimer = 0;
+          if (conn !== pc || conn.connectionState !== 'disconnected' || !wantPublish) return;
+          publishing = false;
+          setProto('Yeniden bağlanıyor…');
+          queueReconnect(1200);
+        }, 2500);
+      }
+    };
+  }
+
+  async function deleteWhip(url) {
+    if (!url) return;
+    try {
+      await fetch(url, { method: 'DELETE', mode: 'cors', credentials: 'omit' });
+    } catch (e) {}
   }
 
   function waitPcReady(conn, ms) {
@@ -187,7 +268,23 @@
     }
   }
 
+  async function stopWhipOnly() {
+    const oldLoc = loc;
+    loc = '';
+    const oldPc = pc;
+    pc = null;
+    await deleteWhip(oldLoc);
+    for (let i = 0; i < whipUrls.length; i++) {
+      await deleteWhip(whipUrls[i]);
+    }
+    if (oldPc) {
+      try { oldPc.close(); } catch (e) {}
+    }
+  }
+
   async function stopPublish() {
+    wantPublish = false;
+    clearReconnect();
     publishing = false;
     starting = false;
     btn.textContent = 'Kamera';
@@ -195,16 +292,7 @@
     if (listenBtn) listenBtn.hidden = true;
     stopMeter();
     setProto('');
-    if (loc) {
-      try {
-        await fetch(loc, { method: 'DELETE', credentials: 'omit' });
-      } catch (e) {}
-      loc = '';
-    }
-    if (pc) {
-      try { pc.close(); } catch (e) {}
-      pc = null;
-    }
+    await stopWhipOnly();
     if (camStream && camStream !== stream) {
       camStream.getTracks().forEach((t) => t.stop());
     }
@@ -263,62 +351,95 @@
   }
 
   async function connectWhip() {
-    if (pc) {
-      try { pc.close(); } catch (e) {}
-      pc = null;
+    await stopWhipOnly();
+    if (!stream) {
+      throw new Error('nocam');
     }
-    loc = '';
     pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: iceServers()
     });
+    const conn = pc;
+    bindPublisherPc(conn);
     stream.getVideoTracks().forEach((t) => {
-      pc.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
+      if (t.readyState === 'live') {
+        conn.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
+      }
     });
     stream.getAudioTracks().forEach((t) => {
       t.enabled = true;
-      pc.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
+      if (t.readyState === 'live') {
+        conn.addTransceiver(t, { direction: 'sendonly', streams: [stream] });
+      }
     });
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await waitIceGather(pc, 400);
-    const offerSdp = pc.localDescription && pc.localDescription.sdp ? pc.localDescription.sdp : offer.sdp;
+    if (!conn.getTransceivers().length) {
+      throw new Error('nocam');
+    }
+    const offer = await conn.createOffer();
+    await conn.setLocalDescription(offer);
+    await waitIceGather(conn, 800);
+    const offerSdp = conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp;
     let lastErr = '';
-    for (let i = 0; i < whipUrls.length; i++) {
-      const url = whipUrls[i];
-      let res;
-      try {
-        res = await fetchSdp(url, offerSdp, 8000);
-      } catch (e) {
-        lastErr = 'offline';
-        continue;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (conn !== pc) {
+        throw new Error('stale');
       }
-      if (!res.ok) {
-        lastErr = String(res.status);
-        continue;
+      for (let i = 0; i < whipUrls.length; i++) {
+        const url = whipUrls[i];
+        let res;
+        try {
+          res = await fetchSdp(url, offerSdp, 10000);
+        } catch (e) {
+          lastErr = 'offline';
+          continue;
+        }
+        if (res.status === 409) {
+          lastErr = '409';
+          await deleteWhip(url);
+          await new Promise((r) => setTimeout(r, 1200 + attempt * 700));
+          continue;
+        }
+        if (!res.ok) {
+          lastErr = String(res.status);
+          continue;
+        }
+        loc = publicWhipUrl(url, res.headers.get('Location') || '') || '';
+        const sdp = await res.text();
+        if (!sdp || !/v=0/i.test(sdp)) {
+          lastErr = 'empty';
+          continue;
+        }
+        await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
+        const ready = await waitPcReady(conn, 8000);
+        if (!ready && conn.connectionState !== 'connected') {
+          lastErr = 'ice';
+          await deleteWhip(loc);
+          loc = '';
+          continue;
+        }
+        return true;
       }
-      loc = publicWhipUrl(url, res.headers.get('Location') || '');
-      const sdp = await res.text();
-      if (!sdp || !/v=0/i.test(sdp)) {
-        lastErr = 'empty';
-        continue;
-      }
-      await pc.setRemoteDescription({ type: 'answer', sdp: sdp });
-      waitPcReady(pc, 4000);
-      return true;
     }
     throw new Error(lastErr || 'whip');
   }
 
   async function startPublish() {
-    if (starting || publishing) return;
+    if (starting) return;
+    if (whipAlive()) return;
     if (!whipUrls.length || typeof RTCPeerConnection === 'undefined') {
       setWait('Yayın yok', '', true);
       return;
     }
+    wantPublish = true;
     starting = true;
+    publishing = false;
+    clearReconnect();
     btn.textContent = 'Bağlanıyor…';
     try {
-      if (!stream) {
+      if (!camLive()) {
+        if (stream) {
+          stream.getTracks().forEach((t) => t.stop());
+          stream = null;
+        }
         stream = await captureMedia();
         camStream = stream;
         video.srcObject = stream;
@@ -342,18 +463,22 @@
         window.liveRecordOnCam(stream);
       }
     } catch (e) {
-      if (pc) {
-        try { pc.close(); } catch (err) {}
-        pc = null;
-      }
       publishing = false;
+      await stopWhipOnly();
+      const msg = String((e && e.message) || '');
       if (!stream) {
         setWait('Kamera açılamadı', '', true);
         btn.textContent = 'Kamera';
+      } else if (msg === '409') {
+        setWait('Yayın meşgul', 'Önceki oturum kapanıyor, tekrar deniyor…', true);
+        setProto('Yeniden bağlanıyor…');
+        btn.textContent = 'Tekrar';
+        queueReconnect(2500);
       } else {
         setWait('Yayın bağlanamadı', 'Tekrar deneyin.', true);
         setProto('Yayın bağlanamadı');
         btn.textContent = 'Tekrar';
+        queueReconnect(4000);
       }
     } finally {
       starting = false;
@@ -372,7 +497,7 @@
       return false;
     }
     screenPc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: iceServers()
     });
     displayStream.getVideoTracks().forEach((t) => {
       screenPc.addTransceiver(t, { direction: 'sendonly', streams: [displayStream] });
@@ -526,7 +651,7 @@
 
   btn.addEventListener('click', () => {
     if (starting) return;
-    if (publishing) {
+    if (publishing || whipAlive()) {
       stopPublish();
       return;
     }
@@ -550,10 +675,10 @@
   }
 
   setInterval(() => {
-    if (stream && !publishing && !starting) {
-      startPublish().catch(() => {});
+    if (wantPublish && camLive() && !whipAlive() && !starting && !publishing) {
+      queueReconnect(800);
     }
-  }, 5000);
+  }, 8000);
 
   window.addEventListener('pagehide', () => {
     if (sharing) stopShare();

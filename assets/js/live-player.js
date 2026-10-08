@@ -19,6 +19,8 @@
   let ended = false;
   let lastHint = '';
   let lessonPaused = false;
+  let retryTimer = 0;
+  let retryMs = 4000;
 
   function showWait(on) {
     if (overlay) overlay.classList.toggle('is-off', !on);
@@ -191,7 +193,25 @@
     if (kind === 'down' && isLocalDev()) {
       return ['Sunucu kapalı', ''];
     }
-    return ['Hoca bağlanıyor', ''];
+    return ['Hoca bağlanıyor', 'Kamera açılınca görüntü gelir.'];
+  }
+
+  function isWaitStatus(code) {
+    return code === 404 || code === 409 || code === 410 || code === 423 || code === 425 || code === 503;
+  }
+
+  function scheduleRetry(waitStatus) {
+    if (ended || playing) return;
+    if (retryTimer) clearTimeout(retryTimer);
+    if (waitStatus) {
+      retryMs = Math.min(12000, Math.max(6000, retryMs + 2000));
+    } else {
+      retryMs = 4000;
+    }
+    retryTimer = setTimeout(() => {
+      retryTimer = 0;
+      tryWhepOrHls();
+    }, retryMs);
   }
 
   async function startWhep(url) {
@@ -359,14 +379,22 @@
       playMode = 'none';
     }
     busy = true;
+    let whepResult = null;
+    let waiting = false;
     try {
       const mtx = cfg.provider === 'cloudflare' ? 'unknown' : await pingMtx();
       if (playMode !== 'hls') {
-        let whepResult = null;
         for (let i = 0; i < whepUrls.length; i++) {
           setWait('Bağlanıyor…', '');
           whepResult = await startWhep(whepUrls[i]);
-          if (whepResult === true) return;
+          if (whepResult === true) {
+            retryMs = 4000;
+            return;
+          }
+          if (isWaitStatus(whepResult)) {
+            waiting = true;
+            break;
+          }
           if (whepResult === 'offline') {
             continue;
           }
@@ -374,15 +402,23 @@
             break;
           }
         }
-        if (whepResult === true) return;
+        if (whepResult === true) {
+          retryMs = 4000;
+          return;
+        }
       }
-      for (let i = 0; i < hlsUrls.length; i++) {
-        const ok = await attachHls(hlsUrls[i]);
-        if (ok || playing) return;
-        stopHls();
-        playMode = 'none';
+      if (!waiting && cfg.provider !== 'cloudflare') {
+        for (let i = 0; i < hlsUrls.length; i++) {
+          const ok = await attachHls(hlsUrls[i]);
+          if (ok || playing) {
+            retryMs = 4000;
+            return;
+          }
+          stopHls();
+          playMode = 'none';
+        }
       }
-      if (whepResult === 404) {
+      if (waiting || isWaitStatus(whepResult)) {
         setWait('Hoca bağlanıyor', 'Kamera açılınca görüntü gelir.');
       } else {
         const hint = waitHint(mtx === 'down' ? 'down' : 'wait');
@@ -394,6 +430,9 @@
       playMode = 'none';
     } finally {
       busy = false;
+      if (!ended && !playing && whepResult !== true) {
+        scheduleRetry(waiting || isWaitStatus(whepResult));
+      }
     }
   }
 
@@ -426,7 +465,6 @@
   }
 
   tryWhepOrHls();
-  setInterval(tryWhepOrHls, 4000);
 })();
 
 (function () {
