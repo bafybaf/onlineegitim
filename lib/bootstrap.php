@@ -58,6 +58,9 @@ if (is_file(__DIR__ . '/home.php')) {
 if (is_file(__DIR__ . '/groups.php')) {
     require_once __DIR__ . '/groups.php';
 }
+if (is_file(__DIR__ . '/transfer.php')) {
+    require_once __DIR__ . '/transfer.php';
+}
 if (is_file(__DIR__ . '/academy.php')) {
     require_once __DIR__ . '/academy.php';
 }

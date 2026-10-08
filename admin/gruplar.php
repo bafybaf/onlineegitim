@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
+if (function_exists('transfer_groups_handle')) {
+    transfer_groups_handle();
+}
 group_handle_admin_post(0);
 $rows = group_list();
 $programs = group_programs();
@@ -10,6 +13,10 @@ panel_head('admin', 'gruplar', 'Gruplar | Admin', $u);
 group_flash_html();
 ?>
 <p class="mb-5 text-sm text-muted">Tüm sınıf grupları. Ada tıklayınca yoklama, takvim, kontenjan ve öğrenci listesi açılır.</p>
+<?= function_exists('transfer_bar') ? transfer_bar(
+    url('admin/gruplar') . '?export=1',
+    'CSV Excel’de açılır. Sütunlar: grup, program, hocalar, gunler, kontenjan, aciklama, whatsapp, ogrenciler. Program ve hoca adları sitede birebir olmalı. Aynı grup adı güncellenir.'
+) : '' ?>
 
 <div class="card mb-6 overflow-hidden">
   <div class="px-5 py-4">

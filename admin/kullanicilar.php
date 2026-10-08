@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
+if (function_exists('transfer_users_handle')) {
+    transfer_users_handle((int) $u['id']);
+}
 $rows = users_admin_rows();
 $q = trim((string) ($_GET['q'] ?? ''));
 $roleF = (string) ($_GET['rol'] ?? '');
@@ -28,6 +31,11 @@ $roles = admin_user_roles();
   <p class="text-sm text-muted">Tüm hesaplar. Satırın başındaki tutamacı sürükleyerek sırayı değiştirin. Ada tıklayınca kart açılır.</p>
   <a class="btn-primary text-sm" href="<?= e(kullanici_url(0)) ?>">Yeni kullanıcı</a>
 </div>
+<?= function_exists('transfer_bar') ? transfer_bar(
+    url('admin/kullanicilar') . '?export=1' . ($q !== '' ? '&q=' . rawurlencode($q) : '') . ($roleF !== '' ? '&rol=' . rawurlencode($roleF) : ''),
+    'CSV Excel’de açılır. Sütunlar: ad, eposta, telefon, rol, durum, sehir, gruplar, sifre. Yeni satırda şifre boşsa rastgele üretilir; “Yeni şifreleri indir” çıkar. Mevcut e-posta güncellenir.',
+    true
+) : '' ?>
 <form method="get" class="mb-4 flex flex-wrap gap-2">
   <input name="q" value="<?= e($q) ?>" class="rounded-xl border px-3 py-2 text-sm" placeholder="Ad, e-posta, telefon">
   <select name="rol" class="rounded-xl border px-3 py-2 text-sm">
