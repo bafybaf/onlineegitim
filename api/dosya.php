@@ -81,6 +81,9 @@ if ($tur === 'video') {
     exit('Dosya yok.');
 }
 
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 $abs = function_exists('academy_file_readable') ? academy_file_readable($rel) : academy_abs_file($rel);
 if ($abs === null || !is_file($abs)) {
     http_response_code(404);
@@ -103,7 +106,8 @@ if ($isVideo && $tur === 'video' && function_exists('vod_ensure_playable')) {
     $hintMs = function_exists('vod_hint_ms') ? vod_hint_ms($row) : max(0, (int) ($row['mins'] ?? 0)) * 60 * 1000.0;
     vod_ensure_playable($abs, $hintMs);
     $abs = function_exists('academy_file_readable') ? (academy_file_readable($rel) ?: $abs) : $abs;
-    if (function_exists('vod_sync_recording_length')) {
+    $needLen = (int) ($row['duration_sec'] ?? 0) < 1;
+    if ($needLen && function_exists('vod_sync_recording_length')) {
         vod_sync_recording_length($row);
     }
 }

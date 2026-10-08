@@ -109,7 +109,7 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     if ($ext !== 'webm') {
         return true;
     }
-    if (is_file(vod_marker($abs)) && vod_webm_duration_known($abs)) {
+    if (is_file(vod_marker($abs))) {
         return true;
     }
     @set_time_limit(180);
@@ -325,11 +325,6 @@ function vod_sync_recording_length(array $rec): array
 
 function vod_prepare_recording(array $rec): array
 {
-    $abs = vod_abs_from_rec($rec);
-    if ($abs !== '') {
-        @set_time_limit(180);
-        vod_ensure_playable($abs, vod_hint_ms($rec));
-    }
     return vod_sync_recording_length($rec);
 }
 
@@ -835,6 +830,9 @@ function vod_webm_encode_vint(int $value, int $width): string
 
 function vod_send_file(string $abs, string $mime): void
 {
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
     $size = filesize($abs);
     if ($size === false || $size < 1) {
         http_response_code(404);
@@ -882,7 +880,10 @@ function vod_send_file(string $abs, string $mime): void
     fseek($fp, $start);
     $left = $end - $start + 1;
     while ($left > 0 && !feof($fp)) {
-        $chunk = fread($fp, min(8192, $left));
+        if (connection_aborted()) {
+            break;
+        }
+        $chunk = fread($fp, min(65536, $left));
         if ($chunk === false || $chunk === '') {
             break;
         }

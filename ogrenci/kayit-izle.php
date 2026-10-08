@@ -56,6 +56,11 @@ panel_head('ogrenci', 'kayitlar', (string) $r['title'] . ' | Kayıt', $u);
       if (!box || !video) return;
       video.setAttribute('src', box.getAttribute('data-src') || '');
       video.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      window.addEventListener('pagehide', function () {
+        try { video.pause(); } catch (e) {}
+        video.removeAttribute('src');
+        try { video.load(); } catch (e) {}
+      });
       video.addEventListener('error', function () {
         if (box.querySelector('.vod-err')) return;
         var p = document.createElement('p');
