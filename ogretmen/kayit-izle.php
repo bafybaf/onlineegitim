@@ -3,13 +3,15 @@ require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogretmen');
 $id = (int) ($_GET['id'] ?? 0);
+$owned = function_exists('group_owned_in_sql') ? group_owned_in_sql((int) $u['id']) : '0';
 $st = db()->prepare(
-    "SELECT rec.*, g.name gname
+    "SELECT rec.*, g.name gname, t.name tname
      FROM recordings rec
      JOIN class_groups g ON g.id = rec.group_id
-     WHERE rec.id = ? AND rec.teacher_id = ?"
+     JOIN users t ON t.id = rec.teacher_id
+     WHERE rec.id = ? AND rec.group_id IN ($owned)"
 );
-$st->execute([$id, (int) $u['id']]);
+$st->execute([$id]);
 $r = $st->fetch();
 if (!$r) {
     flash_error('Kayıt bulunamadı.');
@@ -42,9 +44,11 @@ $err = flash_error();
   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
     <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle')) ?>">← <?= e($r['gname']) ?></a>
     <h2 class="font-display text-lg leading-tight"><?= e($r['title']) ?></h2>
-    <span class="text-xs text-muted"><?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></span>
+    <span class="text-xs text-muted"><?= e((string) $r['tname']) ?> · <?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></span>
   </div>
-  <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
+  <?php if ((int) $r['teacher_id'] === (int) $u['id']): ?>
+    <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
+  <?php endif; ?>
 </div>
 <style>.vod-wide{margin-left:-1.5rem;margin-right:-1.5rem;width:calc(100% + 3rem)}@media(min-width:768px){.vod-wide{margin-left:-2.25rem;margin-right:-2.25rem;width:calc(100% + 4.5rem)}}</style>
 <div class="vod-wide" style="background:#000;border-radius:.75rem;overflow:hidden">
