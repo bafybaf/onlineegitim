@@ -6,6 +6,7 @@ if (function_exists('ensure_recordings_test_schema')) {
     ensure_recordings_test_schema();
 }
 $gid = (int) ($_GET['grup'] ?? 0);
+$tid = (int) ($_GET['hoca'] ?? 0);
 
 $gst = db()->prepare(
     "SELECT g.id, g.name, t.name teacher_name
@@ -36,12 +37,38 @@ if ($gid) {
     $sql .= ' AND rec.group_id = ?';
     $params[] = $gid;
 }
-$sql .= ' ORDER BY g.name ASC, rec.recorded_on DESC, rec.id DESC';
+$sql .= ' ORDER BY t.name ASC, rec.recorded_on DESC, rec.id DESC';
 $st = db()->prepare($sql);
 $st->execute($params);
 $rows = $st->fetchAll();
 
+$teachers = [];
+foreach ($rows as $r) {
+    $hid = (int) $r['teacher_id'];
+    if (!isset($teachers[$hid])) {
+        $teachers[$hid] = (string) $r['tname'];
+    }
+}
+if ($tid && !isset($teachers[$tid])) {
+    $tid = 0;
+}
+if ($tid) {
+    $rows = array_values(array_filter($rows, static fn (array $r): bool => (int) $r['teacher_id'] === $tid));
+}
+
 $current = $gid ? $allowed[$gid] : null;
+
+function ogrenci_kayit_qs(int $gid, int $tid): string
+{
+    $q = [];
+    if ($gid) {
+        $q['grup'] = $gid;
+    }
+    if ($tid) {
+        $q['hoca'] = $tid;
+    }
+    return $q ? ('?' . http_build_query($q)) : '';
+}
 $err = flash_error();
 panel_head('ogrenci', 'kayitlar', $current ? ((string) $current['name'] . ' kayıtları | Öğrenci Paneli') : 'Ders kayıtları | Öğrenci Paneli', $u);
 
@@ -69,41 +96,46 @@ function ogrenci_kayit_card(array $r, int $backGid): void
   <h2 class="font-display text-2xl"><?= e($current['name']) ?></h2>
   <p class="mb-5 text-sm text-muted"><?= e($current['teacher_name']) ?> · Bu dersin kayıtları.</p>
 <?php else: ?>
-  <p class="mb-5 text-sm text-muted">Kayıtlar derse göre ayrılır. Derslerim’den bir ders seçebilir veya aşağıdan süzebilirsiniz.</p>
+  <p class="mb-5 text-sm text-muted">Kayıtlar yükleyen hocaya göre ayrılır. İsterseniz derse veya hocaya göre süzebilirsiniz.</p>
 <?php endif; ?>
 
 <?php if (count($groups) > 1): ?>
-  <div class="mb-5 flex flex-wrap gap-2">
-    <a class="<?= $gid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogrenci/kayitlar')) ?>">Tüm dersler</a>
+  <div class="mb-3 flex flex-wrap gap-2">
+    <a class="<?= $gid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogrenci/kayitlar.php' . ogrenci_kayit_qs(0, $tid))) ?>">Tüm dersler</a>
     <?php foreach ($groups as $g): ?>
-      <a class="<?= $gid === (int) $g['id'] ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogrenci/kayitlar.php?grup=' . (int) $g['id'])) ?>"><?= e($g['name']) ?></a>
+      <a class="<?= $gid === (int) $g['id'] ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogrenci/kayitlar.php' . ogrenci_kayit_qs((int) $g['id'], $tid))) ?>"><?= e($g['name']) ?></a>
+    <?php endforeach; ?>
+  </div>
+<?php endif; ?>
+<?php if (count($teachers) > 1): ?>
+  <div class="mb-5 flex flex-wrap gap-2">
+    <a class="<?= $tid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogrenci/kayitlar.php' . ogrenci_kayit_qs($gid, 0))) ?>">Tüm hocalar</a>
+    <?php foreach ($teachers as $hid => $hname): ?>
+      <a class="<?= $tid === (int) $hid ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogrenci/kayitlar.php' . ogrenci_kayit_qs($gid, (int) $hid))) ?>"><?= e($hname) ?></a>
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
 
 <?php if (!$rows): ?>
-  <div class="card p-5"><?= $gid ? 'Bu derse ait izlenecek kayıt henüz yok.' : 'Henüz izlenecek kayıt yok.' ?></div>
-<?php elseif ($gid): ?>
-  <?php foreach ($rows as $r) {
-      ogrenci_kayit_card($r, $gid);
-  } ?>
+  <div class="card p-5"><?= $tid ? 'Bu hocaya ait izlenecek kayıt yok.' : ($gid ? 'Bu derse ait izlenecek kayıt henüz yok.' : 'Henüz izlenecek kayıt yok.') ?></div>
 <?php else:
     $last = null;
+    $groupByTeacher = $tid === 0 && count($teachers) > 1;
     foreach ($rows as $r):
-        $key = (int) $r['group_id'];
-        if ($key !== $last):
-            $last = $key;
+        $hid = (int) $r['teacher_id'];
+        if ($groupByTeacher && $hid !== $last):
+            $last = $hid;
             ?>
-    <div class="mb-3 <?= $last === (int) $rows[0]['group_id'] ? 'mt-0' : 'mt-8' ?> flex flex-wrap items-end justify-between gap-2">
+    <div class="mb-3 <?= $last === (int) $rows[0]['teacher_id'] ? 'mt-0' : 'mt-8' ?> flex flex-wrap items-end justify-between gap-2">
       <div>
-        <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Ders</p>
-        <h2 class="font-display text-2xl"><?= e($r['gname']) ?></h2>
+        <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Hoca</p>
+        <h2 class="font-display text-2xl"><?= e($r['tname']) ?></h2>
       </div>
-      <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/kayitlar.php?grup=' . $key)) ?>">Yalnız bu ders →</a>
+      <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/kayitlar.php' . ogrenci_kayit_qs($gid, $hid))) ?>">Yalnız bu hoca →</a>
     </div>
             <?php
         endif;
-        ogrenci_kayit_card($r, $key);
+        ogrenci_kayit_card($r, $gid ?: (int) $r['group_id']);
     endforeach;
 endif; ?>
 <?php panel_foot();
