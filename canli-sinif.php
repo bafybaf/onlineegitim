@@ -164,8 +164,9 @@ if ($screenNow === 0) {
         <button type="button" id="live-pause-btn" class="live-board-tool">Mola</button>
         <button type="button" id="live-rec-start" class="live-cam-btn">Kayıt</button>
         <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="live-board-tool">Bitir</button></form>
-        <?php endif; ?>
+        <?php else: ?>
         <a href="<?= e(url($back)) ?>" id="live-leave" class="live-cam-btn">Ayrıl</a>
+        <?php endif; ?>
       </div>
       <?php endif; ?>
       <div class="live-board-stage<?= $screenNow ? ' is-screen' : '' ?>" id="board-stage">
