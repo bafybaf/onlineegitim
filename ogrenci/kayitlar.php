@@ -37,18 +37,12 @@ if ($gid) {
     $sql .= ' AND rec.group_id = ?';
     $params[] = $gid;
 }
-$sql .= ' ORDER BY t.name ASC, rec.recorded_on DESC, rec.id DESC';
+$sql .= ' ORDER BY rec.recorded_on DESC, rec.id DESC';
 $st = db()->prepare($sql);
 $st->execute($params);
 $rows = $st->fetchAll();
 
-$teachers = [];
-foreach ($rows as $r) {
-    $hid = (int) $r['teacher_id'];
-    if (!isset($teachers[$hid])) {
-        $teachers[$hid] = (string) $r['tname'];
-    }
-}
+[$rows, $teachers] = recordings_by_teacher_recent($rows);
 if ($tid && !isset($teachers[$tid])) {
     $tid = 0;
 }

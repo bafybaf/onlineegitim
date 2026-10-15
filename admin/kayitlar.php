@@ -30,19 +30,13 @@ try {
          FROM recordings rec
          JOIN class_groups g ON g.id = rec.group_id
          JOIN users t ON t.id = rec.teacher_id
-         ORDER BY t.name ASC, rec.recorded_on DESC, rec.id DESC
+         ORDER BY rec.recorded_on DESC, rec.id DESC
          LIMIT 300'
     )->fetchAll();
 } catch (Throwable) {
     $rows = [];
 }
-$teachers = [];
-foreach ($rows as $r) {
-    $id = (int) $r['teacher_id'];
-    if (!isset($teachers[$id])) {
-        $teachers[$id] = (string) $r['tname'];
-    }
-}
+[$rows, $teachers] = recordings_by_teacher_recent($rows);
 if ($tid && !isset($teachers[$tid])) {
     $tid = 0;
 }
