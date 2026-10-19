@@ -37,7 +37,7 @@ if ($gid) {
     $sql .= ' AND rec.group_id = ?';
     $params[] = $gid;
 }
-$sql .= ' ORDER BY rec.recorded_on DESC, rec.id DESC';
+$sql .= ' ORDER BY rec.recorded_on ASC, rec.id ASC';
 $st = db()->prepare($sql);
 $st->execute($params);
 $rows = $st->fetchAll();

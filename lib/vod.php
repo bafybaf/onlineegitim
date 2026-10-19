@@ -299,36 +299,53 @@ function recording_is_test(array $rec): bool
     return str_starts_with($title, 'Test ·');
 }
 
-/** Newest upload first; teachers stay together, newest teacher block on top. */
+/** Teachers stay together; oldest first, newest upload last. */
 function recordings_by_teacher_recent(array $rows): array
 {
-    usort($rows, static function (array $a, array $b): int {
-        $ad = (string) ($a['recorded_on'] ?? '');
-        $bd = (string) ($b['recorded_on'] ?? '');
-        if ($ad !== $bd) {
-            return $bd <=> $ad;
-        }
-        return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
-    });
     $buckets = [];
-    $order = [];
     $teachers = [];
+    $latest = [];
     foreach ($rows as $r) {
         $hid = (int) ($r['teacher_id'] ?? 0);
         if (!isset($buckets[$hid])) {
-            $order[] = $hid;
             $buckets[$hid] = [];
             $teachers[$hid] = (string) ($r['tname'] ?? '');
+            $latest[$hid] = ['d' => '', 'id' => 0];
         }
         $buckets[$hid][] = $r;
+        $d = (string) ($r['recorded_on'] ?? '');
+        $id = (int) ($r['id'] ?? 0);
+        if ($d > $latest[$hid]['d'] || ($d === $latest[$hid]['d'] && $id > $latest[$hid]['id'])) {
+            $latest[$hid] = ['d' => $d, 'id' => $id];
+        }
     }
+    foreach ($buckets as &$list) {
+        usort($list, static function (array $a, array $b): int {
+            $ad = (string) ($a['recorded_on'] ?? '');
+            $bd = (string) ($b['recorded_on'] ?? '');
+            if ($ad !== $bd) {
+                return $ad <=> $bd;
+            }
+            return ((int) ($a['id'] ?? 0)) <=> ((int) ($b['id'] ?? 0));
+        });
+    }
+    unset($list);
+    $order = array_keys($buckets);
+    usort($order, static function (int $a, int $b) use ($latest): int {
+        if ($latest[$a]['d'] !== $latest[$b]['d']) {
+            return $latest[$a]['d'] <=> $latest[$b]['d'];
+        }
+        return $latest[$a]['id'] <=> $latest[$b]['id'];
+    });
     $flat = [];
+    $names = [];
     foreach ($order as $hid) {
+        $names[$hid] = $teachers[$hid];
         foreach ($buckets[$hid] as $r) {
             $flat[] = $r;
         }
     }
-    return [$flat, $teachers];
+    return [$flat, $names];
 }
 
 function vod_abs_from_rec(array $rec): string

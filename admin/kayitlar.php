@@ -30,7 +30,7 @@ try {
          FROM recordings rec
          JOIN class_groups g ON g.id = rec.group_id
          JOIN users t ON t.id = rec.teacher_id
-         ORDER BY rec.recorded_on DESC, rec.id DESC
+         ORDER BY rec.recorded_on ASC, rec.id ASC
          LIMIT 300'
     )->fetchAll();
 } catch (Throwable) {

@@ -81,7 +81,7 @@ $st = db()->query(
      JOIN class_groups g ON g.id = rec.group_id
      JOIN users t ON t.id = rec.teacher_id
      WHERE rec.group_id IN ($owned)
-     ORDER BY rec.recorded_on DESC, rec.id DESC"
+     ORDER BY rec.recorded_on ASC, rec.id ASC"
 );
 $rows = $st ? $st->fetchAll() : [];
 [$rows, $teachers] = recordings_by_teacher_recent($rows);
