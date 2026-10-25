@@ -120,6 +120,268 @@ function live_cf_ready(): bool
     return live_cf_url('cam', 'whip') !== '' && live_cf_url('cam', 'whep') !== '';
 }
 
+function live_cf_from_url(string $url): array
+{
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+    $uid = explode('/', $path)[0] ?? '';
+    if ($host === '' || $uid === '' || !preg_match('/^customer-[a-z0-9]+\.cloudflarestream\.com$/', $host)) {
+        return ['host' => '', 'uid' => ''];
+    }
+    if (!preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
+        return ['host' => '', 'uid' => ''];
+    }
+    return ['host' => $host, 'uid' => $uid];
+}
+
+function live_cf_hls_url(string $kind): string
+{
+    $parts = live_cf_from_url(live_cf_url($kind, 'whep'));
+    if ($parts['host'] === '' || $parts['uid'] === '') {
+        $parts = live_cf_from_url(live_cf_url($kind, 'whip'));
+    }
+    if ($parts['host'] === '' || $parts['uid'] === '') {
+        return '';
+    }
+    return 'https://' . $parts['host'] . '/' . $parts['uid'] . '/manifest/video.m3u8';
+}
+
+function live_cf_api_account(): string
+{
+    $v = defined('CF_STREAM_ACCOUNT') ? trim((string) CF_STREAM_ACCOUNT) : '';
+    if ($v === '' && function_exists('setting')) {
+        $v = trim(setting('cf_stream_account'));
+    }
+    return $v;
+}
+
+function live_cf_api_token(): string
+{
+    $v = defined('CF_STREAM_TOKEN') ? trim((string) CF_STREAM_TOKEN) : '';
+    if ($v === '' && function_exists('setting')) {
+        $v = trim(setting('cf_stream_token'));
+    }
+    return $v;
+}
+
+function live_cf_api_ready(): bool
+{
+    return live_cf_api_account() !== '' && live_cf_api_token() !== '';
+}
+
+function live_cf_api(string $path): ?array
+{
+    $acc = live_cf_api_account();
+    $tok = live_cf_api_token();
+    if ($acc === '' || $tok === '' || !function_exists('curl_init')) {
+        return null;
+    }
+    $path = ltrim($path, '/');
+    if (!preg_match('#^stream/[A-Za-z0-9_./?-]+$#', $path)) {
+        return null;
+    }
+    $url = 'https://api.cloudflare.com/client/v4/accounts/' . rawurlencode($acc) . '/' . $path;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 25,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $tok,
+            'Content-Type: application/json',
+        ],
+    ]);
+    $raw = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($raw === false || $code >= 400) {
+        return null;
+    }
+    $j = json_decode((string) $raw, true);
+    if (!is_array($j) || empty($j['success'])) {
+        return null;
+    }
+    return $j;
+}
+
+function live_cf_list_input_videos(string $inputUid): array
+{
+    if ($inputUid === '' || !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $inputUid)) {
+        return [];
+    }
+    $j = live_cf_api('stream/live_inputs/' . rawurlencode($inputUid) . '/videos');
+    $rows = $j['result'] ?? null;
+    return is_array($rows) ? $rows : [];
+}
+
+function live_cf_video_iframe(array $video): string
+{
+    $play = (string) ($video['playback']['hls'] ?? '');
+    $preview = (string) ($video['preview'] ?? '');
+    $uid = (string) ($video['uid'] ?? '');
+    foreach ([$play, $preview] as $url) {
+        if (function_exists('vod_cf_iframe_url')) {
+            $iframe = vod_cf_iframe_url($url);
+            if ($iframe !== '') {
+                return $iframe;
+            }
+        }
+        if (preg_match('#^(https://customer-[a-z0-9]+\.cloudflarestream\.com/[A-Za-z0-9_-]+)#i', $url, $m)) {
+            return $m[1] . '/iframe';
+        }
+    }
+    if ($uid !== '' && preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
+        $host = live_cf_from_url(live_cf_url('cam', 'whep'))['host'];
+        if ($host !== '') {
+            return 'https://' . $host . '/' . $uid . '/iframe';
+        }
+    }
+    return $play !== '' ? $play : $preview;
+}
+
+function live_cf_save_video_recording(PDO $pdo, array $room, array $video, string $kindLabel): bool
+{
+    $uid = (string) ($video['uid'] ?? '');
+    if ($uid === '' || !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
+        return false;
+    }
+    $url = live_cf_video_iframe($video);
+    if ($url === '') {
+        return false;
+    }
+    $path = 'cf/' . $uid;
+    $dup = $pdo->prepare('SELECT id FROM recordings WHERE video_path = ? OR video_url = ? LIMIT 1');
+    $dup->execute([$path, $url]);
+    if ($dup->fetch()) {
+        return true;
+    }
+    $sec = (int) round((float) ($video['duration'] ?? 0));
+    if ($sec < 15) {
+        return false;
+    }
+    $sec = min(28800, max(1, $sec));
+    $mins = max(1, min(480, (int) round($sec / 60)));
+    $topic = trim((string) ($room['topic'] ?? ''));
+    $title = trim((string) ($room['title'] ?? 'Ders'));
+    $when = date('d.m.Y H:i');
+    $teacher = trim((string) ($room['teacher_name'] ?? ''));
+    if ($teacher === '' && !empty($room['teacher_id'])) {
+        $tn = $pdo->prepare('SELECT name FROM users WHERE id = ?');
+        $tn->execute([(int) $room['teacher_id']]);
+        $teacher = trim((string) ($tn->fetchColumn() ?: ''));
+    }
+    $label = $topic !== '' && $topic !== 'Ders' ? $topic . ' — ' . $title : $title;
+    if ($kindLabel !== '') {
+        $label .= ' — ' . $kindLabel;
+    }
+    $label .= ' — ' . $when;
+    if ($teacher !== '') {
+        $label .= ' — ' . $teacher;
+    }
+    $isTest = function_exists('live_room_is_test') && live_room_is_test($room);
+    if ($isTest && !str_starts_with($label, 'Test ·')) {
+        $label = 'Test · ' . $label;
+    }
+    if (function_exists('ensure_recordings_duration_schema')) {
+        ensure_recordings_duration_schema();
+    }
+    $title = function_exists('vod_clip_title') ? vod_clip_title($label) : mb_substr($label, 0, 180);
+    try {
+        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path, is_test) VALUES (?,?,?,?,?,CURDATE(),?,?,?)')
+            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $url, $path, $isTest ? 1 : 0]);
+    } catch (Throwable $e) {
+        try {
+            $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path) VALUES (?,?,?,?,?,CURDATE(),?,?)')
+                ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $url, $path]);
+        } catch (Throwable $e2) {
+            try {
+                $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),?,?)')
+                    ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $url, $path]);
+            } catch (Throwable $e3) {
+                return false;
+            }
+        }
+    }
+    if (!$isTest && function_exists('notify_group_students')) {
+        notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
+    }
+    return true;
+}
+
+function live_cf_import_room_recordings(PDO $pdo, array $room): int
+{
+    if (!live_cf_api_ready()) {
+        return 0;
+    }
+    $id = (int) ($room['id'] ?? 0);
+    if ($id > 0) {
+        $local = $pdo->prepare('SELECT id FROM recordings WHERE video_path LIKE ? OR video_path = ? LIMIT 1');
+        $local->execute(['vod/oda-' . $id . '-%', 'vod/live-' . $id . '.webm']);
+        if ($local->fetch()) {
+            return 0;
+        }
+    }
+    $started = strtotime((string) ($room['started_at'] ?? '')) ?: 0;
+    $ended = strtotime((string) ($room['ended_at'] ?? '')) ?: time();
+    if ($started < 1 || ($ended - $started) > 8 * 3600) {
+        $started = $ended - 4 * 3600;
+    }
+    $n = 0;
+    foreach (['cam' => 'Kamera', 'screen' => 'Ekran'] as $kind => $label) {
+        $uid = live_cf_from_url(live_cf_url($kind, 'whep'))['uid'];
+        if ($uid === '') {
+            $uid = live_cf_from_url(live_cf_url($kind, 'whip'))['uid'];
+        }
+        if ($uid === '') {
+            continue;
+        }
+        foreach (live_cf_list_input_videos($uid) as $video) {
+            if (!is_array($video)) {
+                continue;
+            }
+            $state = (string) (($video['status']['state'] ?? '') ?: '');
+            if ($state !== 'ready') {
+                continue;
+            }
+            $created = strtotime((string) ($video['created'] ?? $video['uploaded'] ?? '')) ?: 0;
+            if ($created > 0 && ($created < $started - 180 || $created > $ended + 900)) {
+                continue;
+            }
+            if (live_cf_save_video_recording($pdo, $room, $video, $label)) {
+                $n++;
+            }
+        }
+    }
+    return $n;
+}
+
+function live_cf_import_recent_rooms(PDO $pdo, ?int $teacherId = null): int
+{
+    if (!live_cf_api_ready()) {
+        return 0;
+    }
+    try {
+        $st = $pdo->query("SELECT * FROM live_rooms WHERE status = 'ended' AND (ended_at IS NULL OR ended_at >= (NOW() - INTERVAL 2 DAY)) ORDER BY id DESC LIMIT 20");
+        $rooms = $st ? $st->fetchAll() : [];
+    } catch (Throwable $e) {
+        return 0;
+    }
+    $n = 0;
+    foreach ($rooms as $room) {
+        if ($teacherId !== null) {
+            $tid = (int) ($room['teacher_id'] ?? 0);
+            $gid = (int) ($room['group_id'] ?? 0);
+            if ($tid !== $teacherId && !(function_exists('group_has_teacher') && group_has_teacher($gid, $teacherId))) {
+                continue;
+            }
+        }
+        try {
+            $n += live_cf_import_room_recordings($pdo, $room);
+        } catch (Throwable $e) {
+        }
+    }
+    return $n;
+}
+
 function live_board_enabled(): bool
 {
     return function_exists('setting_bool') && setting_bool('live_board_on', false);
@@ -252,19 +514,26 @@ function live_whip_proxy(string $method, string $target, string $sdp = ''): arra
     }
     $key = live_whip_loc_key($target);
     $prev = (string) ($_SESSION[$key] ?? '');
-    if ($prev !== '' && live_whip_url_ok($prev)) {
-        live_whip_http('DELETE', $prev);
-        unset($_SESSION[$key]);
-    }
     if ($method === 'DELETE') {
         $res = live_whip_http('DELETE', $target);
+        if ($prev !== '' && $prev !== $target && live_whip_url_ok($prev)) {
+            live_whip_http('DELETE', $prev);
+        }
         unset($_SESSION[$key]);
         return $res;
     }
     $res = live_whip_http('POST', $target, $sdp);
     if ((int) ($res['status'] ?? 0) === 409) {
-        usleep(800000);
+        if ($prev !== '' && live_whip_url_ok($prev)) {
+            live_whip_http('DELETE', $prev);
+            unset($_SESSION[$key]);
+        }
+        usleep(700000);
         $res = live_whip_http('POST', $target, $sdp);
+        if ((int) ($res['status'] ?? 0) === 409) {
+            usleep(1100000);
+            $res = live_whip_http('POST', $target, $sdp);
+        }
     }
     if (!empty($res['location']) && live_whip_url_ok((string) $res['location'])) {
         $_SESSION[$key] = (string) $res['location'];
@@ -275,7 +544,7 @@ function live_whip_proxy(string $method, string $target, string $sdp = ''): arra
 function live_hls_url(string $streamKey, int $which = 0): string
 {
     if (live_cf_ready()) {
-        return '';
+        return $which > 0 ? '' : live_cf_hls_url(live_cf_kind($streamKey));
     }
     $paths = live_stream_paths($streamKey);
     if (!isset($paths[$which])) {

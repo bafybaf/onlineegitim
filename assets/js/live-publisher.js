@@ -37,6 +37,7 @@
   let reconnectN = 0;
   let everConnected = false;
   let meterTimer = 0;
+  let watchTimer = 0;
   let audioCtx = null;
   let sendPaused = false;
   const protoEl = document.getElementById('live-proto');
@@ -85,6 +86,39 @@
       { urls: 'stun:stun.cloudflare.com:3478' },
       { urls: 'stun:stun.l.google.com:19302' }
     ];
+  }
+
+  function preferH264(conn) {
+    if (!conn || !window.RTCRtpSender || !RTCRtpSender.getCapabilities) return;
+    let caps;
+    try { caps = RTCRtpSender.getCapabilities('video'); } catch (e) { return; }
+    if (!caps || !caps.codecs || !caps.codecs.length) return;
+    const h264 = caps.codecs.filter((c) => /H264/i.test(c.mimeType || ''));
+    if (!h264.length) return;
+    const rest = caps.codecs.filter((c) => !/H264/i.test(c.mimeType || ''));
+    conn.getTransceivers().forEach((tr) => {
+      if (!tr.setCodecPreferences || !tr.sender || !tr.sender.track || tr.sender.track.kind !== 'video') return;
+      try { tr.setCodecPreferences(h264.concat(rest)); } catch (e) {}
+    });
+  }
+
+  function applyBitrate(conn, maxBps, maxFps) {
+    if (!conn) return;
+    conn.getSenders().forEach((snd) => {
+      if (!snd.track || snd.track.kind !== 'video' || !snd.getParameters) return;
+      try {
+        const p = snd.getParameters();
+        if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+        p.encodings[0].maxBitrate = maxBps;
+        if (maxFps) p.encodings[0].maxFramerate = maxFps;
+        snd.setParameters(p).catch(() => {});
+      } catch (e) {}
+    });
+  }
+
+  function hintTrack(track, hint) {
+    if (!track) return;
+    try { track.contentHint = hint; } catch (e) {}
   }
 
   function camLive() {
@@ -146,23 +180,17 @@
 
   function queueReconnect(ms) {
     if (!wantPublish || starting) return;
-    if (reconnectN >= 3) {
-      wantPublish = false;
-      setProto('Bağlanamadı — Tekrar’a basın');
-      setWait('Yayın bağlanamadı', 'Kamerayı kapatıp Tekrar’a basın. Otomatik deneme durdu.', true);
-      btn.textContent = 'Tekrar';
-      reportPublish('ice', 'Otomatik yeniden bağlanma durdu.', 'cap');
-      return;
-    }
     reconnectN += 1;
+    const delay = Math.min(12000, Math.max(1200, (ms || 1500) * Math.pow(1.35, Math.min(reconnectN - 1, 6))));
     clearReconnect();
+    setProto('Yeniden bağlanıyor…');
     reconnectTimer = setTimeout(() => {
       reconnectTimer = 0;
       if (!wantPublish || starting || whipAlive()) return;
       const shareLive = !!(sharing && displayStream && displayStream.getVideoTracks().some((t) => t.readyState === 'live'));
       if (!camLive() && !shareLive) return;
       startPublish().catch(() => {});
-    }, ms || 2000);
+    }, delay);
   }
 
   function bindPublisherPc(conn) {
@@ -377,11 +405,30 @@
     }
   }
 
+  function stopWatch() {
+    if (watchTimer) {
+      clearInterval(watchTimer);
+      watchTimer = 0;
+    }
+  }
+
+  function startWatch() {
+    if (watchTimer) return;
+    watchTimer = setInterval(() => {
+      if (!wantPublish || starting) return;
+      if (whipAlive()) return;
+      const shareLive = !!(sharing && displayStream && displayStream.getVideoTracks().some((t) => t.readyState === 'live'));
+      if (!camLive() && !shareLive) return;
+      queueReconnect(1800);
+    }, 4000);
+  }
+
   async function stopPublish() {
     wantPublish = false;
     reconnectN = 0;
     everConnected = false;
     clearReconnect();
+    stopWatch();
     publishing = false;
     starting = false;
     btn.textContent = 'Kamera';
@@ -419,9 +466,9 @@
 
   async function captureMedia() {
     const videoConstraints = {
-      width: { ideal: 1280, max: 1280 },
-      height: { ideal: 720, max: 720 },
-      frameRate: { ideal: 24, max: 24 }
+      width: { ideal: 960, max: 1280 },
+      height: { ideal: 540, max: 720 },
+      frameRate: { ideal: 15, max: 20 }
     };
     const audioConstraints = {
       echoCancellation: true,
@@ -443,17 +490,22 @@
       t.enabled = true;
       try { t.applyConstraints(audioConstraints); } catch (e) {}
     });
+    media.getVideoTracks().forEach((t) => hintTrack(t, 'motion'));
     return media;
   }
 
   async function connectWhip() {
-    await stopWhipOnly();
-    await new Promise((r) => setTimeout(r, 400));
+    const oldPc = pc;
+    pc = null;
+    if (oldPc) {
+      try { oldPc.close(); } catch (e) {}
+    }
     const cam = camStream || stream;
     const vTrack = (cam && cam.getVideoTracks().find((t) => t.readyState === 'live')) || null;
     if (!vTrack) {
       throw new Error('nocam');
     }
+    hintTrack(vTrack, 'motion');
     pc = new RTCPeerConnection({
       iceServers: iceServers()
     });
@@ -473,12 +525,13 @@
     if (!conn.getTransceivers().length) {
       throw new Error('nocam');
     }
+    preferH264(conn);
     const offer = await conn.createOffer();
     await conn.setLocalDescription(offer);
-    await waitIceGather(conn, 2000);
+    await waitIceGather(conn, 2500);
     const offerSdp = conn.localDescription && conn.localDescription.sdp ? conn.localDescription.sdp : offer.sdp;
     let lastErr = '';
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       if (conn !== pc) {
         throw new Error('stale');
       }
@@ -493,7 +546,11 @@
         }
         if (res.status === 409) {
           lastErr = '409';
-          await new Promise((r) => setTimeout(r, 1000 + attempt * 800));
+          if (loc) {
+            await deleteWhip(loc);
+            loc = '';
+          }
+          await new Promise((r) => setTimeout(r, 800 + attempt * 700));
           continue;
         }
         if (!res.ok) {
@@ -507,6 +564,7 @@
           continue;
         }
         await conn.setRemoteDescription({ type: 'answer', sdp: sdp });
+        applyBitrate(conn, 900000, 15);
         return true;
       }
     }
@@ -556,6 +614,7 @@
       if (overlay) overlay.classList.add('is-off');
       setProto(sendPaused ? 'Mola' : 'Yayındasınız');
       applySendPause();
+      startWatch();
       if (typeof window.liveRecordOnCam === 'function') {
         window.liveRecordOnCam(stream);
       }
@@ -583,22 +642,35 @@
     }
   }
 
+  function bindScreenPc(conn) {
+    conn.onconnectionstatechange = () => {
+      if (conn !== screenPc) return;
+      if (conn.connectionState === 'connected') return;
+      if ((conn.connectionState === 'failed' || conn.connectionState === 'disconnected') && sharing && wantPublish) {
+        setTimeout(() => {
+          if (!sharing || !wantPublish || screenPc !== conn) return;
+          if (conn.connectionState === 'connected') return;
+          connectWhipScreen().catch(() => {});
+        }, 1800);
+      }
+    };
+  }
+
   async function connectWhipScreen() {
-    const oldLoc = screenLoc;
-    screenLoc = '';
-    if (screenPc) {
-      try { screenPc.close(); } catch (e) {}
-      screenPc = null;
+    const oldPc = screenPc;
+    screenPc = null;
+    if (oldPc) {
+      try { oldPc.close(); } catch (e) {}
     }
-    if (oldLoc) await deleteWhip(oldLoc);
-    await new Promise((r) => setTimeout(r, 300));
     if (!displayStream) return false;
     if (!screenWhipUrls.length) {
       return false;
     }
+    displayStream.getVideoTracks().forEach((t) => hintTrack(t, 'detail'));
     screenPc = new RTCPeerConnection({
       iceServers: iceServers()
     });
+    bindScreenPc(screenPc);
     displayStream.getVideoTracks().forEach((t) => {
       screenPc.addTransceiver(t, { direction: 'sendonly', streams: [displayStream] });
     });
@@ -609,11 +681,12 @@
     if (!displayStream.getVideoTracks().length) {
       screenPc.addTransceiver('video', { direction: 'sendonly' });
     }
+    preferH264(screenPc);
     const offer = await screenPc.createOffer();
     await screenPc.setLocalDescription(offer);
-    await waitIceGather(screenPc, 2000);
+    await waitIceGather(screenPc, 2500);
     const offerSdp = screenPc.localDescription && screenPc.localDescription.sdp ? screenPc.localDescription.sdp : offer.sdp;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       for (let i = 0; i < screenWhipUrls.length; i++) {
         const url = screenWhipUrls[i];
         let res;
@@ -623,7 +696,11 @@
           continue;
         }
         if (res.status === 409) {
-          await new Promise((r) => setTimeout(r, 800 + attempt * 600));
+          if (screenLoc) {
+            await deleteWhip(screenLoc);
+            screenLoc = '';
+          }
+          await new Promise((r) => setTimeout(r, 700 + attempt * 600));
           continue;
         }
         if (!res.ok) continue;
@@ -631,6 +708,7 @@
         const sdp = await res.text();
         if (!sdp || !/v=0/i.test(sdp)) continue;
         await screenPc.setRemoteDescription({ type: 'answer', sdp: sdp });
+        applyBitrate(screenPc, 700000, 10);
         waitPcReady(screenPc, 4000);
         applySendPause();
         return true;
@@ -700,7 +778,7 @@
     }
     const shareOpts = {
       video: {
-        frameRate: { ideal: 10, max: 12 },
+        frameRate: { ideal: 8, max: 10 },
         width: { max: 1280 },
         height: { max: 720 },
         displaySurface: 'window'
@@ -740,10 +818,11 @@
     if (screenTrack) {
       try {
         screenTrack.applyConstraints({
-          frameRate: { ideal: 10, max: 12 },
+          frameRate: { ideal: 8, max: 10 },
           width: { max: 1280 },
           height: { max: 720 }
         });
+        hintTrack(screenTrack, 'detail');
       } catch (e) {}
     }
     if (!screenTrack) {
@@ -841,10 +920,16 @@
     });
   }
 
-  window.addEventListener('pagehide', () => {
+  window.addEventListener('pagehide', (ev) => {
+    if (ev.persisted) return;
     if (sharing) stopShare();
     if (publishing || stream) {
       stopPublish();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && wantPublish && !whipAlive() && !starting) {
+      queueReconnect(800);
     }
   });
 

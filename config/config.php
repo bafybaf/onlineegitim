@@ -36,3 +36,9 @@ if (!defined('CF_STREAM_WHIP_SCREEN')) {
 if (!defined('CF_STREAM_WHEP_SCREEN')) {
     define('CF_STREAM_WHEP_SCREEN', rtrim(oi_env('CF_STREAM_WHEP_SCREEN', ''), '/'));
 }
+if (!defined('CF_STREAM_ACCOUNT')) {
+    define('CF_STREAM_ACCOUNT', trim(oi_env('CF_STREAM_ACCOUNT', '')));
+}
+if (!defined('CF_STREAM_TOKEN')) {
+    define('CF_STREAM_TOKEN', trim(oi_env('CF_STREAM_TOKEN', '')));
+}

@@ -34,11 +34,34 @@ function vod_play_url(int $recId, int $userId): string
     return url('api/dosya.php?tur=video&id=' . $recId . '&t=' . rawurlencode(vod_play_token($recId, $userId)));
 }
 
+function vod_is_remote_path(string $rel): bool
+{
+    return str_starts_with($rel, 'cf/');
+}
+
+function vod_cf_iframe_url(string $url): string
+{
+    if (!preg_match('#^(https://customer-[a-z0-9]+\.cloudflarestream\.com/[A-Za-z0-9_-]+)#i', $url, $m)) {
+        return '';
+    }
+    return $m[1] . '/iframe';
+}
+
+function vod_remote_player_html(string $src): string
+{
+    $iframe = vod_cf_iframe_url($src);
+    if ($iframe === '') {
+        return '<p class="p-5"><a class="btn-primary" href="' . e($src) . '" target="_blank" rel="noreferrer">Videoyu aç</a></p>';
+    }
+    return '<iframe src="' . e($iframe) . '" class="block w-full bg-black" style="aspect-ratio:16/9;min-height:240px;border:0" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+}
+
 function vod_player_src(array $rec, int $userId): array
 {
     $js = '';
     $ext = '';
-    if (!empty($rec['video_path'])) {
+    $rel = trim((string) ($rec['video_path'] ?? ''));
+    if ($rel !== '' && !vod_is_remote_path($rel)) {
         $js = vod_play_url((int) $rec['id'], $userId);
         $abs = vod_abs_from_rec($rec);
         if ($abs !== '') {
@@ -587,6 +610,12 @@ function vod_recover_pending_rooms(PDO $pdo, ?int $teacherId = null): int
         }
         if (vod_commit_live_room($pdo, $room, 0)) {
             $n++;
+        }
+    }
+    if (function_exists('live_cf_import_recent_rooms')) {
+        try {
+            $n += live_cf_import_recent_rooms($pdo, $teacherId);
+        } catch (Throwable $e) {
         }
     }
     return $n;

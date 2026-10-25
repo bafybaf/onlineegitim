@@ -11,9 +11,11 @@
   const whepUrls = [cfg.whepUrl, cfg.whepUrlAlt].filter(Boolean);
   const whepScreenUrls = [cfg.whepScreenUrl, cfg.whepScreenUrlAlt].filter((u) => u && whepUrls.indexOf(u) === -1);
   const hlsUrls = [cfg.hlsUrl, cfg.hlsUrlAlt].filter(Boolean);
+  const hlsScreenUrls = [cfg.hlsScreenUrl, cfg.hlsScreenUrlAlt].filter(Boolean);
   const healthUrl = cfg.healthUrl || '';
   let screenMode = !cfg.publish && !!window._liveScreenOn;
   let hls = null;
+  let screenHls = null;
   let pc = null;
   let screenPc = null;
   let screenBusy = false;
@@ -58,6 +60,16 @@
     setSharingClass(on);
   }
 
+  function stopScreenHls() {
+    if (screenHls) {
+      try { screenHls.destroy(); } catch (e) {}
+      screenHls = null;
+    }
+    if (board && !board.srcObject) {
+      board.removeAttribute('src');
+    }
+  }
+
   function stopScreenWhep() {
     if (screenRetry) {
       clearTimeout(screenRetry);
@@ -67,6 +79,7 @@
       try { screenPc.close(); } catch (e) {}
       screenPc = null;
     }
+    stopScreenHls();
     if (board) {
       board.srcObject = null;
       board.removeAttribute('src');
@@ -150,15 +163,76 @@
     return true;
   }
 
+  function attachScreenHls(url) {
+    if (!url || !board) return Promise.resolve(false);
+    if (screenPc) {
+      try { screenPc.close(); } catch (e) {}
+      screenPc = null;
+    }
+    stopScreenHls();
+    if (window.Hls && Hls.isSupported()) {
+      return new Promise((resolve) => {
+        let settled = false;
+        const done = (ok) => {
+          if (settled) return;
+          settled = true;
+          resolve(ok);
+        };
+        screenHls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          liveSyncDurationCount: 2,
+          liveMaxLatencyDurationCount: 4,
+          liveDurationInfinity: true,
+          maxBufferLength: 4,
+          maxMaxBufferLength: 6,
+          backBufferLength: 3,
+          manifestLoadingTimeOut: 6000,
+          startPosition: -1
+        });
+        screenHls.loadSource(url);
+        screenHls.attachMedia(board);
+        screenHls.on(Hls.Events.MANIFEST_PARSED, () => {
+          board.muted = true;
+          board.play().catch(() => {});
+          screenPlaying = true;
+          done(true);
+        });
+        screenHls.on(Hls.Events.ERROR, (_, data) => {
+          if (!data || !data.fatal) return;
+          stopScreenHls();
+          screenPlaying = false;
+          done(false);
+        });
+        setTimeout(() => done(screenPlaying), 9000);
+      });
+    }
+    if (board.canPlayType('application/vnd.apple.mpegurl')) {
+      board.srcObject = null;
+      board.src = url;
+      board.muted = true;
+      return board.play().then(() => {
+        screenPlaying = true;
+        return true;
+      }).catch(() => false);
+    }
+    return Promise.resolve(false);
+  }
+
   async function tryScreenWhep() {
     if (ended || !screenMode || !board || screenBusy || screenPlaying) return;
-    if (!whepScreenUrls.length) return;
+    if (!whepScreenUrls.length && !hlsScreenUrls.length) return;
     screenBusy = true;
     try {
       for (let i = 0; i < whepScreenUrls.length; i++) {
         const result = await startScreenWhep(whepScreenUrls[i]);
         if (result === true) return;
         if (isWaitStatus(result) || result === 'notrack' || result === 'ice') break;
+      }
+      for (let i = 0; i < hlsScreenUrls.length; i++) {
+        const ok = await attachScreenHls(hlsScreenUrls[i]);
+        if (ok || screenPlaying) return;
+        stopScreenHls();
       }
     } finally {
       screenBusy = false;
@@ -381,7 +455,7 @@
     }
     stopWhep();
     const conn = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.l.google.com:19302' }]
     });
     pc = conn;
     conn.addTransceiver('video', { direction: 'recvonly' });
@@ -566,7 +640,7 @@
           return;
         }
       }
-      if (!waiting && cfg.provider !== 'cloudflare') {
+      if (!waiting) {
         for (let i = 0; i < hlsUrls.length; i++) {
           const ok = await attachHls(hlsUrls[i]);
           if (ok || playing) {

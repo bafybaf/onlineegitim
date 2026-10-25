@@ -52,6 +52,8 @@ $err = flash_error();
 <div class="vod-wide" style="background:#000;border-radius:.75rem;overflow:hidden">
   <?php if ($vodJs === '' && $src === ''): ?>
     <p class="p-5 text-muted">Bu kayıt için henüz video yok.</p>
+  <?php elseif ($vodJs === '' && $src !== '' && function_exists('vod_cf_iframe_url') && vod_cf_iframe_url($src)): ?>
+    <?= vod_remote_player_html($src) ?>
   <?php elseif ($vodJs === '' && !empty($r['video_url']) && empty($r['video_path']) && !preg_match('/\.(mp4|webm|mov)(\?|$)/i', $src)): ?>
     <p class="p-5"><a class="btn-primary" href="<?= e($src) ?>" target="_blank" rel="noreferrer">Videoyu aç</a></p>
   <?php else: ?>

@@ -23,6 +23,10 @@ if ($tur === 'video') {
         exit('Yetkiniz yok.');
     }
     $rel = (string) $row['video_path'];
+    if (function_exists('vod_is_remote_path') && vod_is_remote_path($rel)) {
+        http_response_code(404);
+        exit('Dosya yok.');
+    }
     $downloadName = academy_slug((string) $row['title']);
     $tok = (string) ($_GET['t'] ?? '');
     if (!function_exists('vod_play_token_ok') || !vod_play_token_ok($tok, $id, (int) $u['id'])) {
