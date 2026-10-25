@@ -32,7 +32,7 @@ if (function_exists('vod_prepare_recording')) {
 [$vodJs, $src] = function_exists('vod_player_src')
     ? vod_player_src($r, (int) $u['id'])
     : ['', (string) ($r['video_url'] ?? '')];
-if ($vodJs === '' && !empty($r['video_path'])) {
+if ($vodJs === '' && $src === '' && !empty($r['video_path']) && !(function_exists('vod_is_remote_path') && vod_is_remote_path((string) $r['video_path']))) {
     $vodJs = url('api/dosya.php?tur=video&id=' . (int) $r['id']);
 }
 $test = function_exists('recording_is_test') && recording_is_test($r);

@@ -301,6 +301,19 @@ function academy_delete_recording(int $recId, int $teacherId, bool $asAdmin = fa
     }
     $rel = (string) ($row['video_path'] ?? '');
     $abs = $rel !== '' && function_exists('academy_file_readable') ? academy_file_readable($rel) : null;
+    $cfUid = '';
+    if (function_exists('live_cf_uid_from_ref')) {
+        $cfUid = live_cf_uid_from_ref($rel);
+        if ($cfUid === '') {
+            $cfUid = live_cf_uid_from_ref((string) ($row['video_url'] ?? ''));
+        }
+    }
+    if ($cfUid !== '' && function_exists('live_cf_delete_video')) {
+        try {
+            live_cf_delete_video($cfUid);
+        } catch (Throwable $e) {
+        }
+    }
     academy_unlink_stored($rel);
     if ($abs) {
         @unlink($abs . '.ok');

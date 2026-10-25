@@ -169,7 +169,7 @@ function live_cf_api_ready(): bool
     return live_cf_api_account() !== '' && live_cf_api_token() !== '';
 }
 
-function live_cf_api(string $path): ?array
+function live_cf_api(string $path, string $method = 'GET', ?string $json = null, int $timeout = 25): ?array
 {
     $acc = live_cf_api_account();
     $tok = live_cf_api_token();
@@ -177,19 +177,28 @@ function live_cf_api(string $path): ?array
         return null;
     }
     $path = ltrim($path, '/');
-    if (!preg_match('#^stream/[A-Za-z0-9_./?-]+$#', $path)) {
+    if (!preg_match('#^stream(/[A-Za-z0-9_./?-]+)?$#', $path)) {
+        return null;
+    }
+    $method = strtoupper($method);
+    if (!in_array($method, ['GET', 'POST', 'DELETE'], true)) {
         return null;
     }
     $url = 'https://api.cloudflare.com/client/v4/accounts/' . rawurlencode($acc) . '/' . $path;
     $ch = curl_init($url);
+    $headers = [
+        'Authorization: Bearer ' . $tok,
+        'Content-Type: application/json',
+    ];
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 25,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $tok,
-            'Content-Type: application/json',
-        ],
+        CURLOPT_TIMEOUT => max(10, $timeout),
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_HTTPHEADER => $headers,
     ]);
+    if ($json !== null) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+    }
     $raw = curl_exec($ch);
     $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
@@ -201,6 +210,78 @@ function live_cf_api(string $path): ?array
         return null;
     }
     return $j;
+}
+
+function live_cf_uid_from_ref(string $ref): string
+{
+    $ref = trim($ref);
+    if (preg_match('#(?:^cf/|cloudflarestream\.com/)([A-Za-z0-9_-]{16,64})#i', $ref, $m)) {
+        return $m[1];
+    }
+    return '';
+}
+
+function live_cf_delete_video(string $uid): bool
+{
+    if ($uid === '' || !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
+        return false;
+    }
+    return live_cf_api('stream/' . rawurlencode($uid), 'DELETE') !== null;
+}
+
+function live_cf_upload_video(string $absPath, string $title = ''): ?array
+{
+    $acc = live_cf_api_account();
+    $tok = live_cf_api_token();
+    if ($acc === '' || $tok === '' || !function_exists('curl_init') || !class_exists('CURLFile')) {
+        return null;
+    }
+    $absPath = (string) realpath($absPath);
+    if ($absPath === '' || !is_file($absPath) || !is_readable($absPath)) {
+        return null;
+    }
+    $bytes = (int) @filesize($absPath);
+    if ($bytes < 8000 || $bytes > 4 * 1024 * 1024 * 1024) {
+        return null;
+    }
+    $name = trim($title);
+    if ($name === '') {
+        $name = basename($absPath);
+    }
+    if (function_exists('mb_substr')) {
+        $name = mb_substr($name, 0, 120);
+    } else {
+        $name = substr($name, 0, 120);
+    }
+    $url = 'https://api.cloudflare.com/client/v4/accounts/' . rawurlencode($acc) . '/stream';
+    $ch = curl_init($url);
+    $file = new CURLFile($absPath, 'video/webm', basename($absPath));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_TIMEOUT => 300,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $tok,
+            'Upload-Name: ' . rawurlencode($name),
+        ],
+        CURLOPT_POSTFIELDS => ['file' => $file],
+    ]);
+    $raw = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($raw === false || $code >= 400) {
+        return null;
+    }
+    $j = json_decode((string) $raw, true);
+    $row = is_array($j) && !empty($j['success']) && is_array($j['result'] ?? null) ? $j['result'] : null;
+    if (!$row) {
+        return null;
+    }
+    $uid = (string) ($row['uid'] ?? '');
+    if ($uid === '' || !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
+        return null;
+    }
+    return $row;
 }
 
 function live_cf_list_input_videos(string $inputUid): array

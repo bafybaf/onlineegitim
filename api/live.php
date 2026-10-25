@@ -205,9 +205,7 @@ if ($action === 'end') {
         if ($saved) {
             flash_ok('Ders kaydı kaydedildi. Aşağıdan izleyebilirsiniz.');
         } elseif ($chunks < 1) {
-            flash_error(function_exists('live_cf_api_ready') && live_cf_api_ready()
-                ? 'Ders kapandı. Tarayıcı kaydı gelmedi. Cloudflare kaydı bir dakika içinde Kayıtlar sayfasına düşer; sayfayı yenileyin.'
-                : 'Ders kapandı ama video gelmedi. Odada “Kayıt”a basın, 3 saniye geri sayım bitsin, düğme kırmızı “● Kayıt” olsun; sonra Bitir’de “Kaydediliyor” yazısı geçene kadar bekleyin.');
+            flash_error('Ders kapandı ama video gelmedi. Odada “Kayıt”a basın, 3 saniye geri sayım bitsin, düğme kırmızı “● Kayıt” olsun; sonra Bitir’de “Kaydediliyor” yazısı geçene kadar bekleyin.');
         } else {
             flash_error('Ders kapandı. Kayıt parçaları gitti ama video birleşmedi. Bu sayfayı bir kez yenileyin. Yine yoksa hostingde storage/vod yazılabilir olmalı.');
         }

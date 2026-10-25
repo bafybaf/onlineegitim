@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'cf_stream') {
     }
     flash_ok(live_cf_ready()
         ? (live_cf_api_ready()
-            ? 'Cloudflare adresleri kaydedildi. Hoca kaydı gelmezse Stream videosu panele alınır.'
+            ? 'Cloudflare adresleri kaydedildi. Biten ders kaydı Stream’e yüklenir.'
             : 'Yayın adresleri kaydedildi. Kayıt çekmek için Account ID ve API token da gerekli.')
         : 'Adresler temizlendi. Yayın yine sunucudaki MediaMTX üzerinden gider.');
     redirect('admin/canli.php');
@@ -63,8 +63,8 @@ $err = flash_error();
 <p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/kayitlar')) ?>">Ders kayıtları</a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
 <div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Cloudflare Stream</h2>
-  <p class="mt-1 text-sm text-muted">WHIP / WHEP doluysa yayın Cloudflare’a gider. Tarayıcı WHIP kaydı HLS/DASH ile tutulmaz; Cloudflare’da o kutuyu ve Düşük gecikmeli HLS’i kapalı tutun, aksi halde kamera kopabilir. Ders kaydı hoca sekmesinde kalır. Aynı anda bir ders yayınlasın.</p>
-  <p class="mt-2 text-sm <?= live_cf_ready() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?= live_cf_ready() ? (live_cf_api_ready() ? 'Stream açık; Cloudflare kaydı çekilebilir.' : 'Stream açık. Kayıt çekmek için Account ID ve token girin.') : 'Stream adresi yok; MediaMTX kullanılıyor.' ?></p>
+  <p class="mt-1 text-sm text-muted">WHIP / WHEP doluysa canlı yayın Cloudflare’a gider. Tarayıcı WHIP kaydı HLS/DASH ile tutulmaz; Cloudflare’da o kutuyu ve Düşük gecikmeli HLS’i kapalı tutun, aksi halde kamera kopabilir. Ders kaydı hoca sekmesinde çekilir, bitince Stream’e yüklenir ve oradan izlenir. Token izni: Account · Stream · Edit. Aynı anda bir ders yayınlasın.</p>
+  <p class="mt-2 text-sm <?= live_cf_ready() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?= live_cf_ready() ? (live_cf_api_ready() ? 'Stream açık; biten ders kaydı Cloudflare’a yüklenir.' : 'Stream açık. Kayıt yüklemek için Account ID ve token girin.') : 'Stream adresi yok; MediaMTX kullanılıyor.' ?></p>
   <form method="post" class="mt-4 grid gap-3">
     <input type="hidden" name="action" value="cf_stream">
     <label class="text-sm font-bold">Kamera WHIP
@@ -83,7 +83,7 @@ $err = flash_error();
       <input name="cf_stream_account" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('cf_stream_account') ?: (defined('CF_STREAM_ACCOUNT') ? (string) CF_STREAM_ACCOUNT : '')) ?>" autocomplete="off">
     </label>
     <label class="text-sm font-bold">Stream API token
-      <input type="password" name="cf_stream_token" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="" placeholder="<?= live_cf_api_token() !== '' ? 'Kayıtlı; değiştirmek için yeni token yazın' : 'Account · Stream · Read' ?>" autocomplete="new-password">
+      <input type="password" name="cf_stream_token" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="" placeholder="<?= live_cf_api_token() !== '' ? 'Kayıtlı; değiştirmek için yeni token yazın' : 'Account · Stream · Edit' ?>" autocomplete="new-password">
     </label>
     <button class="btn-primary h-10 w-fit text-sm">Kaydet</button>
   </form>
