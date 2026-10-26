@@ -63,7 +63,7 @@ $err = flash_error();
 <p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/kayitlar')) ?>">Ders kayıtları</a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
 <div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Cloudflare Stream</h2>
-  <p class="mt-1 text-sm text-muted">WHIP / WHEP doluysa canlı yayın Cloudflare’a gider. Tarayıcı WHIP kaydı HLS/DASH ile tutulmaz; Cloudflare’da o kutuyu ve Düşük gecikmeli HLS’i kapalı tutun, aksi halde kamera kopabilir. Ders kaydı hoca sekmesinde çekilir, bitince Stream’e yüklenir ve oradan izlenir. Token izni: Account · Stream · Edit. Aynı anda bir ders yayınlasın.</p>
+  <p class="mt-1 text-sm text-muted">WHIP / WHEP doluysa canlı yayın Cloudflare’a gider. Tarayıcı WHIP kaydı HLS/DASH ile tutulmaz; Cloudflare’da o kutuyu ve Düşük gecikmeli HLS’i kapalı tutun, aksi halde kamera kopabilir. Yalnız canlı ders kaydı Stream’e yüklenir. Hocanın elle yüklediği MP4 sunucuda kalır. Token izni: Account · Stream · Edit. Aynı anda bir ders yayınlasın.</p>
   <p class="mt-2 text-sm <?= live_cf_ready() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?= live_cf_ready() ? (live_cf_api_ready() ? 'Stream açık; biten ders kaydı Cloudflare’a yüklenir.' : 'Stream açık. Kayıt yüklemek için Account ID ve token girin.') : 'Stream adresi yok; MediaMTX kullanılıyor.' ?></p>
   <form method="post" class="mt-4 grid gap-3">
     <input type="hidden" name="action" value="cf_stream">

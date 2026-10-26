@@ -39,6 +39,21 @@ function vod_is_remote_path(string $rel): bool
     return str_starts_with($rel, 'cf/');
 }
 
+function vod_is_live_capture_path(string $rel): bool
+{
+    $rel = str_replace('\\', '/', trim($rel));
+    return (bool) preg_match('#(?:^|/)vod/(?:oda-\d+-|live-\d+\.webm$)#i', $rel);
+}
+
+function vod_is_manual_upload_path(string $rel): bool
+{
+    $rel = str_replace('\\', '/', trim($rel));
+    if ($rel === '' || vod_is_remote_path($rel) || vod_is_live_capture_path($rel)) {
+        return false;
+    }
+    return (bool) preg_match('#(?:^|/)vod/[^/]+\.(mp4|webm|mov)$#i', $rel);
+}
+
 function vod_cf_iframe_url(string $url): string
 {
     if (!preg_match('#^(https://customer-[a-z0-9]+\.cloudflarestream\.com/[A-Za-z0-9_-]+)#i', $url, $m)) {
@@ -440,7 +455,7 @@ function vod_prepare_recording(array $rec): array
     $id = (int) ($rec['id'] ?? 0);
     $url = trim((string) ($rec['video_url'] ?? ''));
     $rel = trim((string) ($rec['video_path'] ?? ''));
-    if ($id > 0 && $rel !== '' && !vod_is_remote_path($rel) && vod_cf_iframe_url($url) === '') {
+    if ($id > 0 && vod_is_live_capture_path($rel) && vod_cf_iframe_url($url) === '') {
         try {
             if (vod_upload_recording_to_cf(db(), $id)) {
                 $st = db()->prepare('SELECT * FROM recordings WHERE id = ?');
@@ -633,6 +648,9 @@ function vod_upload_recording_to_cf(PDO $pdo, int $recId, string $absPath = '', 
     if ($rel !== '' && vod_is_remote_path($rel)) {
         return true;
     }
+    if (!vod_is_live_capture_path($rel)) {
+        return false;
+    }
     if ($absPath === '' || !is_file($absPath)) {
         $absPath = vod_abs_from_rec($rec);
     }
@@ -714,7 +732,7 @@ function vod_promote_local_recordings_to_cf(PDO $pdo, ?int $teacherId = null): i
     if (!function_exists('live_cf_api_ready') || !live_cf_api_ready()) {
         return 0;
     }
-    $sql = "SELECT id, teacher_id FROM recordings WHERE video_path LIKE 'vod/%' AND (video_url IS NULL OR video_url = '' OR video_url NOT LIKE '%cloudflarestream%') ORDER BY id DESC LIMIT 2";
+    $sql = "SELECT id, teacher_id FROM recordings WHERE (video_path LIKE 'vod/oda-%' OR video_path LIKE 'vod/live-%') AND (video_url IS NULL OR video_url = '' OR video_url NOT LIKE '%cloudflarestream%') ORDER BY id DESC LIMIT 2";
     try {
         $rows = $pdo->query($sql)->fetchAll();
     } catch (Throwable $e) {
@@ -735,6 +753,97 @@ function vod_promote_local_recordings_to_cf(PDO $pdo, ?int $teacherId = null): i
 function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int
 {
     return vod_recover_pending_rooms($pdo, $teacherId);
+}
+
+function vod_manual_cf_recordings(PDO $pdo): array
+{
+    try {
+        $rows = $pdo->query(
+            "SELECT * FROM recordings
+             WHERE video_url LIKE '%cloudflarestream%'
+               AND video_path LIKE 'vod/%'
+               AND video_path NOT LIKE 'vod/oda-%'
+               AND video_path NOT LIKE 'vod/live-%'
+             ORDER BY id ASC"
+        )->fetchAll();
+    } catch (Throwable $e) {
+        return [];
+    }
+    return is_array($rows) ? $rows : [];
+}
+
+function vod_clear_recording_cf_url(PDO $pdo, int $id): void
+{
+    try {
+        $pdo->prepare('UPDATE recordings SET video_url = NULL WHERE id = ?')->execute([$id]);
+    } catch (Throwable $e) {
+    }
+}
+
+function vod_restore_manual_recordings_from_cf(PDO $pdo, int $limit = 3): array
+{
+    $done = 0;
+    $wait = 0;
+    $rows = vod_manual_cf_recordings($pdo);
+    foreach ($rows as $rec) {
+        $id = (int) ($rec['id'] ?? 0);
+        $rel = trim((string) ($rec['video_path'] ?? ''));
+        $url = trim((string) ($rec['video_url'] ?? ''));
+        if ($id < 1 || !vod_is_manual_upload_path($rel)) {
+            continue;
+        }
+        $uid = function_exists('live_cf_uid_from_ref') ? live_cf_uid_from_ref($url) : '';
+        if ($uid === '') {
+            $uid = live_cf_uid_from_ref($rel);
+        }
+        $abs = vod_abs_from_rec($rec);
+        if ($abs !== '' && is_file($abs) && vod_file_bytes($abs) >= 8000) {
+            vod_clear_recording_cf_url($pdo, $id);
+            if ($uid !== '' && function_exists('live_cf_delete_video')) {
+                try {
+                    live_cf_delete_video($uid);
+                } catch (Throwable $e) {
+                }
+            }
+            $done++;
+            continue;
+        }
+        if ($limit < 1) {
+            $wait++;
+            continue;
+        }
+        if ($uid === '' || !function_exists('live_cf_download_video_file')) {
+            $wait++;
+            continue;
+        }
+        if (preg_match('/\.webm$/i', $rel)) {
+            $rel = (string) preg_replace('/\.webm$/i', '.mp4', $rel);
+        }
+        $dest = function_exists('academy_abs_file') ? academy_abs_file($rel) : '';
+        if ($dest === '') {
+            $wait++;
+            continue;
+        }
+        @set_time_limit(360);
+        if (!live_cf_download_video_file($uid, $dest)) {
+            $wait++;
+            continue;
+        }
+        try {
+            $pdo->prepare('UPDATE recordings SET video_url = NULL, video_path = ? WHERE id = ?')->execute([$rel, $id]);
+        } catch (Throwable $e) {
+            vod_clear_recording_cf_url($pdo, $id);
+        }
+        if (function_exists('live_cf_delete_video')) {
+            try {
+                live_cf_delete_video($uid);
+            } catch (Throwable $e) {
+            }
+        }
+        $done++;
+        $limit--;
+    }
+    return ['done' => $done, 'left' => $wait];
 }
 
 function vod_optimize_upload(string $rel): string

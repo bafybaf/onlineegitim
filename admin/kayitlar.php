@@ -14,6 +14,25 @@ if (function_exists('vod_recover_pending_rooms')) {
 $tid = (int) ($_GET['hoca'] ?? 0);
 $err = flash_error();
 $ok = flash_ok();
+if (post('action') === 'restore_manual_cf' && function_exists('vod_restore_manual_recordings_from_cf')) {
+    try {
+        $rs = vod_restore_manual_recordings_from_cf(db(), 3);
+        $done = (int) ($rs['done'] ?? 0);
+        $left = (int) ($rs['left'] ?? 0);
+        if ($done > 0 && $left > 0) {
+            flash_ok($done . ' manuel kayıt sunucuya alındı. Kalan ' . $left . '; tekrar basın.');
+        } elseif ($done > 0) {
+            flash_ok($done . ' manuel kayıt sunucuya alındı. Cloudflare kopyası silindi.');
+        } elseif ($left > 0) {
+            flash_error('İndirme henüz hazır değil veya kota doldu. Bir dakika sonra tekrar basın. Kalan: ' . $left);
+        } else {
+            flash_ok('Sunucuya alınacak manuel Cloudflare kaydı kalmadı.');
+        }
+    } catch (Throwable $e) {
+        flash_error('Geri alma çalışmadı. Sayfayı yenileyip tekrar deneyin.');
+    }
+    redirect($tid ? ('admin/kayitlar.php?hoca=' . $tid) : 'admin/kayitlar');
+}
 if (post('delete_id')) {
     try {
         academy_delete_recording((int) post('delete_id'), (int) $u['id'], true);
@@ -47,7 +66,21 @@ panel_head('admin', 'kayitlar', 'Ders kayıtları | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4 text-sm text-muted">Kayıtlar yükleyen hocaya göre ayrılır. Test kayıtları öğrenci listesine düşmez.</p>
+<p class="mb-4 text-sm text-muted">Kayıtlar yükleyen hocaya göre ayrılır. Test kayıtları öğrenci listesine düşmez. Manuel yüklenenler sunucuda kalır; yalnız canlı ders kaydı Cloudflare’a gider.</p>
+<?php
+$manualCfN = 0;
+if (function_exists('vod_manual_cf_recordings')) {
+    $manualCfN = count(vod_manual_cf_recordings(db()));
+}
+if ($manualCfN > 0):
+?>
+  <form method="post" class="card mb-5 p-5">
+    <input type="hidden" name="action" value="restore_manual_cf">
+    <p class="font-extrabold">Manuel kayıtlar Cloudflare’da</p>
+    <p class="mt-1 text-sm text-muted"><?= (int) $manualCfN ?> video sunucudan silinmiş olabilir. Geri alınca dosya tekrar storage’a iner, Cloudflare kopyası silinir. Her tıkta birkaç tane gelir.</p>
+    <button class="btn-primary mt-3 h-10 w-fit text-sm">Manuel kayıtları sunucuya al</button>
+  </form>
+<?php endif; ?>
 <?php if (count($teachers) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
     <a class="<?= $tid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('admin/kayitlar')) ?>">Tüm hocalar</a>

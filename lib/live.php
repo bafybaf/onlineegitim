@@ -229,6 +229,73 @@ function live_cf_delete_video(string $uid): bool
     return live_cf_api('stream/' . rawurlencode($uid), 'DELETE') !== null;
 }
 
+function live_cf_download_mp4_url(string $uid): string
+{
+    if ($uid === '' || !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
+        return '';
+    }
+    $j = live_cf_api('stream/' . rawurlencode($uid) . '/downloads', 'POST', '{}', 40);
+    if (!$j) {
+        $j = live_cf_api('stream/' . rawurlencode($uid) . '/downloads');
+    }
+    for ($i = 0; $i < 10; $i++) {
+        $def = is_array($j) ? ($j['result']['default'] ?? null) : null;
+        if (is_array($def)) {
+            $st = (string) ($def['status'] ?? '');
+            $url = trim((string) ($def['url'] ?? ''));
+            if ($st === 'ready' && $url !== '' && filter_var($url, FILTER_VALIDATE_URL)) {
+                return $url;
+            }
+            if ($st === 'error') {
+                return '';
+            }
+        }
+        if ($i >= 9) {
+            break;
+        }
+        sleep(3);
+        $j = live_cf_api('stream/' . rawurlencode($uid) . '/downloads');
+    }
+    return '';
+}
+
+function live_cf_download_video_file(string $uid, string $dest): bool
+{
+    $url = live_cf_download_mp4_url($uid);
+    if ($url === '' || !function_exists('curl_init')) {
+        return false;
+    }
+    $dir = dirname($dest);
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return false;
+    }
+    $tmp = $dest . '.part';
+    $fp = @fopen($tmp, 'wb');
+    if ($fp === false) {
+        return false;
+    }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_FILE => $fp,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 300,
+    ]);
+    $ok = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    fclose($fp);
+    $sz = is_file($tmp) ? (int) @filesize($tmp) : 0;
+    if ($ok === false || $code >= 400 || $sz < 8000) {
+        @unlink($tmp);
+        return false;
+    }
+    if (!@rename($tmp, $dest)) {
+        @copy($tmp, $dest);
+        @unlink($tmp);
+    }
+    return is_file($dest) && (int) @filesize($dest) >= 8000;
+}
+
 function live_cf_upload_video(string $absPath, string $title = ''): ?array
 {
     $acc = live_cf_api_account();
