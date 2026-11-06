@@ -341,7 +341,7 @@ function recording_is_test(array $rec): bool
     return str_starts_with($title, 'Test ·');
 }
 
-/** Teachers stay together; oldest first, newest upload last. */
+/** Teachers stay together; newest first, most recently active teacher at the top. */
 function recordings_by_teacher_recent(array $rows): array
 {
     $buckets = [];
@@ -366,18 +366,18 @@ function recordings_by_teacher_recent(array $rows): array
             $ad = (string) ($a['recorded_on'] ?? '');
             $bd = (string) ($b['recorded_on'] ?? '');
             if ($ad !== $bd) {
-                return $ad <=> $bd;
+                return $bd <=> $ad;
             }
-            return ((int) ($a['id'] ?? 0)) <=> ((int) ($b['id'] ?? 0));
+            return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
         });
     }
     unset($list);
     $order = array_keys($buckets);
     usort($order, static function (int $a, int $b) use ($latest): int {
         if ($latest[$a]['d'] !== $latest[$b]['d']) {
-            return $latest[$a]['d'] <=> $latest[$b]['d'];
+            return $latest[$b]['d'] <=> $latest[$a]['d'];
         }
-        return $latest[$a]['id'] <=> $latest[$b]['id'];
+        return $latest[$b]['id'] <=> $latest[$a]['id'];
     });
     $flat = [];
     $names = [];
@@ -452,23 +452,63 @@ function vod_sync_recording_length(array $rec): array
 
 function vod_prepare_recording(array $rec): array
 {
-    $id = (int) ($rec['id'] ?? 0);
-    $url = trim((string) ($rec['video_url'] ?? ''));
-    $rel = trim((string) ($rec['video_path'] ?? ''));
-    if ($id > 0 && vod_is_live_capture_path($rel) && vod_cf_iframe_url($url) === '') {
-        try {
-            if (vod_upload_recording_to_cf(db(), $id)) {
-                $st = db()->prepare('SELECT * FROM recordings WHERE id = ?');
-                $st->execute([$id]);
-                $fresh = $st->fetch();
-                if (is_array($fresh)) {
-                    $rec = array_merge($rec, $fresh);
-                }
-            }
-        } catch (Throwable $e) {
-        }
-    }
     return vod_sync_recording_length($rec);
+}
+
+function vod_last_committed_id(): int
+{
+    return (int) ($GLOBALS['_vod_last_commit_id'] ?? 0);
+}
+
+function vod_after_response(callable $fn): void
+{
+    ignore_user_abort(true);
+    @set_time_limit(320);
+    if (!headers_sent()) {
+        header('Connection: close');
+    }
+    while (ob_get_level() > 0) {
+        @ob_end_flush();
+    }
+    @flush();
+    if (function_exists('fastcgi_finish_request')) {
+        @fastcgi_finish_request();
+    }
+    try {
+        $fn();
+    } catch (Throwable $e) {
+    }
+}
+
+function vod_redirect_then(string $path, callable $after): void
+{
+    ignore_user_abort(true);
+    @set_time_limit(320);
+    if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+        $to = $path;
+    } else {
+        $base = rtrim(BASE_URL, '/');
+        $to = ($base !== '' && (str_starts_with($path, $base . '/') || $path === $base || $path === $base . '/'))
+            ? $path
+            : url($path);
+    }
+    if (!headers_sent()) {
+        header('Location: ' . $to);
+        header('Content-Length: 0');
+        header('Connection: close');
+    }
+    while (ob_get_level() > 0) {
+        @ob_end_flush();
+    }
+    @flush();
+    if (function_exists('fastcgi_finish_request')) {
+        @fastcgi_finish_request();
+    }
+    try {
+        $after();
+    } catch (Throwable $e) {
+    }
+    exit;
 }
 
 function vod_file_bytes(string $path): int
@@ -524,6 +564,7 @@ function vod_commit_live_room(PDO $pdo, array $room, int $mins = 0, int $sec = 0
 
 function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, int $sec = 0): bool
 {
+    $GLOBALS['_vod_last_commit_id'] = 0;
     @set_time_limit(180);
     $like = 'vod/oda-' . $id . '-%';
     $liveName = 'vod/live-' . $id . '.webm';
@@ -572,10 +613,12 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
     $hintMs = $sec > 1 ? $sec * 1000.0 : max(0, $mins) * 60 * 1000.0;
     $stamped = false;
     if ($bytes > 0) {
-        $stamped = vod_stamp_duration($dest, $hintMs);
-        if ($stamped) {
-            @file_put_contents(vod_marker($dest), '1');
+        try {
+            $stamped = vod_webm_patch_duration($dest, $hintMs, false);
+        } catch (Throwable $e) {
+            $stamped = false;
         }
+        @file_put_contents(vod_marker($dest), '1');
     }
     $fileMs = $bytes > 0 ? vod_probe_ms($dest, $hintMs) : 0.0;
     $jsSec = $sec > 1 ? $sec : ($mins > 0 ? $mins * 60 : 0);
@@ -612,6 +655,7 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
     if ($okRow && !$isTest && function_exists('notify_group_students')) {
         notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
     }
+    $GLOBALS['_vod_last_commit_id'] = 0;
     if ($okRow) {
         $recId = (int) $pdo->lastInsertId();
         if ($recId < 1) {
@@ -619,67 +663,14 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
             $q->execute([$name]);
             $recId = (int) $q->fetchColumn();
         }
-        if ($recId > 0) {
-            try {
-                vod_upload_recording_to_cf($pdo, $recId, $dest, $title);
-            } catch (Throwable $e) {
-            }
-        }
+        $GLOBALS['_vod_last_commit_id'] = $recId;
     }
     return true;
 }
 
 function vod_upload_recording_to_cf(PDO $pdo, int $recId, string $absPath = '', string $title = ''): bool
 {
-    if ($recId < 1 || !function_exists('live_cf_api_ready') || !live_cf_api_ready() || !function_exists('live_cf_upload_video')) {
-        return false;
-    }
-    $st = $pdo->prepare('SELECT * FROM recordings WHERE id = ?');
-    $st->execute([$recId]);
-    $rec = $st->fetch();
-    if (!$rec) {
-        return false;
-    }
-    $url = trim((string) ($rec['video_url'] ?? ''));
-    if ($url !== '' && function_exists('vod_cf_iframe_url') && vod_cf_iframe_url($url) !== '') {
-        return true;
-    }
-    $rel = trim((string) ($rec['video_path'] ?? ''));
-    if ($rel !== '' && vod_is_remote_path($rel)) {
-        return true;
-    }
-    if (!vod_is_live_capture_path($rel)) {
-        return false;
-    }
-    if ($absPath === '' || !is_file($absPath)) {
-        $absPath = vod_abs_from_rec($rec);
-    }
-    if ($absPath === '' || !is_file($absPath)) {
-        return false;
-    }
-    @set_time_limit(320);
-    $name = trim($title) !== '' ? $title : (string) ($rec['title'] ?? '');
-    $video = live_cf_upload_video($absPath, $name);
-    if (!$video) {
-        return false;
-    }
-    $iframe = function_exists('live_cf_video_iframe') ? live_cf_video_iframe($video) : '';
-    if ($iframe === '') {
-        $uid = (string) ($video['uid'] ?? '');
-        $play = (string) ($video['playback']['hls'] ?? $video['preview'] ?? '');
-        $iframe = $play !== '' ? $play : $uid;
-    }
-    if ($iframe === '' || (function_exists('vod_cf_iframe_url') && vod_cf_iframe_url($iframe) === '' && !preg_match('#cloudflarestream\.com/#i', $iframe))) {
-        return false;
-    }
-    try {
-        $pdo->prepare('UPDATE recordings SET video_url = ? WHERE id = ?')->execute([$iframe, $recId]);
-    } catch (Throwable $e) {
-        return false;
-    }
-    @unlink($absPath);
-    @unlink($absPath . '.ok');
-    return true;
+    return false;
 }
 
 function vod_recover_pending_rooms(PDO $pdo, ?int $teacherId = null): int
@@ -714,40 +705,12 @@ function vod_recover_pending_rooms(PDO $pdo, ?int $teacherId = null): int
             $n++;
         }
     }
-    if (function_exists('live_cf_import_recent_rooms')) {
-        try {
-            $n += live_cf_import_recent_rooms($pdo, $teacherId);
-        } catch (Throwable $e) {
-        }
-    }
-    try {
-        $n += vod_promote_local_recordings_to_cf($pdo, $teacherId);
-    } catch (Throwable $e) {
-    }
     return $n;
 }
 
 function vod_promote_local_recordings_to_cf(PDO $pdo, ?int $teacherId = null): int
 {
-    if (!function_exists('live_cf_api_ready') || !live_cf_api_ready()) {
-        return 0;
-    }
-    $sql = "SELECT id, teacher_id FROM recordings WHERE (video_path LIKE 'vod/oda-%' OR video_path LIKE 'vod/live-%') AND (video_url IS NULL OR video_url = '' OR video_url NOT LIKE '%cloudflarestream%') ORDER BY id DESC LIMIT 2";
-    try {
-        $rows = $pdo->query($sql)->fetchAll();
-    } catch (Throwable $e) {
-        return 0;
-    }
-    $n = 0;
-    foreach ($rows as $row) {
-        if ($teacherId !== null && (int) ($row['teacher_id'] ?? 0) !== $teacherId) {
-            continue;
-        }
-        if (vod_upload_recording_to_cf($pdo, (int) $row['id'])) {
-            $n++;
-        }
-    }
-    return $n;
+    return 0;
 }
 
 function vod_recover_teacher_pending(PDO $pdo, int $teacherId): int

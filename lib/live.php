@@ -732,15 +732,66 @@ function live_whip_url(string $streamKey, int $which = 0): string
     return live_whep_base() . '/' . $paths[$which] . '/whip';
 }
 
-function live_normalize_play_mode(?string $mode = null): string
+function live_channel_on(string $which): bool
+{
+    $which = strtolower(trim($which));
+    if (!in_array($which, ['cloudflare', 'zoom', 'zoom_link'], true)) {
+        return false;
+    }
+    $key = 'live_on_' . $which;
+    $all = function_exists('settings_all') ? settings_all() : [];
+    if (!isset($all[$key])) {
+        return true;
+    }
+    return function_exists('setting_bool') ? setting_bool($key, true) : true;
+}
+
+function live_parse_play_mode(?string $mode = null): string
 {
     $mode = strtolower(trim((string) $mode));
-    return $mode === 'zoom' ? 'zoom' : 'browser';
+    if ($mode === 'zoom_link' || $mode === 'link') {
+        return 'zoom_link';
+    }
+    if ($mode === 'zoom') {
+        return 'zoom';
+    }
+    return 'browser';
+}
+
+function live_enabled_play_modes(): array
+{
+    $out = [];
+    if (live_channel_on('cloudflare')) {
+        $out[] = 'browser';
+    }
+    if (live_channel_on('zoom') && live_zoom_sdk_ready()) {
+        $out[] = 'zoom';
+    }
+    if (live_channel_on('zoom_link')) {
+        $out[] = 'zoom_link';
+    }
+    if ($out === []) {
+        $out[] = 'browser';
+    }
+    return $out;
+}
+
+function live_normalize_play_mode(?string $mode = null): string
+{
+    $mode = live_parse_play_mode($mode);
+    $ok = live_enabled_play_modes();
+    if (in_array($mode, $ok, true)) {
+        return $mode;
+    }
+    if ($mode === 'zoom' && in_array('zoom_link', $ok, true)) {
+        return 'zoom_link';
+    }
+    return $ok[0];
 }
 
 function live_last_play_mode(): string
 {
-    return live_normalize_play_mode($_SESSION['live_play_mode'] ?? 'browser');
+    return live_normalize_play_mode($_SESSION['live_play_mode'] ?? '');
 }
 
 function live_remember_play_mode(string $mode = 'browser'): string
@@ -748,6 +799,27 @@ function live_remember_play_mode(string $mode = 'browser'): string
     $mode = live_normalize_play_mode($mode);
     $_SESSION['live_play_mode'] = $mode;
     return $mode;
+}
+
+function live_play_mode_short(?string $mode = null): string
+{
+    $mode = live_parse_play_mode($mode);
+    if ($mode === 'zoom_link') {
+        return 'Zoom link';
+    }
+    if ($mode === 'zoom') {
+        return 'Zoom';
+    }
+    return 'Cloudflare';
+}
+
+function live_play_mode_label(array $room): string
+{
+    $name = live_play_mode_short($room['play_mode'] ?? null);
+    if (function_exists('live_room_is_test') && live_room_is_test($room)) {
+        return 'Test · ' . $name;
+    }
+    return $name;
 }
 
 function live_zoom_host_ok(string $host): bool
@@ -820,7 +892,13 @@ function live_room_zoom_pass(array $room): string
 
 function live_room_is_zoom(array $room): bool
 {
-    return live_room_play_mode($room) === 'zoom';
+    $mode = live_room_play_mode($room);
+    return $mode === 'zoom' || $mode === 'zoom_link';
+}
+
+function live_room_zoom_embed(array $room): bool
+{
+    return live_room_play_mode($room) === 'zoom' && live_zoom_sdk_ready();
 }
 
 function live_room_save_zoom(PDO $pdo, int $roomId, string $mode, string $url = '', string $pass = ''): void
@@ -830,8 +908,9 @@ function live_room_save_zoom(PDO $pdo, int $roomId, string $mode, string $url = 
     }
     ensure_live_play_mode_schema();
     $mode = live_normalize_play_mode($mode);
-    $url = $mode === 'zoom' ? live_zoom_normalize($url) : '';
-    $pass = $mode === 'zoom' ? live_zoom_pass_ok($pass) : '';
+    $keep = $mode === 'zoom' || $mode === 'zoom_link';
+    $url = $keep ? live_zoom_normalize($url) : '';
+    $pass = $keep ? live_zoom_pass_ok($pass) : '';
     try {
         $pdo->prepare('UPDATE live_rooms SET play_mode = ?, zoom_url = ?, zoom_pass = ? WHERE id = ?')
             ->execute([$mode, $url !== '' ? $url : null, $pass !== '' ? $pass : null, $roomId]);
@@ -1200,15 +1279,19 @@ function live_nav_open_count(string $role, int $userId = 0): int
 function live_room_play_mode(array $room): string
 {
     ensure_live_play_mode_schema();
-    return live_normalize_play_mode($room['play_mode'] ?? null);
+    return live_parse_play_mode($room['play_mode'] ?? null);
 }
 
 function live_start_chat_message(string $mode = 'browser'): string
 {
-    if (live_normalize_play_mode($mode) === 'zoom') {
-        return 'Oda Zoom ile açıldı. Sohbet burada kalır; derse Zoom bağlantısından girin.';
+    $mode = live_parse_play_mode($mode);
+    if ($mode === 'zoom') {
+        return 'Oda Zoom ile açıldı. Kamera bu sayfada; sohbet burada kalır.';
     }
-    return 'Oda açıldı.';
+    if ($mode === 'zoom_link') {
+        return 'Oda Zoom bağlantısı ile açıldı. Derse Zoom’dan girin; sohbet burada kalır.';
+    }
+    return 'Oda Cloudflare ile açıldı.';
 }
 
 function ensure_live_attendance_schema(): void
@@ -1548,6 +1631,19 @@ function live_board_parse_stroke($raw): ?array
     return $stroke;
 }
 
+function live_channels_summary(): string
+{
+    $bits = [];
+    $bits[] = live_channel_on('cloudflare') ? 'Cloudflare açık' : 'Cloudflare kapalı';
+    if (live_channel_on('zoom')) {
+        $bits[] = live_zoom_sdk_ready() ? 'Zoom sitede açık' : 'Zoom sitede açık (Meeting SDK yok)';
+    } else {
+        $bits[] = 'Zoom sitede kapalı';
+    }
+    $bits[] = live_channel_on('zoom_link') ? 'Zoom linki açık' : 'Zoom linki kapalı';
+    return implode(' · ', $bits);
+}
+
 function live_play_mode_picker(string $name = 'play_mode', ?string $selected = null, string $layout = 'cards'): string
 {
     $selected = live_normalize_play_mode($selected ?? live_last_play_mode());
@@ -1555,51 +1651,58 @@ function live_play_mode_picker(string $name = 'play_mode', ?string $selected = n
     $lastPass = e((string) ($_SESSION['live_zoom_pass'] ?? ''));
     $name = preg_replace('/[^a-z0-9_]/i', '', $name) ?: 'play_mode';
     $auto = live_zoom_s2s_ready();
-    $embed = live_zoom_sdk_ready();
-    $zSpan = $embed
-        ? 'Kamera ve ekran bu sitede Zoom ile açılır'
-        : 'Admin Zoom anahtarlarını girince kamera sitede açılır';
-    $hint = $embed
-        ? 'Zoom seçince kamera bu sayfada açılır. Sohbet ve yoklama sitede kalır.'
-        : 'Şimdilik yeni sekmede Zoom açılır. Admin → Canlı dersler’e Meeting SDK Client ID/Secret girince kamera sitede açılır.';
-    if ($auto) {
-        $hint .= ' Toplantı otomatik oluşturulur.';
-    } else {
-        $hint .= ' Zoom’da toplantı açıp bağlantıyı yapıştırın.';
+    $modes = live_enabled_play_modes();
+    $n = count($modes);
+    $cols = $n >= 3 ? 'sm:grid-cols-3' : ($n === 2 ? 'sm:grid-cols-2' : '');
+    $cards = [
+        'browser' => ['Cloudflare', 'Kamera ve ekran bu sitede (Stream)'],
+        'zoom' => ['Zoom', 'Kamera bu sitede Zoom Meeting SDK ile açılır'],
+        'zoom_link' => ['Zoom linki', "Zoom'da toplantı açıp bağlantıyı yapıştırın"],
+    ];
+    $hints = [];
+    if (in_array('browser', $modes, true)) {
+        $hints[] = "Cloudflare'da kamera sitede kalır; ders kaydı sunucuya yazılır.";
     }
-    $bOn = $selected === 'browser' ? ' is-on' : '';
-    $zOn = $selected === 'zoom' ? ' is-on' : '';
-    $bChk = $selected === 'browser' ? ' checked' : '';
-    $zChk = $selected === 'zoom' ? ' checked' : '';
-    $hid = ($selected === 'zoom' && !$auto) ? '' : ' hidden';
+    if (in_array('zoom', $modes, true)) {
+        $hints[] = $auto
+            ? 'Zoom seçince toplantı otomatik açılır; kamera bu sayfada kalır.'
+            : 'Zoom seçince toplantı bağlantısını yapıştırın; kamera bu sayfada açılır.';
+    } elseif (live_channel_on('zoom') && !live_zoom_sdk_ready()) {
+        $hints[] = 'Zoom sitede kapalı: Admin → Canlı’ya Meeting SDK Client ID/Secret girin.';
+    }
+    if (in_array('zoom_link', $modes, true)) {
+        $hints[] = "Zoom linkinde öğrenci yeni sekmede Zoom'a gider; sohbet sitede kalır.";
+    }
+    $needUrl = $selected === 'zoom_link' || ($selected === 'zoom' && !$auto);
+    $hid = $needUrl ? '' : ' hidden';
     $autoFlag = $auto ? '1' : '0';
-    $hintHtml = e($hint);
-    $zSpanHtml = e($zSpan);
-    return <<<HTML
-<div class="live-mode-picker mt-4" data-live-mode-picker data-zoom-auto="{$autoFlag}">
-  <p class="text-sm font-bold">Yayın türü</p>
-  <div class="mt-2 grid gap-2 sm:grid-cols-2">
-    <label class="live-mode-card{$bOn}">
-      <input type="radio" name="{$name}" value="browser"{$bChk}>
-      <b>1. Sitede yayın</b>
-      <span>Kamera ve ekran bu sitede (Cloudflare)</span>
-    </label>
-    <label class="live-mode-card{$zOn}">
-      <input type="radio" name="{$name}" value="zoom"{$zChk}>
-      <b>2. Zoom</b>
-      <span>{$zSpanHtml}</span>
-    </label>
-  </div>
-  <p class="mt-3 text-xs text-muted">{$hintHtml}</p>
-  <div class="live-zoom-fields mt-3 grid gap-3"{$hid}>
-    <label class="text-sm font-bold">Zoom bağlantısı veya toplantı no
-      <input name="zoom_url" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="{$lastUrl}" placeholder="https://zoom.us/j/123456789 veya 123 456 7890" autocomplete="off">
-    </label>
-    <label class="text-sm font-bold">Toplantı şifresi <span class="font-normal text-muted">(isteğe bağlı)</span>
-      <input name="zoom_pass" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="{$lastPass}" autocomplete="off">
-    </label>
-  </div>
-</div>
+    $html = '<div class="live-mode-picker mt-4" data-live-mode-picker data-zoom-auto="' . $autoFlag . '">';
+    $html .= '<p class="text-sm font-bold">Yayın türü</p>';
+    $html .= '<div class="mt-2 grid gap-2 ' . $cols . '">';
+    $i = 1;
+    foreach ($modes as $mode) {
+        $on = $selected === $mode ? ' is-on' : '';
+        $chk = $selected === $mode ? ' checked' : '';
+        $title = $cards[$mode][0] ?? $mode;
+        $span = $cards[$mode][1] ?? '';
+        $html .= '<label class="live-mode-card' . $on . '">';
+        $html .= '<input type="radio" name="' . e($name) . '" value="' . e($mode) . '"' . $chk . '>';
+        $html .= '<b>' . $i . '. ' . e($title) . '</b>';
+        $html .= '<span>' . e($span) . '</span></label>';
+        $i++;
+    }
+    $html .= '</div>';
+    if ($hints !== []) {
+        $html .= '<p class="mt-3 text-xs text-muted">' . e(implode(' ', $hints)) . '</p>';
+    }
+    $html .= '<div class="live-zoom-fields mt-3 grid gap-3"' . $hid . '>';
+    $html .= '<label class="text-sm font-bold">Zoom bağlantısı veya toplantı no';
+    $html .= '<input name="zoom_url" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="' . $lastUrl . '" placeholder="https://zoom.us/j/123456789 veya 123 456 7890" autocomplete="off">';
+    $html .= '</label>';
+    $html .= '<label class="text-sm font-bold">Toplantı şifresi <span class="font-normal text-muted">(isteğe bağlı)</span>';
+    $html .= '<input name="zoom_pass" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="' . $lastPass . '" autocomplete="off">';
+    $html .= '</label></div></div>';
+    $html .= <<<'JS'
 <script>
 (function () {
   var root = document.currentScript && document.currentScript.previousElementSibling;
@@ -1609,10 +1712,11 @@ function live_play_mode_picker(string $name = 'play_mode', ?string $selected = n
   if (!root) return;
   function sync() {
     var z = root.querySelector('input[value="zoom"]');
+    var l = root.querySelector('input[value="zoom_link"]');
     var fields = root.querySelector('.live-zoom-fields');
-    var on = !!(z && z.checked);
     var auto = root.getAttribute('data-zoom-auto') === '1';
-    if (fields) fields.hidden = auto || !on;
+    var need = !!(l && l.checked) || !!(z && z.checked && !auto);
+    if (fields) fields.hidden = !need;
     root.querySelectorAll('.live-mode-card').forEach(function (c) {
       var inp = c.querySelector('input');
       c.classList.toggle('is-on', !!(inp && inp.checked));
@@ -1622,7 +1726,8 @@ function live_play_mode_picker(string $name = 'play_mode', ?string $selected = n
   sync();
 })();
 </script>
-HTML;
+JS;
+    return $html;
 }
 
 function live_health_url(): string

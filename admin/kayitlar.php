@@ -49,7 +49,7 @@ try {
          FROM recordings rec
          JOIN class_groups g ON g.id = rec.group_id
          JOIN users t ON t.id = rec.teacher_id
-         ORDER BY rec.recorded_on ASC, rec.id ASC
+         ORDER BY rec.recorded_on DESC, rec.id DESC
          LIMIT 300'
     )->fetchAll();
 } catch (Throwable) {
@@ -66,7 +66,7 @@ panel_head('admin', 'kayitlar', 'Ders kayıtları | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4 text-sm text-muted">Kayıtlar yükleyen hocaya göre ayrılır. Test kayıtları öğrenci listesine düşmez. Manuel yüklenenler sunucuda kalır; yalnız canlı ders kaydı Cloudflare’a gider.</p>
+<p class="mb-4 text-sm text-muted">Kayıtlar yükleyen hocaya göre ayrılır. Test kayıtları öğrenci listesine düşmez. Canlı ders kaydı ve manuel yüklenenler sunucuda kalır.</p>
 <?php
 $manualCfN = 0;
 if (function_exists('vod_manual_cf_recordings')) {

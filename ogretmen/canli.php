@@ -20,7 +20,7 @@ $err = flash_error();
 <div class="grid gap-6 lg:grid-cols-2">
   <form method="post" action="<?= e(url('api/live.php')) ?>" class="card p-6">
     <h2 class="font-display text-2xl">Yeni canlı oda</h2>
-    <p class="mt-2 text-sm text-muted">Açık odalar kapanmaz. Sitede yayın veya Zoom seçin. Zoom’da sohbet ve yoklama sitede kalır.</p>
+    <p class="mt-2 text-sm text-muted">Açık odalar kapanmaz. Admin’in açtığı kanallardan birini seçin: Cloudflare, Zoom (sitede) veya Zoom linki. Sohbet ve yoklama sitede kalır.</p>
     <input type="hidden" name="action" value="start"><input type="hidden" name="html" value="1">
     <label class="mt-4 block text-sm font-bold">Grup
       <select name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2"><?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= e($g['name']) ?></option><?php endforeach; ?></select>

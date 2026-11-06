@@ -523,11 +523,8 @@ function live_pill(array $r): string
     if (($r['status'] ?? '') !== 'live') {
         return '<span class="text-muted">Kapalı</span>';
     }
-    if (function_exists('live_room_is_test') && live_room_is_test($r)) {
-        return '<span class="live-pill"><i></i> Test</span>';
-    }
-    if (function_exists('live_room_is_zoom') && live_room_is_zoom($r)) {
-        return '<span class="live-pill"><i></i> Zoom</span>';
-    }
-    return '<span class="live-pill"><i></i> Canlı</span>';
+    $label = function_exists('live_play_mode_label')
+        ? live_play_mode_label($r)
+        : ((function_exists('live_room_is_test') && live_room_is_test($r)) ? 'Test' : 'Canlı');
+    return '<span class="live-pill"><i></i> ' . e($label) . '</span>';
 }

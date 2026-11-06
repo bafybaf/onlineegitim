@@ -61,7 +61,9 @@ $isZoom = function_exists('live_room_is_zoom') && live_room_is_zoom($room);
 $zoomUrl = $isZoom ? live_room_zoom_url($room) : '';
 $zoomPass = $isZoom ? live_room_zoom_pass($room) : '';
 $zoomMeet = $zoomUrl !== '' ? live_zoom_meeting_id($zoomUrl) : '';
-$zoomEmbed = $isZoom && function_exists('live_zoom_sdk_ready') && live_zoom_sdk_ready() && $zoomMeet !== '';
+$zoomEmbed = function_exists('live_room_zoom_embed') && live_room_zoom_embed($room) && $zoomMeet !== '';
+$playMode = function_exists('live_room_play_mode') ? live_room_play_mode($room) : ($isZoom ? 'zoom' : 'browser');
+$modeLabel = function_exists('live_play_mode_label') ? live_play_mode_label($room) : ($isZoom ? 'Zoom' : 'Cloudflare');
 $playKey = $isZoom ? (string) ($room['stream_key'] ?? '') : live_ensure_stream_key(db(), $room);
 $hlsUrl = $isZoom ? '' : live_hls_url($playKey);
 $hlsUrlAlt = $isZoom ? '' : live_hls_url($playKey, 1);
@@ -79,7 +81,7 @@ $whipScreenUrlAlt = (!$isZoom && $canPublish) ? live_whip_url($screenKey, 1) : '
 $healthUrl = $isZoom ? '' : live_health_url();
 $doRecord = !$isZoom && $canPublish && ($room['status'] ?? '') === 'live';
 $pauseInfo = live_room_pause_state($room);
-$waitTitle = $isZoom ? 'Zoom’a katılın' : ($canPublish ? 'Kamera' : 'Hoca bağlanıyor');
+$waitTitle = $playMode === 'zoom_link' ? 'Zoom bağlantısına gidin' : ($playMode === 'zoom' ? 'Zoom’a katılın' : ($canPublish ? 'Kamera' : 'Hoca bağlanıyor'));
 $showRoster = in_array($u['role'], ['ogretmen', 'admin'], true);
 $presentN = count($students);
 $boardOn = !$isZoom && function_exists('live_board_enabled') && live_board_enabled();
@@ -133,7 +135,7 @@ if ($screenNow === 0) {
   <?php endif; ?>
   <?php if (!$canPublish): ?>
   <header class="flex items-center justify-between gap-2 px-3 text-white">
-    <h1 class="live-top-title font-display"><?php if ($isObserver): ?><span class="live-pill">Gözlem</span> <?php endif; ?><?= e($room['title']) ?><?php
+    <h1 class="live-top-title font-display"><?php if ($isObserver): ?><span class="live-pill">Gözlem</span> <?php endif; ?><span class="live-pill"><i></i> <?= e($modeLabel) ?></span> <?= e($room['title']) ?><?php
       $topic = trim((string) ($room['topic'] ?? ''));
       echo ($topic !== '' && $topic !== 'Ders') ? ' — ' . e($topic) : '';
     ?></h1>
@@ -152,7 +154,7 @@ if ($screenNow === 0) {
     <section class="live-board" id="live-board">
       <?php if ($canPublish): ?>
       <div class="live-board-bar">
-        <h1 class="live-top-title"><?= e($room['title']) ?></h1>
+        <h1 class="live-top-title"><span class="live-pill"><i></i> <?= e($modeLabel) ?></span> <?= e($room['title']) ?></h1>
         <?php if ($boardOn): ?>
         <button type="button" class="live-board-tool is-on" data-tool="pen">Kalem</button>
         <button type="button" class="live-board-tool" data-tool="erase">Silgi</button>
@@ -206,9 +208,11 @@ if ($screenNow === 0) {
               <a class="live-zoom-fallback" href="<?= e($zoomUrl) ?>" target="_blank" rel="noopener noreferrer">Açılmazsa yeni sekmede Zoom</a>
             <?php endif; ?>
           <?php else: ?>
-          <p class="live-zoom-kicker">Zoom dersi</p>
+          <p class="live-zoom-kicker"><?= $playMode === 'zoom_link' ? 'Zoom linki' : 'Zoom dersi' ?></p>
           <h2>Toplantıya katılın</h2>
-          <p>Admin Zoom Meeting SDK girince kamera burada açılır. Şimdilik Zoom sekmesine gidin.</p>
+          <p><?= $playMode === 'zoom_link'
+            ? 'Bu ders Zoom bağlantısı ile açıldı. Sohbet burada kalır; derse Zoom’dan girin.'
+            : 'Admin Zoom Meeting SDK girince kamera burada açılır. Şimdilik Zoom sekmesine gidin.' ?></p>
           <?php if ($zoomUrl !== ''): ?>
             <a class="btn-primary" href="<?= e($zoomUrl) ?>" target="_blank" rel="noopener noreferrer">Zoom’a katıl</a>
           <?php else: ?>

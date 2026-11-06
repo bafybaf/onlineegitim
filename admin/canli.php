@@ -3,6 +3,21 @@ require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('admin');
 ensure_live_attendance_schema();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'live_channels') {
+    $cf = post('live_on_cloudflare') === '1';
+    $zm = post('live_on_zoom') === '1';
+    $lk = post('live_on_zoom_link') === '1';
+    if (!$cf && !$zm && !$lk) {
+        $cf = true;
+        flash_error('En az bir kanal açık olmalı. Cloudflare açık bırakıldı.');
+    } else {
+        flash_ok('Yayın kanalları kaydedildi.');
+    }
+    setting_set('live_on_cloudflare', $cf ? '1' : '0');
+    setting_set('live_on_zoom', $zm ? '1' : '0');
+    setting_set('live_on_zoom_link', $lk ? '1' : '0');
+    redirect('admin/canli.php');
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'live_board') {
     setting_set('live_board_on', post('live_board_on') === '1' ? '1' : '0');
     flash_ok(live_board_enabled()
@@ -26,9 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'cf_stream') {
         setting_set('cf_stream_token', $tok);
     }
     flash_ok(live_cf_ready()
-        ? (live_cf_api_ready()
-            ? 'Cloudflare adresleri kaydedildi. Biten ders kaydı Stream’e yüklenir.'
-            : 'Yayın adresleri kaydedildi. Kayıt çekmek için Account ID ve API token da gerekli.')
+        ? 'Cloudflare adresleri kaydedildi. Canlı yayın Stream üzerinden gider; biten ders kaydı sunucuda kalır.'
         : 'Adresler temizlendi. Yayın yine sunucudaki MediaMTX üzerinden gider.');
     redirect('admin/canli.php');
 }
@@ -79,12 +92,36 @@ $err = flash_error();
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <?php $liveErrN = function_exists('live_log_recent_error_count') ? live_log_recent_error_count() : 0; ?>
-<p class="mb-4 text-sm text-muted">Test yayını yalnızca seçtiğiniz öğrencileri alır; grubun geri kalanı odayı görmez. Kamerayı sizin açmanız için oda size bağlanır. Gözlemle ile normal derse öğrenci gibi girersiniz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır. Oda açarken 1. Sitede yayın (Cloudflare) veya 2. Zoom seçilir.</p>
+<p class="mb-4 text-sm text-muted">Test yayını yalnızca seçtiğiniz öğrencileri alır; grubun geri kalanı odayı görmez. Kamerayı sizin açmanız için oda size bağlanır. Gözlemle ile normal derse öğrenci gibi girersiniz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır. Oda ve test rozetinde Cloudflare, Zoom veya Zoom linki görünür.</p>
 <p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/kayitlar')) ?>">Ders kayıtları</a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
 <div class="card mb-6 p-5">
+  <h2 class="font-display text-xl">Yayın kanalları</h2>
+  <p class="mt-1 text-sm text-muted">Hoca ve test odasında yalnız açık kanallar seçilir. Zoom sitede için Meeting SDK gerekir; yoksa kart görünmez. Zoom linki yeni sekmede toplantı açar.</p>
+  <p class="mt-2 text-sm font-extrabold <?= (live_channel_on('cloudflare') || live_channel_on('zoom') || live_channel_on('zoom_link')) ? 'text-green-700' : 'text-amber-700' ?>"><?= e(live_channels_summary()) ?></p>
+  <form method="post" class="mt-4 grid gap-3">
+    <input type="hidden" name="action" value="live_channels">
+    <label class="flex items-center gap-2 text-sm font-bold">
+      <input type="hidden" name="live_on_cloudflare" value="0">
+      <input type="checkbox" name="live_on_cloudflare" value="1" <?= live_channel_on('cloudflare') ? 'checked' : '' ?>>
+      Cloudflare’ı aktif et
+    </label>
+    <label class="flex items-center gap-2 text-sm font-bold">
+      <input type="hidden" name="live_on_zoom" value="0">
+      <input type="checkbox" name="live_on_zoom" value="1" <?= live_channel_on('zoom') ? 'checked' : '' ?>>
+      Zoom’u aktif et (kamera sitede)
+    </label>
+    <label class="flex items-center gap-2 text-sm font-bold">
+      <input type="hidden" name="live_on_zoom_link" value="0">
+      <input type="checkbox" name="live_on_zoom_link" value="1" <?= live_channel_on('zoom_link') ? 'checked' : '' ?>>
+      Zoom linkini aktif et
+    </label>
+    <button class="btn-primary h-10 w-fit text-sm">Kaydet</button>
+  </form>
+</div>
+<div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Cloudflare Stream</h2>
-  <p class="mt-1 text-sm text-muted">WHIP / WHEP doluysa canlı yayın Cloudflare’a gider. Tarayıcı WHIP kaydı HLS/DASH ile tutulmaz; Cloudflare’da o kutuyu ve Düşük gecikmeli HLS’i kapalı tutun, aksi halde kamera kopabilir. Yalnız canlı ders kaydı Stream’e yüklenir. Hocanın elle yüklediği MP4 sunucuda kalır. Token izni: Account · Stream · Edit. Aynı anda bir ders yayınlasın.</p>
-  <p class="mt-2 text-sm <?= live_cf_ready() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?= live_cf_ready() ? (live_cf_api_ready() ? 'Stream açık; biten ders kaydı Cloudflare’a yüklenir.' : 'Stream açık. Kayıt yüklemek için Account ID ve token girin.') : 'Stream adresi yok; MediaMTX kullanılıyor.' ?></p>
+  <p class="mt-1 text-sm text-muted">WHIP / WHEP doluysa canlı yayın Cloudflare’a gider. Tarayıcı WHIP kaydı HLS/DASH ile tutulmaz; Cloudflare’da o kutuyu ve Düşük gecikmeli HLS’i kapalı tutun, aksi halde kamera kopabilir. Biten ders kaydı ve hocanın yüklediği MP4 sunucuda kalır. Aynı anda bir ders yayınlasın.</p>
+  <p class="mt-2 text-sm <?= live_cf_ready() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?= live_cf_ready() ? 'Stream açık; canlı yayın Cloudflare’da. Ders kaydı sunucuya yazılır.' : 'Stream adresi yok; MediaMTX kullanılıyor.' ?></p>
   <form method="post" class="mt-4 grid gap-3">
     <input type="hidden" name="action" value="cf_stream">
     <label class="text-sm font-bold">Kamera WHIP
@@ -155,7 +192,7 @@ $err = flash_error();
 </div>
 <div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Canlı yayın testi</h2>
-  <p class="mt-1 text-sm text-muted">Kayıtlı grubun tamamı girmez. Öğrenci seçmezseniz oda yalnız sizde kalır; kamerayı deneyebilirsiniz.</p>
+  <p class="mt-1 text-sm text-muted">Kayıtlı grubun tamamı girmez. Öğrenci seçmezseniz oda yalnız sizde kalır; kamerayı deneyebilirsiniz. Açık kanal (Cloudflare / Zoom / Zoom link) rozette görünür.</p>
   <?php if (!$groups): ?>
     <p class="mt-3 text-sm text-muted">Önce bir sınıf grubu oluşturun.</p>
   <?php else: ?>
@@ -231,6 +268,9 @@ $err = flash_error();
         <td>
           <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-oda.php?id=' . (int) $r['id'])) ?>"><?= e($r['title']) ?></a>
           <p class="text-xs text-muted"><?= e((string) $r['gname']) ?><?php
+            if (function_exists('live_play_mode_short')) {
+                echo ' · ' . e(live_play_mode_short($r['play_mode'] ?? null));
+            }
             if (function_exists('live_room_is_test') && live_room_is_test($r)) {
                 echo ' · test';
                 $nAllow = function_exists('live_allow_ids') ? count(live_allow_ids($r)) : 0;

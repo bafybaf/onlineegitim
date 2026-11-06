@@ -74,10 +74,10 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
     $mode = live_remember_play_mode((string) post('play_mode'));
     $zoomUrl = '';
     $zoomPass = '';
-    if ($mode === 'zoom') {
+    if ($mode === 'zoom' || $mode === 'zoom_link') {
         $zoomUrl = live_zoom_normalize((string) post('zoom_url'));
         $zoomPass = live_zoom_pass_ok((string) post('zoom_pass'));
-        if ($zoomUrl === '' && live_zoom_s2s_ready()) {
+        if ($mode === 'zoom' && $zoomUrl === '' && live_zoom_s2s_ready()) {
             $created = live_zoom_create_meeting(trim((string) ($g['name'] ?? '') . ' — ' . (post('topic') ?: 'Ders')));
             if ($created) {
                 $zoomUrl = (string) $created['join_url'];
@@ -87,9 +87,13 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
         if ($zoomUrl === '') {
             $why = live_zoom_last_error();
             if ($why === '') {
-                $why = live_zoom_s2s_ready()
-                    ? 'Zoom toplantısı açılamadı. Admin anahtarlarını kontrol edin.'
-                    : 'Zoom için toplantı bağlantısı girin veya Admin’den Server-to-Server anahtarlarını kaydedin.';
+                if ($mode === 'zoom_link') {
+                    $why = 'Zoom bağlantısını yapıştırın.';
+                } else {
+                    $why = live_zoom_s2s_ready()
+                        ? 'Zoom toplantısı açılamadı. Admin anahtarlarını kontrol edin.'
+                        : 'Zoom için toplantı bağlantısı girin veya Admin’den Server-to-Server anahtarlarını kaydedin.';
+                }
             }
             if (post('html')) {
                 flash_error($why);
@@ -100,7 +104,7 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
         $_SESSION['live_zoom_url'] = $zoomUrl;
         $_SESSION['live_zoom_pass'] = $zoomPass;
     }
-    $recordOn = $mode === 'zoom' ? 0 : (post('record') ? 1 : 0);
+    $recordOn = ($mode === 'zoom' || $mode === 'zoom_link') ? 0 : (post('record') ? 1 : 0);
     $allow = [];
     if ($isTest) {
         $raw = $_POST['student_ids'] ?? [];
@@ -203,7 +207,7 @@ if ($action === 'zoom_join') {
     $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
     $st->execute([$id]);
     $room = $st->fetch();
-    if (!$room || !live_user_can_access($u, $room) || !live_room_is_zoom($room)) {
+    if (!$room || !live_user_can_access($u, $room) || !live_room_zoom_embed($room)) {
         json_out(['ok' => false, 'error' => 'Zoom odası bulunamadı.'], 403);
     }
     if (!live_zoom_sdk_ready()) {
@@ -270,14 +274,6 @@ if ($action === 'end') {
             }
         } catch (Throwable $e) {
             $saved = false;
-        }
-    }
-    if (!$isZoom && !$saved && function_exists('live_cf_import_room_recordings')) {
-        try {
-            $room['status'] = 'ended';
-            $room['ended_at'] = date('Y-m-d H:i:s');
-            $saved = live_cf_import_room_recordings($pdo, $room) > 0;
-        } catch (Throwable $e) {
         }
     }
     if (post('goto')) {
