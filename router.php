@@ -30,6 +30,7 @@ $static = [
     'iptal-iade' => 'iptal-iade.php',
     'cerez-politikasi' => 'cerez-politikasi.php',
     'blog' => 'blog.php',
+    'dkab-2027' => 'dkab-2027.php',
     'sitemap.xml' => 'sitemap.php',
     'robots.txt' => 'robots.php',
 ];

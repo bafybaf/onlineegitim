@@ -14,6 +14,7 @@ $urls = [
     page_url('iptal-iade'),
     page_url('cerez-politikasi'),
     page_url('kayit-ders'),
+    page_url('dkab-2027'),
     page_url('kayit-magaza'),
 ];
 if (shop_books_visible()) {

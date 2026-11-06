@@ -144,6 +144,7 @@ function pretty_path(string $path): string
         'iptal-iade.php' => 'iptal-iade',
         'cerez-politikasi.php' => 'cerez-politikasi',
         'blog.php' => 'blog',
+        'dkab-2027.php' => 'dkab-2027',
         'sitemap.php' => 'sitemap.xml',
         'robots.php' => 'robots.txt',
     ];
@@ -253,6 +254,7 @@ function page_url(string $name, string $slug = ''): string
         'iptal-iade' => 'iptal-iade',
         'cerez-politikasi' => 'cerez-politikasi',
         'blog' => 'blog',
+        'dkab-2027' => 'dkab-2027',
     ];
     $path = $routes[$name] ?? ltrim($name, '/');
     return $path === '' ? $base . '/' : $base . '/' . $path;
@@ -450,6 +452,7 @@ function maybe_redirect_legacy_url(): void
         'iptal-iade.php' => 'iptal-iade',
         'cerez-politikasi.php' => 'cerez-politikasi',
         'blog.php' => 'blog',
+        'dkab-2027.php' => 'dkab-2027',
     ];
     $target = null;
     $skipQuery = [];

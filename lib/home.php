@@ -55,6 +55,7 @@ function home_seed_if_empty(): void
         home_insert_banner_slides();
     }
     home_sync_banner_slide();
+    home_ensure_dkab_2027_slide();
     try {
         $h = (int) db()->query('SELECT COUNT(*) FROM home_highlights')->fetchColumn();
     } catch (Throwable) {
@@ -93,6 +94,26 @@ function home_sync_banner_slide(): void
         db()->exec('DELETE FROM home_slides');
         home_insert_banner_slides();
         setting_set('home_banner_rev', 'slider-png-v2');
+    } catch (Throwable) {
+    }
+}
+
+function home_ensure_dkab_2027_slide(): void
+{
+    try {
+        $img = 'assets/img/slider-dkab-2027.jpg';
+        $st = db()->prepare('SELECT id FROM home_slides WHERE image = ? OR btn1_url IN (?, ?) LIMIT 1');
+        $st->execute([$img, 'dkab-2027', 'dkab-2027.php']);
+        if ($st->fetch()) {
+            return;
+        }
+        $ins = db()->prepare(
+            'INSERT INTO home_slides (badge, title, title_accent, accent_class, body, btn1_label, btn1_url, btn2_label, btn2_url, btn2_kind, image, alt, active, sort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)'
+        );
+        $ins->execute([
+            '', '2027 DKAB', '', 'accent', '', '', 'dkab-2027', '', '', 'link',
+            $img, '2027 DKAB-ÖABT ücretsiz hazırlık dersleri', 5,
+        ]);
     } catch (Throwable) {
     }
 }
