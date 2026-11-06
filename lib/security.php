@@ -72,7 +72,7 @@ function security_apply_headers(): void
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Permissions-Policy: camera=(self), microphone=(self), geolocation=(), payment=(), usb=()');
+    header('Permissions-Policy: camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()');
     header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
     header('X-Permitted-Cross-Domain-Policies: none');
     if (security_https()) {

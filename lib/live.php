@@ -734,18 +734,322 @@ function live_whip_url(string $streamKey, int $which = 0): string
 
 function live_normalize_play_mode(?string $mode = null): string
 {
-    return 'browser';
+    $mode = strtolower(trim((string) $mode));
+    return $mode === 'zoom' ? 'zoom' : 'browser';
 }
 
 function live_last_play_mode(): string
 {
-    return 'browser';
+    return live_normalize_play_mode($_SESSION['live_play_mode'] ?? 'browser');
 }
 
 function live_remember_play_mode(string $mode = 'browser'): string
 {
-    $_SESSION['live_play_mode'] = 'browser';
-    return 'browser';
+    $mode = live_normalize_play_mode($mode);
+    $_SESSION['live_play_mode'] = $mode;
+    return $mode;
+}
+
+function live_zoom_host_ok(string $host): bool
+{
+    $host = strtolower(trim($host));
+    return $host === 'zoom.us'
+        || str_ends_with($host, '.zoom.us')
+        || $host === 'zoom.com'
+        || str_ends_with($host, '.zoom.com');
+}
+
+function live_zoom_normalize(?string $raw = null): string
+{
+    $raw = trim((string) $raw);
+    if ($raw === '') {
+        return '';
+    }
+    if (preg_match('/^[\d\s.\-]+$/', $raw)) {
+        $digits = preg_replace('/\D+/', '', $raw) ?? '';
+        if (strlen($digits) >= 9 && strlen($digits) <= 13) {
+            return 'https://zoom.us/j/' . $digits;
+        }
+        return '';
+    }
+    if (!preg_match('#^https?://#i', $raw)) {
+        $raw = 'https://' . ltrim($raw, '/');
+    }
+    $parts = parse_url($raw);
+    if (!is_array($parts) || empty($parts['host'])) {
+        return '';
+    }
+    $host = strtolower((string) $parts['host']);
+    if (!live_zoom_host_ok($host)) {
+        return '';
+    }
+    $path = (string) ($parts['path'] ?? '/');
+    if ($path === '') {
+        $path = '/';
+    }
+    $query = isset($parts['query']) ? ('?' . $parts['query']) : '';
+    return 'https://' . $host . $path . $query;
+}
+
+function live_zoom_pass_ok(?string $pass = null): string
+{
+    $pass = trim((string) $pass);
+    if (function_exists('mb_substr')) {
+        return mb_substr($pass, 0, 80);
+    }
+    return substr($pass, 0, 80);
+}
+
+function live_zoom_meeting_id(string $url): string
+{
+    if (preg_match('#/(?:j|w|s|wc/join)/(\d{9,13})#i', $url, $m)) {
+        return $m[1];
+    }
+    return '';
+}
+
+function live_room_zoom_url(array $room): string
+{
+    return live_zoom_normalize((string) ($room['zoom_url'] ?? ''));
+}
+
+function live_room_zoom_pass(array $room): string
+{
+    return live_zoom_pass_ok((string) ($room['zoom_pass'] ?? ''));
+}
+
+function live_room_is_zoom(array $room): bool
+{
+    return live_room_play_mode($room) === 'zoom';
+}
+
+function live_room_save_zoom(PDO $pdo, int $roomId, string $mode, string $url = '', string $pass = ''): void
+{
+    if ($roomId < 1) {
+        return;
+    }
+    ensure_live_play_mode_schema();
+    $mode = live_normalize_play_mode($mode);
+    $url = $mode === 'zoom' ? live_zoom_normalize($url) : '';
+    $pass = $mode === 'zoom' ? live_zoom_pass_ok($pass) : '';
+    try {
+        $pdo->prepare('UPDATE live_rooms SET play_mode = ?, zoom_url = ?, zoom_pass = ? WHERE id = ?')
+            ->execute([$mode, $url !== '' ? $url : null, $pass !== '' ? $pass : null, $roomId]);
+    } catch (Throwable $e) {
+        try {
+            $pdo->prepare('UPDATE live_rooms SET play_mode = ? WHERE id = ?')->execute([$mode, $roomId]);
+        } catch (Throwable $e2) {
+        }
+    }
+}
+
+function live_zoom_setting(string $key): string
+{
+    $map = [
+        'sdk_key' => 'zoom_sdk_key',
+        'sdk_secret' => 'zoom_sdk_secret',
+        's2s_account' => 'zoom_s2s_account',
+        's2s_key' => 'zoom_s2s_key',
+        's2s_secret' => 'zoom_s2s_secret',
+    ];
+    $k = $map[$key] ?? '';
+    if ($k === '' || !function_exists('setting')) {
+        return '';
+    }
+    return trim(setting($k));
+}
+
+function live_zoom_sdk_ready(): bool
+{
+    return live_zoom_setting('sdk_key') !== '' && live_zoom_setting('sdk_secret') !== '';
+}
+
+function live_zoom_s2s_ready(): bool
+{
+    return live_zoom_setting('s2s_account') !== ''
+        && live_zoom_setting('s2s_key') !== ''
+        && live_zoom_setting('s2s_secret') !== '';
+}
+
+function live_zoom_last_error(): string
+{
+    return (string) ($GLOBALS['_live_zoom_err'] ?? '');
+}
+
+function live_zoom_set_error(string $msg): void
+{
+    $GLOBALS['_live_zoom_err'] = trim($msg);
+}
+
+function live_b64url(string $bin): string
+{
+    return rtrim(strtr(base64_encode($bin), '+/', '-_'), '=');
+}
+
+function live_zoom_sdk_signature(string $meetingNumber, int $role = 0): string
+{
+    $key = live_zoom_setting('sdk_key');
+    $secret = live_zoom_setting('sdk_secret');
+    $mn = preg_replace('/\D+/', '', $meetingNumber) ?? '';
+    if ($key === '' || $secret === '' || $mn === '') {
+        return '';
+    }
+    $role = $role === 1 ? 1 : 0;
+    $iat = time() - 30;
+    $exp = $iat + 60 * 60 * 2;
+    $header = live_b64url(json_encode(['alg' => 'HS256', 'typ' => 'JWT'], JSON_UNESCAPED_SLASHES));
+    $payload = live_b64url(json_encode([
+        'appKey' => $key,
+        'mn' => $mn,
+        'role' => $role,
+        'iat' => $iat,
+        'exp' => $exp,
+        'tokenExp' => $exp,
+        'video_webrtc_mode' => 1,
+    ], JSON_UNESCAPED_SLASHES));
+    $sig = live_b64url(hash_hmac('sha256', $header . '.' . $payload, $secret, true));
+    return $header . '.' . $payload . '.' . $sig;
+}
+
+function live_zoom_http(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 25): ?array
+{
+    if (!function_exists('curl_init')) {
+        live_zoom_set_error('Sunucuda curl yok.');
+        return null;
+    }
+    $method = strtoupper($method);
+    $ch = curl_init($url);
+    $opts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => max(8, $timeout),
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_HTTPHEADER => $headers,
+    ];
+    if ($body !== null) {
+        $opts[CURLOPT_POSTFIELDS] = $body;
+    }
+    curl_setopt_array($ch, $opts);
+    $raw = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($raw === false) {
+        live_zoom_set_error('Zoom’a ulaşılamadı.');
+        return null;
+    }
+    $j = json_decode((string) $raw, true);
+    if ($code >= 400) {
+        $msg = is_array($j) ? (string) ($j['message'] ?? $j['error'] ?? '') : '';
+        live_zoom_set_error($msg !== '' ? $msg : ('Zoom HTTP ' . $code));
+        return null;
+    }
+    return is_array($j) ? $j : [];
+}
+
+function live_zoom_s2s_token(): string
+{
+    $acc = live_zoom_setting('s2s_account');
+    $id = live_zoom_setting('s2s_key');
+    $secret = live_zoom_setting('s2s_secret');
+    if ($acc === '' || $id === '' || $secret === '') {
+        return '';
+    }
+    $cached = (string) ($_SESSION['zoom_s2s_token'] ?? '');
+    $exp = (int) ($_SESSION['zoom_s2s_exp'] ?? 0);
+    if ($cached !== '' && $exp > time() + 60) {
+        return $cached;
+    }
+    $auth = base64_encode($id . ':' . $secret);
+    $j = live_zoom_http(
+        'POST',
+        'https://zoom.us/oauth/token?grant_type=account_credentials&account_id=' . rawurlencode($acc),
+        [
+            'Authorization: Basic ' . $auth,
+            'Content-Type: application/x-www-form-urlencoded',
+        ]
+    );
+    $tok = is_array($j) ? trim((string) ($j['access_token'] ?? '')) : '';
+    if ($tok === '') {
+        if (live_zoom_last_error() === '') {
+            live_zoom_set_error('Zoom hesap jetonu alınamadı.');
+        }
+        return '';
+    }
+    $_SESSION['zoom_s2s_token'] = $tok;
+    $_SESSION['zoom_s2s_exp'] = time() + max(60, (int) ($j['expires_in'] ?? 3600) - 90);
+    return $tok;
+}
+
+function live_zoom_api(string $method, string $path, ?array $json = null): ?array
+{
+    $tok = live_zoom_s2s_token();
+    if ($tok === '') {
+        return null;
+    }
+    $path = '/' . ltrim($path, '/');
+    if (!preg_match('#^/(users|meetings)(/[A-Za-z0-9_.:@-]+)*(\?[A-Za-z0-9_=&-]+)?$#', $path)) {
+        return null;
+    }
+    $headers = [
+        'Authorization: Bearer ' . $tok,
+        'Content-Type: application/json',
+    ];
+    $body = $json !== null ? json_encode($json, JSON_UNESCAPED_UNICODE) : null;
+    return live_zoom_http($method, 'https://api.zoom.us/v2' . $path, $headers, $body);
+}
+
+function live_zoom_zak(): string
+{
+    $j = live_zoom_api('GET', '/users/me/token?type=zak');
+    return is_array($j) ? trim((string) ($j['token'] ?? '')) : '';
+}
+
+function live_zoom_create_meeting(string $topic): ?array
+{
+    $topic = trim($topic);
+    if ($topic === '') {
+        $topic = 'Canlı ders';
+    }
+    if (function_exists('mb_substr')) {
+        $topic = mb_substr($topic, 0, 200);
+    } else {
+        $topic = substr($topic, 0, 200);
+    }
+    $pass = (string) random_int(100000, 999999);
+    $j = live_zoom_api('POST', '/users/me/meetings', [
+        'topic' => $topic,
+        'type' => 1,
+        'password' => $pass,
+        'settings' => [
+            'host_video' => true,
+            'participant_video' => true,
+            'join_before_host' => true,
+            'mute_upon_entry' => false,
+            'waiting_room' => false,
+            'meeting_authentication' => false,
+            'approval_type' => 2,
+            'audio' => 'voip',
+            'auto_recording' => 'none',
+            'allow_multiple_devices' => true,
+        ],
+    ]);
+    if (!is_array($j)) {
+        return null;
+    }
+    $id = preg_replace('/\D+/', '', (string) ($j['id'] ?? '')) ?? '';
+    $join = live_zoom_normalize((string) ($j['join_url'] ?? ''));
+    if ($join === '' && $id !== '') {
+        $join = 'https://zoom.us/j/' . $id;
+    }
+    if ($join === '') {
+        live_zoom_set_error('Zoom toplantı bağlantısı gelmedi.');
+        return null;
+    }
+    $pwd = live_zoom_pass_ok((string) ($j['password'] ?? $pass));
+    return [
+        'join_url' => $join,
+        'password' => $pwd,
+        'id' => $id,
+    ];
 }
 
 function ensure_live_play_mode_schema(): void
@@ -756,15 +1060,18 @@ function ensure_live_play_mode_schema(): void
     }
     $done = true;
     try {
-        $has = false;
+        $cols = [];
         foreach (db()->query('SHOW COLUMNS FROM live_rooms')->fetchAll() as $row) {
-            if (($row['Field'] ?? '') === 'play_mode') {
-                $has = true;
-                break;
-            }
+            $cols[(string) ($row['Field'] ?? '')] = true;
         }
-        if (!$has) {
+        if (empty($cols['play_mode'])) {
             db()->exec("ALTER TABLE live_rooms ADD COLUMN play_mode VARCHAR(20) NOT NULL DEFAULT 'browser' AFTER stream_key");
+        }
+        if (empty($cols['zoom_url'])) {
+            db()->exec('ALTER TABLE live_rooms ADD COLUMN zoom_url VARCHAR(500) NULL');
+        }
+        if (empty($cols['zoom_pass'])) {
+            db()->exec('ALTER TABLE live_rooms ADD COLUMN zoom_pass VARCHAR(80) NULL');
         }
     } catch (Throwable $e) {
         $done = false;
@@ -898,6 +1205,9 @@ function live_room_play_mode(array $room): string
 
 function live_start_chat_message(string $mode = 'browser'): string
 {
+    if (live_normalize_play_mode($mode) === 'zoom') {
+        return 'Oda Zoom ile açıldı. Sohbet burada kalır; derse Zoom bağlantısından girin.';
+    }
     return 'Oda açıldı.';
 }
 
@@ -1240,7 +1550,79 @@ function live_board_parse_stroke($raw): ?array
 
 function live_play_mode_picker(string $name = 'play_mode', ?string $selected = null, string $layout = 'cards'): string
 {
-    return '';
+    $selected = live_normalize_play_mode($selected ?? live_last_play_mode());
+    $lastUrl = e((string) ($_SESSION['live_zoom_url'] ?? ''));
+    $lastPass = e((string) ($_SESSION['live_zoom_pass'] ?? ''));
+    $name = preg_replace('/[^a-z0-9_]/i', '', $name) ?: 'play_mode';
+    $auto = live_zoom_s2s_ready();
+    $embed = live_zoom_sdk_ready();
+    $zSpan = $embed
+        ? 'Kamera ve ekran bu sitede Zoom ile açılır'
+        : 'Admin Zoom anahtarlarını girince kamera sitede açılır';
+    $hint = $embed
+        ? 'Zoom seçince kamera bu sayfada açılır. Sohbet ve yoklama sitede kalır.'
+        : 'Şimdilik yeni sekmede Zoom açılır. Admin → Canlı dersler’e Meeting SDK Client ID/Secret girince kamera sitede açılır.';
+    if ($auto) {
+        $hint .= ' Toplantı otomatik oluşturulur.';
+    } else {
+        $hint .= ' Zoom’da toplantı açıp bağlantıyı yapıştırın.';
+    }
+    $bOn = $selected === 'browser' ? ' is-on' : '';
+    $zOn = $selected === 'zoom' ? ' is-on' : '';
+    $bChk = $selected === 'browser' ? ' checked' : '';
+    $zChk = $selected === 'zoom' ? ' checked' : '';
+    $hid = ($selected === 'zoom' && !$auto) ? '' : ' hidden';
+    $autoFlag = $auto ? '1' : '0';
+    $hintHtml = e($hint);
+    $zSpanHtml = e($zSpan);
+    return <<<HTML
+<div class="live-mode-picker mt-4" data-live-mode-picker data-zoom-auto="{$autoFlag}">
+  <p class="text-sm font-bold">Yayın türü</p>
+  <div class="mt-2 grid gap-2 sm:grid-cols-2">
+    <label class="live-mode-card{$bOn}">
+      <input type="radio" name="{$name}" value="browser"{$bChk}>
+      <b>1. Sitede yayın</b>
+      <span>Kamera ve ekran bu sitede (Cloudflare)</span>
+    </label>
+    <label class="live-mode-card{$zOn}">
+      <input type="radio" name="{$name}" value="zoom"{$zChk}>
+      <b>2. Zoom</b>
+      <span>{$zSpanHtml}</span>
+    </label>
+  </div>
+  <p class="mt-3 text-xs text-muted">{$hintHtml}</p>
+  <div class="live-zoom-fields mt-3 grid gap-3"{$hid}>
+    <label class="text-sm font-bold">Zoom bağlantısı veya toplantı no
+      <input name="zoom_url" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="{$lastUrl}" placeholder="https://zoom.us/j/123456789 veya 123 456 7890" autocomplete="off">
+    </label>
+    <label class="text-sm font-bold">Toplantı şifresi <span class="font-normal text-muted">(isteğe bağlı)</span>
+      <input name="zoom_pass" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="{$lastPass}" autocomplete="off">
+    </label>
+  </div>
+</div>
+<script>
+(function () {
+  var root = document.currentScript && document.currentScript.previousElementSibling;
+  if (!root || !root.getAttribute || !root.getAttribute('data-live-mode-picker')) {
+    root = document.querySelector('[data-live-mode-picker]');
+  }
+  if (!root) return;
+  function sync() {
+    var z = root.querySelector('input[value="zoom"]');
+    var fields = root.querySelector('.live-zoom-fields');
+    var on = !!(z && z.checked);
+    var auto = root.getAttribute('data-zoom-auto') === '1';
+    if (fields) fields.hidden = auto || !on;
+    root.querySelectorAll('.live-mode-card').forEach(function (c) {
+      var inp = c.querySelector('input');
+      c.classList.toggle('is-on', !!(inp && inp.checked));
+    });
+  }
+  root.addEventListener('change', sync);
+  sync();
+})();
+</script>
+HTML;
 }
 
 function live_health_url(): string
@@ -1584,6 +1966,7 @@ function live_public_room(array $room): array
         'paused' => (int) $pause['paused'],
         'started_at' => (string) ($room['started_at'] ?? ''),
         'play_mode' => live_room_play_mode($room),
+        'zoom' => live_room_is_zoom($room) ? 1 : 0,
         'screen' => (int) ($room['screen_on'] ?? 0),
     ];
 }

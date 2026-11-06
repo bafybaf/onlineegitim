@@ -57,27 +57,32 @@ $students = live_present_students($id);
 $canPublish = live_user_can_publish($u, $room);
 $isObserver = function_exists('live_user_is_observer') && live_user_is_observer($u, $room);
 $canEnd = $canPublish;
-$playKey = live_ensure_stream_key(db(), $room);
-$hlsUrl = live_hls_url($playKey);
-$hlsUrlAlt = live_hls_url($playKey, 1);
-$whepUrl = live_whep_url($playKey);
-$whepUrlAlt = live_whep_url($playKey, 1);
-$whipUrl = $canPublish ? live_whip_url($playKey) : '';
-$whipUrlAlt = $canPublish ? live_whip_url($playKey, 1) : '';
+$isZoom = function_exists('live_room_is_zoom') && live_room_is_zoom($room);
+$zoomUrl = $isZoom ? live_room_zoom_url($room) : '';
+$zoomPass = $isZoom ? live_room_zoom_pass($room) : '';
+$zoomMeet = $zoomUrl !== '' ? live_zoom_meeting_id($zoomUrl) : '';
+$zoomEmbed = $isZoom && function_exists('live_zoom_sdk_ready') && live_zoom_sdk_ready() && $zoomMeet !== '';
+$playKey = $isZoom ? (string) ($room['stream_key'] ?? '') : live_ensure_stream_key(db(), $room);
+$hlsUrl = $isZoom ? '' : live_hls_url($playKey);
+$hlsUrlAlt = $isZoom ? '' : live_hls_url($playKey, 1);
+$whepUrl = $isZoom ? '' : live_whep_url($playKey);
+$whepUrlAlt = $isZoom ? '' : live_whep_url($playKey, 1);
+$whipUrl = (!$isZoom && $canPublish) ? live_whip_url($playKey) : '';
+$whipUrlAlt = (!$isZoom && $canPublish) ? live_whip_url($playKey, 1) : '';
 $screenKey = $playKey . '-screen';
-$hlsScreenUrl = live_hls_url($screenKey);
-$hlsScreenUrlAlt = live_hls_url($screenKey, 1);
-$whepScreenUrl = live_whep_url($screenKey);
-$whepScreenUrlAlt = live_whep_url($screenKey, 1);
-$whipScreenUrl = $canPublish ? live_whip_url($screenKey) : '';
-$whipScreenUrlAlt = $canPublish ? live_whip_url($screenKey, 1) : '';
-$healthUrl = live_health_url();
-$doRecord = $canPublish && ($room['status'] ?? '') === 'live';
+$hlsScreenUrl = $isZoom ? '' : live_hls_url($screenKey);
+$hlsScreenUrlAlt = $isZoom ? '' : live_hls_url($screenKey, 1);
+$whepScreenUrl = $isZoom ? '' : live_whep_url($screenKey);
+$whepScreenUrlAlt = $isZoom ? '' : live_whep_url($screenKey, 1);
+$whipScreenUrl = (!$isZoom && $canPublish) ? live_whip_url($screenKey) : '';
+$whipScreenUrlAlt = (!$isZoom && $canPublish) ? live_whip_url($screenKey, 1) : '';
+$healthUrl = $isZoom ? '' : live_health_url();
+$doRecord = !$isZoom && $canPublish && ($room['status'] ?? '') === 'live';
 $pauseInfo = live_room_pause_state($room);
-$waitTitle = $canPublish ? 'Kamera' : 'Hoca bağlanıyor';
+$waitTitle = $isZoom ? 'Zoom’a katılın' : ($canPublish ? 'Kamera' : 'Hoca bağlanıyor');
 $showRoster = in_array($u['role'], ['ogretmen', 'admin'], true);
 $presentN = count($students);
-$boardOn = function_exists('live_board_enabled') && live_board_enabled();
+$boardOn = !$isZoom && function_exists('live_board_enabled') && live_board_enabled();
 $screenNow = (int) ($room['screen_on'] ?? 0);
 if ($screenNow === 0) {
     try {
@@ -98,14 +103,27 @@ if ($screenNow === 0) {
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={theme:{extend:{colors:{navy:'#111111',navy3:'#0a0a0a',accent:'#e8232a'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/css/site.css') ?>" />
+  <?php if (!$isZoom): ?>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+  <?php endif; ?>
   <?php if ($boardOn): ?>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <?php endif; ?>
+  <?php if (!empty($zoomEmbed)): ?>
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom": "https://esm.sh/react-dom@18.3.1?deps=react@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1"
+    }
+  }
+  </script>
+  <?php endif; ?>
 </head>
 <body class="bg-black">
-<div class="live-shell<?= $boardOn ? '' : ' is-board-off' ?><?= $canPublish ? '' : ' is-viewer' ?><?= $screenNow ? ' is-sharing' : '' ?>">
+<div class="live-shell<?= $boardOn ? '' : ' is-board-off' ?><?= $canPublish ? '' : ' is-viewer' ?><?= $screenNow ? ' is-sharing' : '' ?><?= $isZoom ? ' is-zoom' : '' ?>">
   <?php if ($lives): ?>
   <div class="live-strip">
     <?php foreach ($lives as $l): ?>
@@ -120,6 +138,9 @@ if ($screenNow === 0) {
       echo ($topic !== '' && $topic !== 'Ders') ? ' — ' . e($topic) : '';
     ?></h1>
     <div class="live-top-actions">
+      <?php if ($isZoom && $zoomUrl !== ''): ?>
+        <a href="<?= e($zoomUrl) ?>" class="live-cam-btn" target="_blank" rel="noopener noreferrer">Zoom’a katıl</a>
+      <?php endif; ?>
       <?php if ($isObserver): ?>
         <a href="<?= e(url('admin/canli-log.php?oda=' . $id)) ?>" class="live-cam-btn">Kayıtlar</a>
       <?php endif; ?>
@@ -154,15 +175,21 @@ if ($screenNow === 0) {
         <span id="board-page"></span>
         <span class="live-board-sep"></span>
         <?php endif; ?>
+        <?php if (!$isZoom): ?>
         <button type="button" id="whip-toggle" class="live-cam-btn">Kamera</button>
         <button type="button" id="whip-share" class="live-cam-btn live-cam-btn--ghost" title="PDF veya pencere seçin. Canlı sınıfı kapatmayın; kamera ve sohbet üstte kalır">Ekran paylaşımı</button>
         <button type="button" id="live-present-btn" class="live-cam-btn live-cam-btn--ghost" title="Kamera, sohbet ve öğrenciler üstte kalsın">Sunum</button>
         <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Ses</button>
         <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
+        <?php elseif ($zoomUrl !== ''): ?>
+        <a href="<?= e($zoomUrl) ?>" class="live-cam-btn" target="_blank" rel="noopener noreferrer">Zoom’a katıl</a>
+        <?php endif; ?>
         <?php if ($canEnd && $room['status'] === 'live'): ?>
         <span class="live-board-sep"></span>
         <button type="button" id="live-pause-btn" class="live-board-tool">Mola</button>
+        <?php if (!$isZoom): ?>
         <button type="button" id="live-rec-start" class="live-cam-btn">Kayıt</button>
+        <?php endif; ?>
         <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="live-board-tool">Bitir</button></form>
         <?php else: ?>
         <a href="<?= e(url($back)) ?>" id="live-leave" class="live-cam-btn">Ayrıl</a>
@@ -170,6 +197,32 @@ if ($screenNow === 0) {
       </div>
       <?php endif; ?>
       <div class="live-board-stage<?= $screenNow ? ' is-screen' : '' ?>" id="board-stage">
+        <?php if ($isZoom): ?>
+        <div class="live-zoom-panel<?= $zoomEmbed ? ' is-embed' : '' ?>">
+          <?php if ($zoomEmbed): ?>
+            <div id="live-zoom-root"></div>
+            <p id="live-zoom-status" class="live-zoom-status">Zoom açılıyor… kamera bu sayfada belirecek.</p>
+            <?php if ($zoomUrl !== ''): ?>
+              <a class="live-zoom-fallback" href="<?= e($zoomUrl) ?>" target="_blank" rel="noopener noreferrer">Açılmazsa yeni sekmede Zoom</a>
+            <?php endif; ?>
+          <?php else: ?>
+          <p class="live-zoom-kicker">Zoom dersi</p>
+          <h2>Toplantıya katılın</h2>
+          <p>Admin Zoom Meeting SDK girince kamera burada açılır. Şimdilik Zoom sekmesine gidin.</p>
+          <?php if ($zoomUrl !== ''): ?>
+            <a class="btn-primary" href="<?= e($zoomUrl) ?>" target="_blank" rel="noopener noreferrer">Zoom’a katıl</a>
+          <?php else: ?>
+            <p class="live-zoom-meta">Hoca henüz bağlantı eklemedi.</p>
+          <?php endif; ?>
+          <?php if ($zoomMeet !== ''): ?>
+            <p class="live-zoom-meta">Toplantı no: <code><?= e($zoomMeet) ?></code></p>
+          <?php endif; ?>
+          <?php if ($zoomPass !== ''): ?>
+            <p class="live-zoom-meta">Şifre: <code><?= e($zoomPass) ?></code></p>
+          <?php endif; ?>
+          <?php endif; ?>
+        </div>
+        <?php else: ?>
         <video id="board-screen" playsinline autoplay muted></video>
         <canvas id="board-bg"></canvas>
         <canvas id="board-draw"></canvas>
@@ -177,6 +230,7 @@ if ($screenNow === 0) {
           <b id="live-rec-num">3</b>
           <p>Kayıt başlıyor</p>
         </div>
+        <?php endif; ?>
         <div id="live-pause-overlay" class="live-pause-overlay<?= !empty($pauseInfo['paused']) ? ' is-on' : '' ?>">
           <p class="live-pause-kicker">Kısa ara</p>
           <b>Mola</b>
@@ -229,6 +283,7 @@ if ($screenNow === 0) {
 <script>
 const base = <?= json_encode(url('')) ?>;
 const roomId = <?= $id ?>;
+<?php if (!$isZoom): ?>
 window.LIVE_PLAYER = {
   method: 'browser',
   provider: <?= json_encode(live_cf_ready() ? 'cloudflare' : 'mediamtx') ?>,
@@ -250,6 +305,7 @@ window.LIVE_PLAYER = {
   roomId: <?= (int) $id ?>,
   observe: <?= $isObserver ? 'true' : 'false' ?>
 };
+<?php endif; ?>
 window.LIVE_BOARD = {
   publish: <?= $canPublish ? 'true' : 'false' ?>,
   enabled: <?= $boardOn ? 'true' : 'false' ?>,
@@ -353,6 +409,7 @@ setInterval(async () => {
   }
 }, 2000);
 </script>
+<?php if (!$isZoom): ?>
 <script>
 window._liveScreenOn = <?= $screenNow ? 'true' : 'false' ?>;
 </script>
@@ -369,6 +426,16 @@ if (window._liveScreenOn && !(window.LIVE_PLAYER && window.LIVE_PLAYER.publish) 
 <script src="<?= e(url('assets/js/live-publisher.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-publisher.js') ?>"></script>
 <script src="<?= e(url('assets/js/live-record.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-record.js') ?>"></script>
 <?php endif; ?>
+<?php endif; ?>
 <script src="<?= e(url('assets/js/live-pause.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-pause.js') ?>"></script>
+<?php if (!empty($zoomEmbed)): ?>
+<script>
+window.LIVE_ZOOM = {
+  api: <?= json_encode(url('api/live.php')) ?>,
+  roomId: <?= (int) $id ?>
+};
+</script>
+<script type="module" src="<?= e(url('assets/js/live-zoom.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-zoom.js') ?>"></script>
+<?php endif; ?>
 </body>
 </html>

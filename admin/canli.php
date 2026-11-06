@@ -32,6 +32,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'cf_stream') {
         : 'Adresler temizlendi. Yayın yine sunucudaki MediaMTX üzerinden gider.');
     redirect('admin/canli.php');
 }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'zoom_api') {
+    setting_set('zoom_sdk_key', trim((string) post('zoom_sdk_key')));
+    setting_set('zoom_s2s_account', trim((string) post('zoom_s2s_account')));
+    setting_set('zoom_s2s_key', trim((string) post('zoom_s2s_key')));
+    $sdkSecret = trim((string) post('zoom_sdk_secret'));
+    if ($sdkSecret !== '') {
+        setting_set('zoom_sdk_secret', $sdkSecret);
+    }
+    $s2sSecret = trim((string) post('zoom_s2s_secret'));
+    if ($s2sSecret !== '') {
+        setting_set('zoom_s2s_secret', $s2sSecret);
+    }
+    unset($_SESSION['zoom_s2s_token'], $_SESSION['zoom_s2s_exp']);
+    flash_ok(live_zoom_sdk_ready()
+        ? (live_zoom_s2s_ready()
+            ? 'Zoom kaydedildi. Oda Zoom seçilince toplantı otomatik açılır; kamera sitede açılır.'
+            : 'Meeting SDK kaydedildi. Kamera sitede açılır. Otomatik toplantı için Server-to-Server anahtarlarını da girin.')
+        : 'Zoom anahtarları eksik. Kameranın sitede açılması için Meeting SDK Client ID ve Secret gerekir.');
+    redirect('admin/canli.php');
+}
 $all = db()->query(
     "SELECT r.*, t.name teacher_name, g.name gname, g.cap,
             (SELECT COUNT(*) FROM attendance a WHERE a.room_id = r.id AND a.present = 1) present_n
@@ -59,7 +79,7 @@ $err = flash_error();
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <?php $liveErrN = function_exists('live_log_recent_error_count') ? live_log_recent_error_count() : 0; ?>
-<p class="mb-4 text-sm text-muted">Test yayını yalnızca seçtiğiniz öğrencileri alır; grubun geri kalanı odayı görmez. Kamerayı sizin açmanız için oda size bağlanır. Gözlemle ile normal derse öğrenci gibi girersiniz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır.</p>
+<p class="mb-4 text-sm text-muted">Test yayını yalnızca seçtiğiniz öğrencileri alır; grubun geri kalanı odayı görmez. Kamerayı sizin açmanız için oda size bağlanır. Gözlemle ile normal derse öğrenci gibi girersiniz; kalem, kamera, mola veya yoklama değiştirmezsiniz. Oda kapatmak bu listedeki Kapat ile kalır. Oda açarken 1. Sitede yayın (Cloudflare) veya 2. Zoom seçilir.</p>
 <p class="mb-4 text-sm"><a class="font-extrabold text-navy" href="<?= e(url('admin/kayitlar')) ?>">Ders kayıtları</a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/canli-log.php')) ?>">Hata kayıtları<?= $liveErrN > 0 ? ' (' . (int) $liveErrN . ')' : '' ?></a> · <a class="font-extrabold text-navy" href="<?= e(url('admin/bildirimler')) ?>">Bildirimler</a></p>
 <div class="card mb-6 p-5">
   <h2 class="font-display text-xl">Cloudflare Stream</h2>
@@ -84,6 +104,38 @@ $err = flash_error();
     </label>
     <label class="text-sm font-bold">Stream API token
       <input type="password" name="cf_stream_token" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="" placeholder="<?= live_cf_api_token() !== '' ? 'Kayıtlı; değiştirmek için yeni token yazın' : 'Account · Stream · Edit' ?>" autocomplete="new-password">
+    </label>
+    <button class="btn-primary h-10 w-fit text-sm">Kaydet</button>
+  </form>
+</div>
+<div class="card mb-6 p-5">
+  <h2 class="font-display text-xl">Zoom (2. yayın)</h2>
+  <p class="mt-1 text-sm text-muted">Plus hesap yeter. Kameranın sitede açılması için <b>Meeting SDK</b> uygulaması gerekir; hocanın bağlantı yapıştırmaması için ayrıca <b>Server-to-Server OAuth</b> gerekir. <a class="font-extrabold text-navy" href="https://marketplace.zoom.us/develop/create" target="_blank" rel="noopener noreferrer">marketplace.zoom.us</a> → Build App. Meeting SDK uygulamasına site alan adını (onlineilahiyat.com) ekleyin. Server-to-Server izinleri: <code>meeting:write:meeting</code>, <code>user:read:token</code>.</p>
+  <p class="mt-2 text-sm <?= live_zoom_sdk_ready() ? 'font-extrabold text-green-700' : 'text-amber-700' ?>"><?php
+    if (live_zoom_sdk_ready() && live_zoom_s2s_ready()) {
+        echo 'Zoom hazır: toplantı otomatik, kamera sitede.';
+    } elseif (live_zoom_sdk_ready()) {
+        echo 'SDK açık; kamera sitede. Otomatik toplantı için S2S anahtarları eksik — hoca bağlantı yapıştırır.';
+    } else {
+        echo 'SDK yok; Zoom seçilince yeni sekme açılır. Kamera sitede olsun diye Client ID/Secret girin.';
+    }
+  ?></p>
+  <form method="post" class="mt-4 grid gap-3">
+    <input type="hidden" name="action" value="zoom_api">
+    <label class="text-sm font-bold">Meeting SDK Client ID
+      <input name="zoom_sdk_key" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('zoom_sdk_key')) ?>" autocomplete="off">
+    </label>
+    <label class="text-sm font-bold">Meeting SDK Client Secret
+      <input type="password" name="zoom_sdk_secret" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="" placeholder="<?= live_zoom_setting('sdk_secret') !== '' ? 'Kayıtlı; değiştirmek için yeni secret yazın' : 'Meeting SDK uygulamasındaki Secret' ?>" autocomplete="new-password">
+    </label>
+    <label class="text-sm font-bold">S2S Account ID
+      <input name="zoom_s2s_account" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('zoom_s2s_account')) ?>" autocomplete="off">
+    </label>
+    <label class="text-sm font-bold">S2S Client ID
+      <input name="zoom_s2s_key" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="<?= e(setting('zoom_s2s_key')) ?>" autocomplete="off">
+    </label>
+    <label class="text-sm font-bold">S2S Client Secret
+      <input type="password" name="zoom_s2s_secret" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="" placeholder="<?= live_zoom_setting('s2s_secret') !== '' ? 'Kayıtlı; değiştirmek için yeni secret yazın' : 'Server-to-Server uygulamasındaki Secret' ?>" autocomplete="new-password">
     </label>
     <button class="btn-primary h-10 w-fit text-sm">Kaydet</button>
   </form>
@@ -130,6 +182,7 @@ $err = flash_error();
       </select>
     </label>
     <p class="text-xs text-muted">Ctrl veya Cmd ile birden çok kişi seçin. Boş bırakılırsa kimse giremez.</p>
+    <?= live_play_mode_picker() ?>
     <button class="btn-primary h-10 w-fit text-sm">Test odasını aç</button>
   </form>
   <script>

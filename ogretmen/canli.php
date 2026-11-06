@@ -12,11 +12,15 @@ $all = array_values(array_filter($all, static function (array $r) use ($u): bool
     return (int) ($r['teacher_id'] ?? 0) === (int) $u['id'];
 }));
 panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
+$ok = flash_ok();
+$err = flash_error();
 ?>
+<?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
+<?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <div class="grid gap-6 lg:grid-cols-2">
   <form method="post" action="<?= e(url('api/live.php')) ?>" class="card p-6">
     <h2 class="font-display text-2xl">Yeni canlı oda</h2>
-    <p class="mt-2 text-sm text-muted">Açık odalar kapanmaz.<?= live_in_docker() ? '' : ' Yerelde start-live-server.bat çalışsın.' ?></p>
+    <p class="mt-2 text-sm text-muted">Açık odalar kapanmaz. Sitede yayın veya Zoom seçin. Zoom’da sohbet ve yoklama sitede kalır.</p>
     <input type="hidden" name="action" value="start"><input type="hidden" name="html" value="1">
     <label class="mt-4 block text-sm font-bold">Grup
       <select name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2"><?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= e($g['name']) ?></option><?php endforeach; ?></select>
@@ -24,6 +28,7 @@ panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
     <label class="mt-3 block text-sm font-bold">Konu<input name="topic" class="mt-1 w-full rounded-xl border px-3 py-2" value="Yeni ders"></label>
     <input type="hidden" name="record" value="1">
     <label class="mt-2 flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="yoklama" value="1" checked> Yoklamayı aç</label>
+    <?= live_play_mode_picker() ?>
     <button class="btn-primary mt-5">Odayı aç (diğerleri devam eder)</button>
   </form>
   <div>

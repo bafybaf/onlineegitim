@@ -71,7 +71,36 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
         json_out(['ok' => false, 'error' => 'group']);
     }
     ensure_live_play_mode_schema();
-    $mode = live_remember_play_mode('browser');
+    $mode = live_remember_play_mode((string) post('play_mode'));
+    $zoomUrl = '';
+    $zoomPass = '';
+    if ($mode === 'zoom') {
+        $zoomUrl = live_zoom_normalize((string) post('zoom_url'));
+        $zoomPass = live_zoom_pass_ok((string) post('zoom_pass'));
+        if ($zoomUrl === '' && live_zoom_s2s_ready()) {
+            $created = live_zoom_create_meeting(trim((string) ($g['name'] ?? '') . ' — ' . (post('topic') ?: 'Ders')));
+            if ($created) {
+                $zoomUrl = (string) $created['join_url'];
+                $zoomPass = live_zoom_pass_ok((string) $created['password']);
+            }
+        }
+        if ($zoomUrl === '') {
+            $why = live_zoom_last_error();
+            if ($why === '') {
+                $why = live_zoom_s2s_ready()
+                    ? 'Zoom toplantısı açılamadı. Admin anahtarlarını kontrol edin.'
+                    : 'Zoom için toplantı bağlantısı girin veya Admin’den Server-to-Server anahtarlarını kaydedin.';
+            }
+            if (post('html')) {
+                flash_error($why);
+                redirect($u['role'] === 'admin' ? 'admin/canli.php' : 'ogretmen/canli.php');
+            }
+            json_out(['ok' => false, 'error' => 'zoom_url', 'message' => $why]);
+        }
+        $_SESSION['live_zoom_url'] = $zoomUrl;
+        $_SESSION['live_zoom_pass'] = $zoomPass;
+    }
+    $recordOn = $mode === 'zoom' ? 0 : (post('record') ? 1 : 0);
     $allow = [];
     if ($isTest) {
         $raw = $_POST['student_ids'] ?? [];
@@ -105,18 +134,24 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
         $key = live_new_stream_key($pdo);
         $inserted = false;
         try {
-            $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode, access_mode, allow_student_ids) VALUES (?,?,?,?,?,?,?,?,?,?)')
-                ->execute([(int) $u['id'], $gid, $title, $topic, post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key, $mode, $isTest ? 'allow' : 'all', $allowJson]);
+            $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode, zoom_url, zoom_pass, access_mode, allow_student_ids) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+                ->execute([(int) $u['id'], $gid, $title, $topic, $recordOn, post('yoklama') ? 1 : 0, $key, $mode, $zoomUrl !== '' ? $zoomUrl : null, $zoomPass !== '' ? $zoomPass : null, $isTest ? 'allow' : 'all', $allowJson]);
             $inserted = true;
         } catch (Throwable $e) {
             try {
-                $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode) VALUES (?,?,?,?,?,?,?,?)')
-                    ->execute([(int) $u['id'], $gid, $title, $topic, post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key, $mode]);
+                $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode, access_mode, allow_student_ids) VALUES (?,?,?,?,?,?,?,?,?,?)')
+                    ->execute([(int) $u['id'], $gid, $title, $topic, $recordOn, post('yoklama') ? 1 : 0, $key, $mode, $isTest ? 'allow' : 'all', $allowJson]);
                 $inserted = true;
             } catch (Throwable $e2) {
-                $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key) VALUES (?,?,?,?,?,?,?)')
-                    ->execute([(int) $u['id'], $gid, $title, $topic, post('record') ? 1 : 0, post('yoklama') ? 1 : 0, $key]);
-                $inserted = true;
+                try {
+                    $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key, play_mode) VALUES (?,?,?,?,?,?,?,?)')
+                        ->execute([(int) $u['id'], $gid, $title, $topic, $recordOn, post('yoklama') ? 1 : 0, $key, $mode]);
+                    $inserted = true;
+                } catch (Throwable $e3) {
+                    $pdo->prepare('INSERT INTO live_rooms (teacher_id, group_id, title, topic, record, yoklama, stream_key) VALUES (?,?,?,?,?,?,?)')
+                        ->execute([(int) $u['id'], $gid, $title, $topic, $recordOn, post('yoklama') ? 1 : 0, $key]);
+                    $inserted = true;
+                }
             }
         }
         if (!$inserted) {
@@ -141,6 +176,7 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
             }
         }
         $room = ['id' => $rid];
+        live_room_save_zoom($pdo, $rid, $mode, $zoomUrl, $zoomPass);
     } else {
         live_ensure_stream_key($pdo, $room);
         try {
@@ -151,16 +187,59 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
                 foreach ($allow as $sid) {
                     $att->execute([(int) $room['id'], $sid]);
                 }
-            } else {
-                $pdo->prepare('UPDATE live_rooms SET play_mode = ? WHERE id = ?')->execute([$mode, (int) $room['id']]);
             }
         } catch (Throwable $e) {
         }
+        live_room_save_zoom($pdo, (int) $room['id'], $mode, $zoomUrl, $zoomPass);
     }
     if (post('html')) {
         redirect(canli_url((int) $room['id']));
     }
     json_out(['ok' => true, 'id' => (int) $room['id'], 'play_mode' => $mode]);
+}
+
+if ($action === 'zoom_join') {
+    $id = (int) (post('id') ?: ($_GET['id'] ?? 0));
+    $st = $pdo->prepare('SELECT * FROM live_rooms WHERE id = ?');
+    $st->execute([$id]);
+    $room = $st->fetch();
+    if (!$room || !live_user_can_access($u, $room) || !live_room_is_zoom($room)) {
+        json_out(['ok' => false, 'error' => 'Zoom odası bulunamadı.'], 403);
+    }
+    if (!live_zoom_sdk_ready()) {
+        json_out(['ok' => false, 'error' => 'Admin henüz Zoom Meeting SDK anahtarlarını girmedi.']);
+    }
+    $meet = live_zoom_meeting_id(live_room_zoom_url($room));
+    if ($meet === '') {
+        json_out(['ok' => false, 'error' => 'Toplantı numarası yok.']);
+    }
+    $observer = function_exists('live_user_is_observer') && live_user_is_observer($u, $room);
+    $host = !$observer && live_user_can_publish($u, $room);
+    $zak = '';
+    if ($host && live_zoom_s2s_ready()) {
+        $zak = live_zoom_zak();
+        if ($zak === '') {
+            $host = false;
+        }
+    }
+    $sig = live_zoom_sdk_signature($meet, $host ? 1 : 0);
+    if ($sig === '') {
+        json_out(['ok' => false, 'error' => 'Zoom imzası üretilemedi.']);
+    }
+    $email = trim((string) ($u['email'] ?? ''));
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $email = '';
+    }
+    json_out([
+        'ok' => true,
+        'signature' => $sig,
+        'meetingNumber' => $meet,
+        'password' => live_room_zoom_pass($room),
+        'userName' => (string) ($u['name'] ?? 'Katılımcı'),
+        'userEmail' => $email,
+        'zak' => $zak,
+        'host' => $host ? 1 : 0,
+    ]);
 }
 
 if ($action === 'end') {
@@ -180,8 +259,9 @@ if ($action === 'end') {
         $pdo->prepare('UPDATE live_rooms SET paused = 0, pause_ends_at = NULL WHERE id = ?')->execute([$id]);
     } catch (Throwable $e) {
     }
+    $isZoom = function_exists('live_room_is_zoom') && live_room_is_zoom($room);
     $saved = false;
-    if (function_exists('vod_commit_live_room')) {
+    if (!$isZoom && function_exists('vod_commit_live_room')) {
         try {
             $saved = vod_commit_live_room($pdo, $room, (int) post('mins'), (int) post('sec'));
             if (!$saved) {
@@ -192,7 +272,7 @@ if ($action === 'end') {
             $saved = false;
         }
     }
-    if (!$saved && function_exists('live_cf_import_room_recordings')) {
+    if (!$isZoom && !$saved && function_exists('live_cf_import_room_recordings')) {
         try {
             $room['status'] = 'ended';
             $room['ended_at'] = date('Y-m-d H:i:s');
@@ -201,6 +281,10 @@ if ($action === 'end') {
         }
     }
     if (post('goto')) {
+        if ($isZoom) {
+            flash_ok('Zoom dersi kapandı. Zoom’daki kaydı indirip Kayıt yükle’den ekleyebilirsiniz.');
+            redirect(post('goto'));
+        }
         $chunks = (int) post('rec_chunks');
         if ($saved) {
             flash_ok('Ders kaydı kaydedildi. Aşağıdan izleyebilirsiniz.');

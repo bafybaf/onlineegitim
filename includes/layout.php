@@ -526,5 +526,8 @@ function live_pill(array $r): string
     if (function_exists('live_room_is_test') && live_room_is_test($r)) {
         return '<span class="live-pill"><i></i> Test</span>';
     }
+    if (function_exists('live_room_is_zoom') && live_room_is_zoom($r)) {
+        return '<span class="live-pill"><i></i> Zoom</span>';
+    }
     return '<span class="live-pill"><i></i> Canlı</span>';
 }
