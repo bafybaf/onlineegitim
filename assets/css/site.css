@@ -429,19 +429,41 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
 }
 .live-shell.is-zoom .live-stage { display: none; }
 .live-shell.is-zoom .live-side { grid-template-rows: 1fr; }
+.live-shell.is-zoom .live-board-stage { overflow: hidden; background: #111; }
 .live-zoom-panel.is-embed {
   padding: 0;
   background: #111;
+  display: block;
+  align-items: stretch;
+  justify-content: stretch;
 }
-.live-zoom-panel.is-embed.is-live .live-zoom-status,
-.live-zoom-panel.is-embed.is-live .live-zoom-fallback { display: none; }
+.live-zoom-panel.is-embed.is-live .live-zoom-status { display: none; }
 #live-zoom-root {
   position: absolute;
   inset: 0;
   z-index: 5;
   background: #111;
+  min-height: 280px;
 }
 #live-zoom-root.is-on { z-index: 5; }
+#live-zoom-root > div,
+#live-zoom-root .zmwebsdk-root {
+  width: 100% !important;
+  height: 100% !important;
+}
+.live-shell.is-zoom #live-zoom-root button,
+.live-shell.is-zoom #live-zoom-root [role="button"] {
+  background-color: revert;
+  background-image: revert;
+  color: revert;
+  border: revert;
+  padding: revert;
+  margin: revert;
+  font: revert;
+  line-height: revert;
+  box-shadow: revert;
+  appearance: revert;
+}
 .live-zoom-status {
   position: absolute;
   left: 50%;

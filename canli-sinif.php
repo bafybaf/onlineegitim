@@ -102,8 +102,13 @@ if ($screenNow === 0) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <?php security_html_head(); ?>
   <title>Canlı Sınıf | <?= e($room['title']) ?></title>
+  <script>
+  tailwind.config = {
+    corePlugins: { preflight: <?= !empty($zoomEmbed) ? 'false' : 'true' ?> },
+    theme: { extend: { colors: { navy: '#111111', navy3: '#0a0a0a', accent: '#e8232a' }, fontFamily: { sans: ['Nunito', 'sans-serif'], display: ['Bricolage Grotesque', 'sans-serif'] } } }
+  };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{navy:'#111111',navy3:'#0a0a0a',accent:'#e8232a'},fontFamily:{sans:['Nunito','sans-serif'],display:['Bricolage Grotesque','sans-serif']}}}}</script>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/css/site.css') ?>" />
   <?php if (!$isZoom): ?>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
@@ -118,7 +123,11 @@ if ($screenNow === 0) {
     "imports": {
       "react": "https://esm.sh/react@18.3.1",
       "react-dom": "https://esm.sh/react-dom@18.3.1?deps=react@18.3.1",
-      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1"
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1",
+      "redux": "https://esm.sh/redux@4.2.1",
+      "react-redux": "https://esm.sh/react-redux@8.1.3?deps=react@18.3.1,react-dom@18.3.1,redux@4.2.1",
+      "redux-thunk": "https://esm.sh/redux-thunk@2.4.2?deps=redux@4.2.1",
+      "lodash": "https://esm.sh/lodash@4.17.21"
     }
   }
   </script>

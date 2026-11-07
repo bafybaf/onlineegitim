@@ -19,12 +19,26 @@ function body(obj) {
 function errText(err) {
   if (!err) return '';
   if (typeof err === 'string') return err;
-  return err.reason || err.message || err.errorMessage || '';
+  return err.reason || err.message || err.errorMessage || err.errorCode || '';
+}
+
+function waitLayout() {
+  return new Promise(function (resolve) {
+    function tick(n) {
+      if ((root.clientWidth >= 240 && root.clientHeight >= 180) || n > 20) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(function () { tick(n + 1); });
+    }
+    tick(0);
+  });
 }
 
 async function start() {
   if (!cfg.api || !cfg.roomId || !root) return;
   say('Zoom açılıyor… kamera bu sayfada belirecek.');
+  await waitLayout();
   const r = await fetch(cfg.api, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -36,15 +50,19 @@ async function start() {
     return;
   }
   const client = ZoomMtgEmbedded.createClient();
-  const w = Math.max(480, root.clientWidth || 800);
-  const h = Math.max(320, root.clientHeight || 450);
+  const w = Math.max(640, root.clientWidth || 800);
+  const h = Math.max(360, root.clientHeight || 450);
   await client.init({
     zoomAppRoot: root,
     language: 'tr-TR',
+    patchJsMedia: true,
+    leaveOnPageUnload: true,
     customize: {
       video: {
         isResizable: true,
-        viewSizes: { default: { width: w, height: h } }
+        viewSizes: {
+          default: { width: w, height: h }
+        }
       }
     }
   });
