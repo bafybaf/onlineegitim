@@ -218,11 +218,15 @@ if ($action === 'zoom_join') {
         json_out(['ok' => false, 'error' => 'Toplantı numarası yok.']);
     }
     $observer = function_exists('live_user_is_observer') && live_user_is_observer($u, $room);
-    $host = !$observer && live_user_can_publish($u, $room);
+    $guest = post('guest') === '1';
+    $host = !$guest && !$observer && live_user_can_publish($u, $room);
     $zak = '';
-    if ($host && live_zoom_s2s_ready()) {
+    $zoomEmail = '';
+    if (live_zoom_s2s_ready()) {
+        $zu = live_zoom_host_user();
+        $zoomEmail = trim((string) ($zu['email'] ?? ''));
         $zak = live_zoom_zak();
-        if ($zak === '') {
+        if ($host && $zak === '') {
             $host = false;
         }
     }
@@ -230,13 +234,14 @@ if ($action === 'zoom_join') {
     if ($sig === '') {
         json_out(['ok' => false, 'error' => 'Zoom imzası üretilemedi.']);
     }
-    $email = trim((string) ($u['email'] ?? ''));
+    $email = $host ? $zoomEmail : trim((string) ($u['email'] ?? ''));
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $email = '';
     }
     json_out([
         'ok' => true,
         'signature' => $sig,
+        'sdkKey' => live_zoom_setting('sdk_key'),
         'meetingNumber' => $meet,
         'password' => live_room_zoom_pass($room),
         'userName' => (string) ($u['name'] ?? 'Katılımcı'),

@@ -979,6 +979,7 @@ function live_zoom_sdk_signature(string $meetingNumber, int $role = 0): string
     $header = live_b64url(json_encode(['alg' => 'HS256', 'typ' => 'JWT'], JSON_UNESCAPED_SLASHES));
     $payload = live_b64url(json_encode([
         'appKey' => $key,
+        'sdkKey' => $key,
         'mn' => $mn,
         'role' => $role,
         'iat' => $iat,
@@ -1076,9 +1077,36 @@ function live_zoom_api(string $method, string $path, ?array $json = null): ?arra
     return live_zoom_http($method, 'https://api.zoom.us/v2' . $path, $headers, $body);
 }
 
+function live_zoom_user_path(?string $id = null): string
+{
+    $id = trim((string) $id);
+    if ($id !== '' && preg_match('/^[A-Za-z0-9_.:@-]+$/', $id)) {
+        return $id;
+    }
+    return 'me';
+}
+
+function live_zoom_host_user(): array
+{
+    static $cached = null;
+    if (is_array($cached)) {
+        return $cached;
+    }
+    $j = live_zoom_api('GET', '/users/me');
+    if (!is_array($j) || trim((string) ($j['id'] ?? '')) === '') {
+        return ['id' => '', 'email' => ''];
+    }
+    $cached = [
+        'id' => trim((string) ($j['id'] ?? '')),
+        'email' => trim((string) ($j['email'] ?? '')),
+    ];
+    return $cached;
+}
+
 function live_zoom_zak(): string
 {
-    $j = live_zoom_api('GET', '/users/me/token?type=zak');
+    $id = live_zoom_user_path(live_zoom_host_user()['id'] ?? '');
+    $j = live_zoom_api('GET', '/users/' . $id . '/token?type=zak');
     return is_array($j) ? trim((string) ($j['token'] ?? '')) : '';
 }
 
@@ -1094,9 +1122,13 @@ function live_zoom_create_meeting(string $topic): ?array
         $topic = substr($topic, 0, 200);
     }
     $pass = (string) random_int(100000, 999999);
-    $j = live_zoom_api('POST', '/users/me/meetings', [
+    $hostPath = live_zoom_user_path(live_zoom_host_user()['id'] ?? '');
+    $j = live_zoom_api('POST', '/users/' . $hostPath . '/meetings', [
         'topic' => $topic,
-        'type' => 1,
+        'type' => 2,
+        'start_time' => gmdate('Y-m-d\TH:i:s\Z'),
+        'duration' => 240,
+        'timezone' => 'UTC',
         'password' => $pass,
         'settings' => [
             'host_video' => true,

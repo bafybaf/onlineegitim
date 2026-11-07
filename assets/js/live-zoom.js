@@ -21,7 +21,13 @@ function body(obj) {
 function errText(err) {
   if (!err) return '';
   if (typeof err === 'string') return err;
-  return err.reason || err.message || err.errorMessage || err.errorCode || '';
+  return String(err.reason || err.message || err.errorMessage || err.errorCode || '');
+}
+
+function isTokenStartError(err) {
+  var t = (errText(err) + ' ' + (err && err.type ? err.type : '')).toLowerCase();
+  var code = err && (err.errorCode || err.errorcode);
+  return /via tokens|not support start/.test(t) || code === 3265 || code === 3136;
 }
 
 function videoSize() {
@@ -52,6 +58,36 @@ function waitLayout() {
     }
     tick();
   });
+}
+
+async function fetchJoin(guest) {
+  const r = await fetch(cfg.api, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body({
+      action: 'zoom_join',
+      id: String(cfg.roomId),
+      guest: guest ? '1' : '0'
+    })
+  });
+  const j = await r.json();
+  if (!j || !j.ok) {
+    throw new Error((j && j.error) || 'Zoom bağlantısı alınamadı.');
+  }
+  return j;
+}
+
+function joinPayload(j) {
+  const join = {
+    signature: j.signature,
+    meetingNumber: String(j.meetingNumber),
+    password: j.password || '',
+    userName: j.userName || 'Katılımcı'
+  };
+  if (j.sdkKey) join.sdkKey = j.sdkKey;
+  if (j.userEmail) join.userEmail = j.userEmail;
+  if (j.zak) join.zak = j.zak;
+  return join;
 }
 
 async function startMedia(client) {
@@ -87,20 +123,7 @@ function fitVideo(client) {
   } catch (err) {}
 }
 
-async function start() {
-  if (!cfg.api || !cfg.roomId || !root) return;
-  say('Zoom açılıyor… kamera bu sayfada belirecek.');
-  await waitLayout();
-  const r = await fetch(cfg.api, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body({ action: 'zoom_join', id: String(cfg.roomId) })
-  });
-  const j = await r.json();
-  if (!j || !j.ok) {
-    say((j && j.error) || 'Zoom bağlantısı alınamadı.');
-    return;
-  }
+async function makeClient() {
   const client = ZoomMtgEmbedded.createClient();
   const size = videoSize();
   await client.init({
@@ -122,14 +145,10 @@ async function start() {
       }
     }
   });
-  const join = {
-    signature: j.signature,
-    meetingNumber: String(j.meetingNumber),
-    password: j.password || '',
-    userName: j.userName || 'Katılımcı'
-  };
-  if (j.userEmail) join.userEmail = j.userEmail;
-  if (j.zak) join.zak = j.zak;
+  return client;
+}
+
+function bindClient(client) {
   if (typeof client.on === 'function') {
     client.on('connection-change', function (payload) {
       if (payload && payload.state === 'Connected') {
@@ -139,12 +158,6 @@ async function start() {
       }
     });
   }
-  await client.join(join);
-  say('');
-  root.classList.add('is-on');
-  const panel = document.querySelector('.live-zoom-panel');
-  if (panel) panel.classList.add('is-live');
-  await startMedia(client);
   lastSize = '';
   fitVideo(client);
   var fitTimer = 0;
@@ -158,6 +171,37 @@ async function start() {
   window.addEventListener('resize', scheduleFit);
 }
 
+async function start() {
+  if (!cfg.api || !cfg.roomId || !root) return;
+  say('Zoom açılıyor… kamera bu sayfada belirecek.');
+  await waitLayout();
+  let j = await fetchJoin(false);
+  let client = await makeClient();
+  bindClient(client);
+  try {
+    await client.join(joinPayload(j));
+  } catch (err) {
+    if (!j.host || !isTokenStartError(err)) {
+      throw err;
+    }
+    say('Toplantı host olarak açılamadı, katılımcı olarak deneniyor…');
+    j = await fetchJoin(true);
+    root.innerHTML = '';
+    client = await makeClient();
+    bindClient(client);
+    await client.join(joinPayload(j));
+  }
+  say('');
+  root.classList.add('is-on');
+  const panel = document.querySelector('.live-zoom-panel');
+  if (panel) panel.classList.add('is-live');
+  await startMedia(client);
+}
+
 start().catch(function (err) {
-  say(errText(err) || 'Zoom açılamadı. Yeni sekmeden deneyin.');
+  var t = errText(err);
+  if (isTokenStartError(err)) {
+    t = 'Zoom toplantısı bu hesapla host olarak açılamadı. Yeni bir test yayını başlatın.';
+  }
+  say(t || 'Zoom açılamadı. Yeni sekmeden deneyin.');
 });
