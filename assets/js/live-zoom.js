@@ -148,6 +148,51 @@ async function makeClient() {
   return client;
 }
 
+function recOn(payload) {
+  var st = '';
+  if (payload == null) return false;
+  if (typeof payload === 'string' || typeof payload === 'number') st = String(payload);
+  else st = String(payload.recordingStatus || payload.state || payload.status || '');
+  st = st.toLowerCase();
+  return st === 'recording' || st === '1' || st === 'started' || st === 'start';
+}
+
+function recCall(client, start) {
+  var fn = start
+    ? (client.startCloudRecording || client.startRecording)
+    : (client.stopCloudRecording || client.stopRecording);
+  if (typeof fn !== 'function') {
+    return Promise.reject(new Error('Zoom bulut kaydı bu hesapta yok.'));
+  }
+  return fn.call(client);
+}
+
+function wireRecord(client) {
+  var btn = document.getElementById('live-zoom-rec');
+  if (!btn || !cfg.publish) return;
+  var on = false;
+  function paint() {
+    btn.hidden = false;
+    btn.classList.toggle('is-hot', on);
+    btn.textContent = on ? '● Kayıt' : 'Kayıt';
+  }
+  paint();
+  if (typeof client.on === 'function') {
+    client.on('recording-change', function (payload) {
+      on = recOn(payload);
+      paint();
+    });
+  }
+  btn.addEventListener('click', function () {
+    recCall(client, !on).then(function () {
+      on = !on;
+      paint();
+    }).catch(function (err) {
+      say(errText(err) || 'Zoom kaydı açılamadı. Zoom’da Cloud recording açık olmalı.');
+    });
+  });
+}
+
 function bindClient(client) {
   if (typeof client.on === 'function') {
     client.on('connection-change', function (payload) {
@@ -195,6 +240,7 @@ async function start() {
   root.classList.add('is-on');
   const panel = document.querySelector('.live-zoom-panel');
   if (panel) panel.classList.add('is-live');
+  wireRecord(client);
   await startMedia(client);
 }
 

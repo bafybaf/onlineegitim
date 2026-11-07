@@ -202,6 +202,8 @@ if ($screenNow === 0) {
         <button type="button" id="live-pause-btn" class="live-board-tool">Mola</button>
         <?php if (!$isZoom): ?>
         <button type="button" id="live-rec-start" class="live-cam-btn">Kayıt</button>
+        <?php elseif ($zoomEmbed): ?>
+        <button type="button" id="live-zoom-rec" class="live-cam-btn" hidden>Kayıt</button>
         <?php endif; ?>
         <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="live-board-tool">Bitir</button></form>
         <?php else: ?>
@@ -267,10 +269,10 @@ if ($screenNow === 0) {
         <div id="live-seat-n" class="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-2 text-sm"><?= (int) $presentN ?> derste</div>
       </div>
       <aside class="chat">
-      <div class="border-b border-[#2a2a2a] px-4 py-3 font-extrabold">Sohbet<?php if ($showRoster): ?> · Derstekiler <span id="live-present-n"><?= (int) $presentN ?></span><?php endif; ?></div>
-      <div id="chat-log" class="chat-log text-sm"><?php foreach ($msgs as $m): ?><p><b><?= e($m['who_label']) ?>:</b> <?= e($m['body']) ?></p><?php endforeach; ?></div>
+      <div class="chat-head">Sohbet<?php if ($showRoster): ?> · Derstekiler <span id="live-present-n"><?= (int) $presentN ?></span><?php endif; ?></div>
+      <div id="chat-log" class="chat-log"><?php foreach ($msgs as $m): ?><p><b><?= e($m['who_label']) ?>:</b> <?= e($m['body']) ?></p><?php endforeach; ?></div>
       <?php if ($showRoster): ?>
-      <p class="px-4 pt-2"><a class="text-xs font-extrabold text-accent" href="<?= e(url(($u['role'] === 'admin' ? 'admin/canli-oda.php?id=' : 'ogretmen/yoklama.php?oda=') . $id)) ?>">Kim girdi (yoklama)</a></p>
+      <p class="chat-yoklama"><a href="<?= e(url(($u['role'] === 'admin' ? 'admin/canli-oda.php?id=' : 'ogretmen/yoklama.php?oda=') . $id)) ?>">Kim girdi (yoklama)</a></p>
       <div id="live-present-list" class="live-present-list">
         <?php if (!$students): ?>
           <p class="live-present-empty">Henüz öğrenci girmedi</p>
@@ -286,9 +288,9 @@ if ($screenNow === 0) {
       </div>
       <?php endif; ?>
       <?php if (!$isObserver): ?>
-      <form id="chat-form" class="flex gap-2 border-t border-[#2a2a2a] p-3">
-        <input name="q" class="flex-1 rounded-lg bg-[#0a0a0a] px-3 py-2 text-sm outline-none" placeholder="Mesaj yazın" autocomplete="off">
-        <button class="rounded-lg bg-navy px-3 font-extrabold">Gönder</button>
+      <form id="chat-form" class="chat-form">
+        <input name="q" class="chat-input" placeholder="Mesaj yazın" autocomplete="off">
+        <button type="submit" class="chat-send">Gönder</button>
       </form>
       <?php endif; ?>
       </aside>

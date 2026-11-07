@@ -283,7 +283,7 @@ if ($action === 'end') {
     }
     if (post('goto')) {
         if ($isZoom) {
-            flash_ok('Zoom dersi kapandı. Zoom’daki kaydı indirip Kayıt yükle’den ekleyebilirsiniz.');
+            flash_ok('Zoom dersi kapandı. Bulut kaydı Zoom hesabınızda oluşur; indirip Kayıt yükle’den siteye ekleyin.');
             redirect(post('goto'));
         }
         $chunks = (int) post('rec_chunks');
