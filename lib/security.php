@@ -77,7 +77,13 @@ function security_apply_headers(): void
     header($liveRoom
         ? 'Permissions-Policy: camera=*, microphone=*, display-capture=*, geolocation=(), payment=(), usb=()'
         : 'Permissions-Policy: camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()');
-    header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
+    if ($liveRoom) {
+        header('Cross-Origin-Opener-Policy: same-origin');
+        header('Cross-Origin-Embedder-Policy: credentialless');
+        header('Document-Isolation-Policy: isolate-and-credentialless');
+    } else {
+        header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
+    }
     header('X-Permitted-Cross-Domain-Policies: none');
     if (security_https()) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');

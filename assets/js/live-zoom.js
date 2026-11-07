@@ -3,6 +3,8 @@ import ZoomMtgEmbedded from 'https://source.zoom.us/6.10.0/esm/component-view.es
 const cfg = window.LIVE_ZOOM || {};
 const root = document.getElementById('live-zoom-root');
 const status = document.getElementById('live-zoom-status');
+let lastSize = '';
+let mediaOnce = false;
 
 function say(t) {
   if (!status) return;
@@ -23,15 +25,17 @@ function errText(err) {
 }
 
 function videoSize() {
-  var w = root.clientWidth || 0;
-  var h = root.clientHeight || 0;
+  var box = root.getBoundingClientRect();
+  var w = Math.round(box.width) || root.clientWidth || 0;
+  var h = Math.round(box.height) || root.clientHeight || 0;
   var p = root.parentElement;
   if (p) {
-    w = Math.max(w, p.clientWidth || 0);
-    h = Math.max(h, p.clientHeight || 0);
+    var pb = p.getBoundingClientRect();
+    w = Math.max(w, Math.round(pb.width) || p.clientWidth || 0);
+    h = Math.max(h, Math.round(pb.height) || p.clientHeight || 0);
   }
-  w = Math.max(640, Math.min(1440, w || 960));
-  h = Math.max(360, Math.min(810, h || 540));
+  w = Math.max(240, Math.min(1440, w || 960));
+  h = Math.max(135, Math.min(810, h || 540));
   return { width: w, height: h };
 }
 
@@ -39,7 +43,8 @@ function waitLayout() {
   return new Promise(function (resolve) {
     var t0 = Date.now();
     function tick() {
-      if ((root.clientWidth >= 480 && root.clientHeight >= 270) || Date.now() - t0 > 4000) {
+      var box = root.getBoundingClientRect();
+      if ((box.width >= 480 && box.height >= 270) || Date.now() - t0 > 4000) {
         resolve();
         return;
       }
@@ -50,12 +55,17 @@ function waitLayout() {
 }
 
 async function startMedia(client) {
+  if (mediaOnce) return;
   try {
     if (typeof client.mute === 'function') await client.mute(false);
   } catch (err) {}
-  if (!cfg.publish) return;
+  if (!cfg.publish) {
+    mediaOnce = true;
+    return;
+  }
   try {
     if (typeof client.startVideo === 'function') await client.startVideo();
+    mediaOnce = true;
   } catch (err) {
     say('Kamera kapalı. Sol üstteki kamera düğmesine basın.');
   }
@@ -64,6 +74,9 @@ async function startMedia(client) {
 function fitVideo(client) {
   if (!client || typeof client.updateVideoOptions !== 'function') return;
   var size = videoSize();
+  var key = size.width + 'x' + size.height;
+  if (key === lastSize) return;
+  lastSize = key;
   try {
     client.updateVideoOptions({
       viewSizes: {
@@ -97,7 +110,7 @@ async function start() {
     leaveOnPageUnload: true,
     customize: {
       video: {
-        isResizable: false,
+        isResizable: true,
         defaultViewType: 'speaker',
         viewSizes: {
           default: size,
@@ -121,6 +134,7 @@ async function start() {
     client.on('connection-change', function (payload) {
       if (payload && payload.state === 'Connected') {
         startMedia(client);
+        lastSize = '';
         fitVideo(client);
       }
     });
@@ -131,12 +145,17 @@ async function start() {
   const panel = document.querySelector('.live-zoom-panel');
   if (panel) panel.classList.add('is-live');
   await startMedia(client);
+  lastSize = '';
   fitVideo(client);
-  requestAnimationFrame(function () { fitVideo(client); });
-  if (typeof ResizeObserver === 'function') {
-    new ResizeObserver(function () { fitVideo(client); }).observe(root);
+  var fitTimer = 0;
+  function scheduleFit() {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(function () { fitVideo(client); }, 200);
   }
-  window.addEventListener('resize', function () { fitVideo(client); });
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(scheduleFit).observe(root);
+  }
+  window.addEventListener('resize', scheduleFit);
 }
 
 start().catch(function (err) {

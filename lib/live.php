@@ -984,7 +984,7 @@ function live_zoom_sdk_signature(string $meetingNumber, int $role = 0): string
         'iat' => $iat,
         'exp' => $exp,
         'tokenExp' => $exp,
-        'video_webrtc_mode' => 1,
+        'video_webrtc_mode' => 0,
     ], JSON_UNESCAPED_SLASHES));
     $sig = live_b64url(hash_hmac('sha256', $header . '.' . $payload, $secret, true));
     return $header . '.' . $payload . '.' . $sig;

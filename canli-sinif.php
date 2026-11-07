@@ -102,13 +102,15 @@ if ($screenNow === 0) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <?php security_html_head(); ?>
   <title>Canlı Sınıf | <?= e($room['title']) ?></title>
+  <?php if (empty($zoomEmbed)): ?>
   <script>
   tailwind.config = {
-    corePlugins: { preflight: <?= !empty($zoomEmbed) ? 'false' : 'true' ?> },
+    corePlugins: { preflight: true },
     theme: { extend: { colors: { navy: '#111111', navy3: '#0a0a0a', accent: '#e8232a' }, fontFamily: { sans: ['Nunito', 'sans-serif'], display: ['Bricolage Grotesque', 'sans-serif'] } } }
   };
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <?php endif; ?>
   <link rel="stylesheet" href="<?= e(url('assets/css/site.css')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/css/site.css') ?>" />
   <?php if (!$isZoom): ?>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>

@@ -429,7 +429,7 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
 }
 .live-shell.is-zoom .live-stage { display: none; }
 .live-shell.is-zoom .live-side { grid-template-rows: 1fr; }
-.live-shell.is-zoom .live-board-stage { overflow: hidden; background: #111; }
+.live-shell.is-zoom .live-board-stage { overflow: visible; background: #111; }
 .live-zoom-panel.is-embed {
   padding: 0;
   background: #111;
@@ -443,21 +443,13 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
   position: absolute;
   inset: 0;
   z-index: 5;
+  width: 100%;
+  height: 100%;
   background: #111;
   min-height: 280px;
-  overflow: hidden;
+  overflow: visible;
 }
 #live-zoom-root.is-on { z-index: 5; }
-#live-zoom-root > div,
-#live-zoom-root .zmwebsdk-root {
-  width: 100% !important;
-  height: 100% !important;
-}
-#live-zoom-root canvas,
-#live-zoom-root video {
-  max-width: 100%;
-  max-height: 100%;
-}
 .live-shell.is-zoom #live-zoom-root button,
 .live-shell.is-zoom #live-zoom-root [role="button"] {
   background-color: revert;
