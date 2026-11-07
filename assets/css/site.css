@@ -437,19 +437,26 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
   align-items: stretch;
   justify-content: stretch;
 }
-.live-zoom-panel.is-embed.is-live .live-zoom-status { display: none; }
+.live-zoom-panel.is-embed.is-live .live-zoom-status,
+.live-zoom-panel.is-embed.is-live .live-zoom-fallback { display: none; }
 #live-zoom-root {
   position: absolute;
   inset: 0;
   z-index: 5;
   background: #111;
   min-height: 280px;
+  overflow: hidden;
 }
 #live-zoom-root.is-on { z-index: 5; }
 #live-zoom-root > div,
 #live-zoom-root .zmwebsdk-root {
   width: 100% !important;
   height: 100% !important;
+}
+#live-zoom-root canvas,
+#live-zoom-root video {
+  max-width: 100%;
+  max-height: 100%;
 }
 .live-shell.is-zoom #live-zoom-root button,
 .live-shell.is-zoom #live-zoom-root [role="button"] {

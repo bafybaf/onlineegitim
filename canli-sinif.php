@@ -149,7 +149,7 @@ if ($screenNow === 0) {
       echo ($topic !== '' && $topic !== 'Ders') ? ' — ' . e($topic) : '';
     ?></h1>
     <div class="live-top-actions">
-      <?php if ($isZoom && $zoomUrl !== ''): ?>
+      <?php if ($isZoom && $zoomUrl !== '' && !$zoomEmbed): ?>
         <a href="<?= e($zoomUrl) ?>" class="live-cam-btn" target="_blank" rel="noopener noreferrer">Zoom’a katıl</a>
       <?php endif; ?>
       <?php if ($isObserver): ?>
@@ -192,7 +192,7 @@ if ($screenNow === 0) {
         <button type="button" id="live-present-btn" class="live-cam-btn live-cam-btn--ghost" title="Kamera, sohbet ve öğrenciler üstte kalsın">Sunum</button>
         <button type="button" id="whip-listen" class="live-cam-btn live-cam-btn--ghost" hidden>Ses</button>
         <span class="live-mic-meter" id="whip-meter" hidden><i></i></span>
-        <?php elseif ($zoomUrl !== ''): ?>
+        <?php elseif ($zoomUrl !== '' && !$zoomEmbed): ?>
         <a href="<?= e($zoomUrl) ?>" class="live-cam-btn" target="_blank" rel="noopener noreferrer">Zoom’a katıl</a>
         <?php endif; ?>
         <?php if ($canEnd && $room['status'] === 'live'): ?>
@@ -445,7 +445,8 @@ if (window._liveScreenOn && !(window.LIVE_PLAYER && window.LIVE_PLAYER.publish) 
 <script>
 window.LIVE_ZOOM = {
   api: <?= json_encode(url('api/live.php')) ?>,
-  roomId: <?= (int) $id ?>
+  roomId: <?= (int) $id ?>,
+  publish: <?= $canPublish ? 'true' : 'false' ?>
 };
 </script>
 <script type="module" src="<?= e(url('assets/js/live-zoom.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/assets/js/live-zoom.js') ?>"></script>
