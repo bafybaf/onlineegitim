@@ -273,8 +273,8 @@ if ($action === 'end') {
     if (!$isZoom && function_exists('vod_commit_live_room')) {
         try {
             $saved = vod_commit_live_room($pdo, $room, (int) post('mins'), (int) post('sec'));
-            if (!$saved) {
-                usleep(800000);
+            for ($try = 0; $try < 5 && !$saved; $try++) {
+                usleep(400000 * ($try + 1));
                 $saved = vod_commit_live_room($pdo, $room, (int) post('mins'), (int) post('sec'));
             }
         } catch (Throwable $e) {
@@ -636,6 +636,10 @@ if ($action === 'record_chunk') {
         @unlink($abs);
         $existing = 0;
     }
+    $lock = @fopen($abs . '.lock', 'c');
+    if ($lock) {
+        flock($lock, LOCK_EX);
+    }
     $src = fopen($_FILES['chunk']['tmp_name'], 'rb');
     $dst = fopen($abs, 'ab');
     if ($src === false || $dst === false) {
@@ -645,11 +649,19 @@ if ($action === 'record_chunk') {
         if ($dst) {
             fclose($dst);
         }
+        if ($lock) {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
         json_out(['ok' => false, 'error' => 'write'], 500);
     }
     $wrote = stream_copy_to_stream($src, $dst);
     fclose($src);
     fclose($dst);
+    if ($lock) {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
     if ($wrote === false) {
         json_out(['ok' => false, 'error' => 'write'], 500);
     }

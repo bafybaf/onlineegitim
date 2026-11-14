@@ -94,6 +94,9 @@ if ($screenNow === 0) {
         $screenNow = 0;
     }
 }
+if (!empty($zoomEmbed) && function_exists('security_apply_zoom_isolation')) {
+    security_apply_zoom_isolation();
+}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -205,7 +208,7 @@ if ($screenNow === 0) {
         <?php elseif ($zoomEmbed): ?>
         <button type="button" id="live-zoom-rec" class="live-cam-btn" hidden>Kayıt</button>
         <?php endif; ?>
-        <form method="post" action="<?= e(url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="live-board-tool">Bitir</button></form>
+        <form method="post" action="<?= e(same_host_url('api/live.php')) ?>"><input type="hidden" name="action" value="end"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="goto" value="<?= e($endGo) ?>"><button class="live-board-tool">Bitir</button></form>
         <?php else: ?>
         <a href="<?= e(url($back)) ?>" id="live-leave" class="live-cam-btn">Ayrıl</a>
         <?php endif; ?>
@@ -298,7 +301,7 @@ if ($screenNow === 0) {
   </div>
 </div>
 <script>
-const base = <?= json_encode(url('')) ?>;
+const base = <?= json_encode(same_host_url('')) ?>;
 const roomId = <?= $id ?>;
 <?php if (!$isZoom): ?>
 window.LIVE_PLAYER = {
@@ -318,7 +321,7 @@ window.LIVE_PLAYER = {
   whipScreenUrl: <?= json_encode($whipScreenUrl) ?>,
   whipScreenUrlAlt: <?= json_encode($whipScreenUrlAlt) ?>,
   healthUrl: <?= json_encode($healthUrl) ?>,
-  api: <?= json_encode(url('api/live.php')) ?>,
+  api: <?= json_encode(same_host_url('api/live.php')) ?>,
   roomId: <?= (int) $id ?>,
   observe: <?= $isObserver ? 'true' : 'false' ?>
 };
@@ -327,17 +330,17 @@ window.LIVE_BOARD = {
   publish: <?= $canPublish ? 'true' : 'false' ?>,
   enabled: <?= $boardOn ? 'true' : 'false' ?>,
   roomId: <?= $id ?>,
-  url: <?= json_encode(url('api/live.php')) ?>
+  url: <?= json_encode(same_host_url('api/live.php')) ?>
 };
 window.LIVE_RECORD = {
   on: <?= $doRecord ? 'true' : 'false' ?>,
   roomId: <?= $id ?>,
-  url: <?= json_encode(url('api/live.php')) ?>,
+  url: <?= json_encode(same_host_url('api/live.php')) ?>,
   started: <?= json_encode((string) ($room['started_at'] ?? '')) ?>
 };
 window.LIVE_PAUSE = {
   roomId: <?= $id ?>,
-  url: <?= json_encode(url('api/live.php')) ?>,
+  url: <?= json_encode(same_host_url('api/live.php')) ?>,
   canCtrl: <?= ($canEnd && ($room['status'] ?? '') === 'live') ? 'true' : 'false' ?>,
   paused: <?= !empty($pauseInfo['paused']) ? 'true' : 'false' ?>
 };
@@ -448,7 +451,7 @@ if (window._liveScreenOn && !(window.LIVE_PLAYER && window.LIVE_PLAYER.publish) 
 <?php if (!empty($zoomEmbed)): ?>
 <script>
 window.LIVE_ZOOM = {
-  api: <?= json_encode(url('api/live.php')) ?>,
+  api: <?= json_encode(same_host_url('api/live.php')) ?>,
   roomId: <?= (int) $id ?>,
   publish: <?= $canPublish ? 'true' : 'false' ?>
 };

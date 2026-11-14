@@ -77,13 +77,7 @@ function security_apply_headers(): void
     header($liveRoom
         ? 'Permissions-Policy: camera=*, microphone=*, display-capture=*, geolocation=(), payment=(), usb=()'
         : 'Permissions-Policy: camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()');
-    if ($liveRoom) {
-        header('Cross-Origin-Opener-Policy: same-origin');
-        header('Cross-Origin-Embedder-Policy: credentialless');
-        header('Document-Isolation-Policy: isolate-and-credentialless');
-    } else {
-        header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
-    }
+    header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
     header('X-Permitted-Cross-Domain-Policies: none');
     if (security_https()) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
@@ -102,6 +96,16 @@ function csrf_field(): string
 {
     $t = htmlspecialchars(security_csrf_token(), ENT_QUOTES, 'UTF-8');
     return '<input type="hidden" name="_csrf" value="' . $t . '">';
+}
+
+function security_apply_zoom_isolation(): void
+{
+    if (headers_sent()) {
+        return;
+    }
+    header('Cross-Origin-Opener-Policy: same-origin');
+    header('Cross-Origin-Embedder-Policy: credentialless');
+    header('Document-Isolation-Policy: isolate-and-credentialless');
 }
 
 function security_html_head(): void

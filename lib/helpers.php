@@ -8,6 +8,23 @@ function url(string $path = ''): string
     return rtrim(BASE_URL, '/') . '/' . $path;
 }
 
+function same_host_url(string $path = ''): string
+{
+    $full = url($path);
+    if (!preg_match('#^https?://#i', $full)) {
+        return $full;
+    }
+    $parts = parse_url($full);
+    $out = (string) ($parts['path'] ?? '/');
+    if ($out === '') {
+        $out = '/';
+    }
+    if (!empty($parts['query'])) {
+        $out .= '?' . $parts['query'];
+    }
+    return $out;
+}
+
 function e(?string $s): string
 {
     $s = (string) $s;

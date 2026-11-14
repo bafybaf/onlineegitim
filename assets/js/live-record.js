@@ -3,7 +3,18 @@
   if (!cfg.roomId) return;
 
   let W = 1280;
-  const api = cfg.url || '';
+  const api = (function () {
+    var u = String(cfg.url || '');
+    try {
+      var parsed = new URL(u, location.href);
+      if (parsed.origin !== location.origin) {
+        return parsed.pathname + parsed.search;
+      }
+      return parsed.href;
+    } catch (e) {
+      return u || '/api/live.php';
+    }
+  })();
   const video = document.getElementById('live-video');
   const bg = document.getElementById('board-bg');
   const draw = document.getElementById('board-draw');
@@ -290,26 +301,31 @@
 
   function startRecorder(media) {
     if (!armed || !window.MediaRecorder || recorder || done) return !!recorder;
-    refreshMix(media);
-    recStream = canvas.captureStream(12);
-    recStream.getVideoTracks().forEach(function (t) {
-      try { t.contentHint = 'detail'; } catch (e) {}
-    });
-    if (audioClone && recStream.getAudioTracks().length === 0) recStream.addTrack(audioClone);
-    var hasAudio = recStream.getAudioTracks().length > 0;
-    var types = mimeList(hasAudio);
-    for (var i = 0; i < types.length && !recorder; i++) {
-      var opts = { videoBitsPerSecond: 4000000 };
-      if (types[i]) opts.mimeType = types[i];
-      if (hasAudio) opts.audioBitsPerSecond = 128000;
-      try { opts.videoKeyFrameIntervalDuration = 2000; } catch (e) {}
-      try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }
+    try {
+      refreshMix(media);
+      recStream = canvas.captureStream(12);
+      recStream.getVideoTracks().forEach(function (t) {
+        try { t.contentHint = 'detail'; } catch (e) {}
+      });
+      if (audioClone && recStream.getAudioTracks().length === 0) recStream.addTrack(audioClone);
+      var hasAudio = recStream.getAudioTracks().length > 0;
+      var types = mimeList(hasAudio);
+      for (var i = 0; i < types.length && !recorder; i++) {
+        var opts = { videoBitsPerSecond: 4000000 };
+        if (types[i]) opts.mimeType = types[i];
+        if (hasAudio) opts.audioBitsPerSecond = 128000;
+        try { opts.videoKeyFrameIntervalDuration = 2000; } catch (e) {}
+        try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }
+      }
+      if (!recorder) {
+        try { recorder = new MediaRecorder(recStream); } catch (fatal) { recorder = null; return false; }
+      }
+      recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size > 8) upload(ev.data); };
+      recorder.start(2000);
+    } catch (e) {
+      recorder = null;
+      return false;
     }
-    if (!recorder) {
-      try { recorder = new MediaRecorder(recStream); } catch (fatal) { recorder = null; return false; }
-    }
-    recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size > 8) upload(ev.data); };
-    try { recorder.start(2000); } catch (e) { recorder = null; return false; }
     if (recPulse) clearInterval(recPulse);
     recPulse = 0;
     if (recPaused) { try { recorder.pause(); } catch (e) {} }
@@ -324,9 +340,11 @@
       xhr.open('POST', api);
       xhr.withCredentials = true;
       if (csrfToken) xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
-      xhr.timeout = 12000;
+      xhr.timeout = 30000;
       xhr.onload = function () {
-        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
+        var j = null;
+        try { j = JSON.parse(xhr.responseText); } catch (e) {}
+        if (xhr.status >= 200 && xhr.status < 300 && j && j.ok) resolve(xhr);
         else reject(new Error('chunk ' + xhr.status));
       };
       xhr.onerror = function () { reject(new Error('net')); };
@@ -492,11 +510,11 @@
       await sleep(400);
     }
     stopPaintLoop();
-    if (recorder) {
-      await waitAtMost(queue, 25000);
-      var ok = await waitAtMost(postDone(false), 8000);
-      if (!ok && uploadedChunks > 0) {
-        await waitAtMost(postDone(false), 8000);
+    await waitAtMost(queue, 60000);
+    if (recorder || uploadedChunks > 0 || seq > 0) {
+      var ok = await waitAtMost(postDone(false), 25000);
+      if (!ok) {
+        await waitAtMost(postDone(false), 20000);
       }
     }
     done = true;
