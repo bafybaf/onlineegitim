@@ -1,17 +1,11 @@
 <?php
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
-$img = url('assets/img/slider-dkab-2027.jpg');
 public_head(
     '2027 DKAB-ÖABT hazırlık | Online İlahiyat',
     '2027 DKAB-ÖABT sınavına ücretsiz hazırlık: detaylı konu anlatımı, akademisyen hocalar, Zoom canlı dersler ve ders kayıtları. Eğitim 16 Kasım 2026’da başlar.'
 );
 ?>
-<section class="bg-navy">
-  <div class="mx-auto max-w-7xl">
-    <img src="<?= e($img) ?>" alt="2027 DKAB’ye hazırlanıyorsan doğru yerdesin — ücretsiz dersler" class="block w-full">
-  </div>
-</section>
 <header class="bg-soft py-8">
   <div class="mx-auto max-w-3xl px-4 lg:px-8">
     <p class="text-sm font-extrabold text-navy">Ücretsiz hazırlık</p>
