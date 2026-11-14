@@ -202,7 +202,7 @@
     painting = true;
     try {
       syncShareVideo();
-      ctx.fillStyle = '#111111';
+      ctx.fillStyle = '#575757';
       ctx.fillRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
