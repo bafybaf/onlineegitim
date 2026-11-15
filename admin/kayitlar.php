@@ -11,7 +11,7 @@ if (function_exists('vod_recover_pending_rooms')) {
     } catch (Throwable $e) {
     }
 }
-$tid = (int) ($_GET['hoca'] ?? 0);
+$gid = (int) ($_GET['grup'] ?? 0);
 $err = flash_error();
 $ok = flash_ok();
 if (post('action') === 'restore_manual_cf' && function_exists('vod_restore_manual_recordings_from_cf')) {
@@ -31,13 +31,13 @@ if (post('action') === 'restore_manual_cf' && function_exists('vod_restore_manua
     } catch (Throwable $e) {
         flash_error('Geri alma çalışmadı. Sayfayı yenileyip tekrar deneyin.');
     }
-    redirect($tid ? ('admin/kayitlar.php?hoca=' . $tid) : 'admin/kayitlar');
+    redirect($gid ? ('admin/kayitlar.php?grup=' . $gid) : 'admin/kayitlar');
 }
 if (post('delete_id')) {
     try {
         academy_delete_recording((int) post('delete_id'), (int) $u['id'], true);
         flash_ok('Kayıt silindi.');
-        redirect($tid ? ('admin/kayitlar.php?hoca=' . $tid) : 'admin/kayitlar');
+        redirect($gid ? ('admin/kayitlar.php?grup=' . $gid) : 'admin/kayitlar');
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
@@ -55,18 +55,18 @@ try {
 } catch (Throwable) {
     $rows = [];
 }
-[$rows, $teachers] = recordings_by_teacher_recent($rows);
-if ($tid && !isset($teachers[$tid])) {
-    $tid = 0;
+[$rows, $groupNames] = recordings_by_group($rows);
+if ($gid && !isset($groupNames[$gid])) {
+    $gid = 0;
 }
-if ($tid) {
-    $rows = array_values(array_filter($rows, static fn (array $r): bool => (int) $r['teacher_id'] === $tid));
+if ($gid) {
+    $rows = array_values(array_filter($rows, static fn (array $r): bool => (int) $r['group_id'] === $gid));
 }
 panel_head('admin', 'kayitlar', 'Ders kayıtları | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4 text-sm text-muted">Kayıtlar yükleyen hocaya göre ayrılır. Test kayıtları öğrenci listesine düşmez. Canlı ders kaydı ve manuel yüklenenler sunucuda kalır.</p>
+<p class="mb-4 text-sm text-muted">Kayıtlar gruba göre ayrılır; yeni tarihli ders en altta durur. Test kayıtları öğrenci listesine düşmez. Canlı ders kaydı ve manuel yüklenenler sunucuda kalır.</p>
 <?php
 $manualCfN = 0;
 if (function_exists('vod_manual_cf_recordings')) {
@@ -81,27 +81,28 @@ if ($manualCfN > 0):
     <button class="btn-primary mt-3 h-10 w-fit text-sm">Manuel kayıtları sunucuya al</button>
   </form>
 <?php endif; ?>
-<?php if (count($teachers) > 1): ?>
+<?php if (count($groupNames) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
-    <a class="<?= $tid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('admin/kayitlar')) ?>">Tüm hocalar</a>
-    <?php foreach ($teachers as $hid => $hname): ?>
-      <a class="<?= $tid === (int) $hid ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('admin/kayitlar.php?hoca=' . (int) $hid)) ?>"><?= e($hname) ?></a>
+    <a class="<?= $gid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('admin/kayitlar')) ?>">Tüm gruplar</a>
+    <?php foreach ($groupNames as $hid => $hname): ?>
+      <a class="<?= $gid === (int) $hid ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('admin/kayitlar.php?grup=' . (int) $hid)) ?>"><?= e($hname) ?></a>
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
 <?php
 $last = null;
+$splitGroups = $gid === 0 && count($groupNames) > 1;
 foreach ($rows as $r):
     $ready = !empty($r['video_path']) || !empty($r['video_url']);
     $watch = url('admin/kayit-izle.php?id=' . (int) $r['id']);
     $test = function_exists('recording_is_test') && recording_is_test($r);
-    $hid = (int) $r['teacher_id'];
-    if ($tid === 0 && $hid !== $last):
-        $last = $hid;
+    $rowGid = (int) $r['group_id'];
+    if ($splitGroups && $rowGid !== $last):
+        $last = $rowGid;
         ?>
-  <div class="mb-3 <?= $last === (int) $rows[0]['teacher_id'] ? 'mt-0' : 'mt-8' ?>">
-    <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Hoca</p>
-    <h2 class="font-display text-2xl"><?= e((string) $r['tname']) ?></h2>
+  <div class="mb-3 <?= $last === (int) $rows[0]['group_id'] ? 'mt-0' : 'mt-8' ?>">
+    <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Grup</p>
+    <h2 class="font-display text-2xl"><?= e((string) $r['gname']) ?></h2>
   </div>
         <?php
     endif;
@@ -109,7 +110,7 @@ foreach ($rows as $r):
   <article class="card mb-3 flex flex-wrap items-start justify-between gap-3 p-5">
     <div>
     <p class="font-extrabold"><?php if ($test): ?><span class="live-pill mr-2"><i></i> Test</span><?php endif; ?><?= e((string) $r['title']) ?></p>
-    <p class="text-sm text-muted"><?= e((string) $r['gname']) ?> · <?= e((string) $r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></p>
+    <p class="text-sm text-muted"><?= e((string) $r['tname']) ?> · <?= e((string) $r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></p>
     <p class="mt-1 text-xs text-muted"><?= $ready ? 'Video hazır' : 'Video yok' ?></p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -120,5 +121,5 @@ foreach ($rows as $r):
     </div>
   </article>
 <?php endforeach; ?>
-<?php if (!$rows): ?><p class="text-muted"><?= $tid ? 'Bu hocaya ait kayıt yok.' : 'Henüz kayıt yok. Test yayınında “Kayıt”a basıp odayı bitirince video burada görünür.' ?></p><?php endif; ?>
+<?php if (!$rows): ?><p class="text-muted"><?= $gid ? 'Bu gruba ait kayıt yok.' : 'Henüz kayıt yok. Test yayınında “Kayıt”a basıp odayı bitirince video burada görünür.' ?></p><?php endif; ?>
 <?php panel_foot();

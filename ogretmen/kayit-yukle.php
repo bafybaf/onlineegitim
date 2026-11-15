@@ -11,22 +11,22 @@ if (function_exists('vod_recover_teacher_pending')) {
 $err = flash_error();
 $ok = flash_ok();
 $groups = teacher_groups((int) $u['id']);
-$tid = (int) ($_GET['hoca'] ?? 0);
+$filterGid = (int) ($_GET['grup'] ?? 0);
 $titleKeep = '';
 $urlKeep = '';
 $minsKeep = 45;
 $gidKeep = 0;
 
-function ogretmen_kayit_qs(int $tid): string
+function ogretmen_kayit_qs(int $gid): string
 {
-    return $tid > 0 ? ('?hoca=' . $tid) : '';
+    return $gid > 0 ? ('?grup=' . $gid) : '';
 }
 
 if (post('delete_id')) {
     try {
         academy_delete_recording((int) post('delete_id'), (int) $u['id']);
         flash_ok('Kayıt silindi.');
-        redirect('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($tid));
+        redirect('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($filterGid));
     } catch (Throwable $e) {
         $err = $e->getMessage();
     }
@@ -67,7 +67,7 @@ if (post('delete_id')) {
                     ->execute([$gid, (int) $u['id'], $title, $mins, $url !== '' ? $url : null, $path]);
                 notify_group_students($gid, 'Yeni ders kaydı', $title, url('ogrenci/kayitlar'));
                 flash_ok('Kayıt yüklendi. Öğrenciler Ders kayıtları menüsünden izler.');
-                redirect('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs((int) $u['id']));
+                redirect('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($gid));
             } catch (Throwable $e) {
                 $err = $e->getMessage();
             }
@@ -84,12 +84,12 @@ $st = db()->query(
      ORDER BY rec.recorded_on DESC, rec.id DESC"
 );
 $rows = $st ? $st->fetchAll() : [];
-[$rows, $teachers] = recordings_by_teacher_recent($rows);
-if ($tid && !isset($teachers[$tid])) {
-    $tid = 0;
+[$rows, $groupNames] = recordings_by_group($rows);
+if ($filterGid && !isset($groupNames[$filterGid])) {
+    $filterGid = 0;
 }
-if ($tid) {
-    $rows = array_values(array_filter($rows, static fn (array $r): bool => (int) $r['teacher_id'] === $tid));
+if ($filterGid) {
+    $rows = array_values(array_filter($rows, static fn (array $r): bool => (int) $r['group_id'] === $filterGid));
 }
 $me = (int) $u['id'];
 panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
@@ -137,31 +137,33 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   });
 })();
 </script>
-<p class="mb-4 text-sm text-muted">Gruplarınızdaki kayıtlar yükleyen hocaya göre ayrılır. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
-<?php if (count($teachers) > 1): ?>
+<p class="mb-4 text-sm text-muted">Kayıtlar gruba göre ayrılır; yeni tarihli ders en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
+<?php if (count($groupNames) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
-    <a class="<?= $tid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle')) ?>">Tüm hocalar</a>
-    <?php foreach ($teachers as $hid => $hname): ?>
-      <a class="<?= $tid === (int) $hid ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs((int) $hid))) ?>"><?= e($hname) ?></a>
+    <a class="<?= $filterGid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle')) ?>">Tüm gruplar</a>
+    <?php foreach ($groupNames as $hid => $hname): ?>
+      <a class="<?= $filterGid === (int) $hid ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs((int) $hid))) ?>"><?= e($hname) ?></a>
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
 <?php
 $last = null;
+$splitGroups = $filterGid === 0 && count($groupNames) > 1;
 foreach ($rows as $r):
     $ready = !empty($r['video_path']) || !empty($r['video_url']);
     $watch = url('ogretmen/kayit-izle.php?id=' . (int) $r['id']);
     $hid = (int) $r['teacher_id'];
     $mine = $hid === $me;
-    if ($tid === 0 && count($teachers) > 1 && $hid !== $last):
-        $last = $hid;
+    $rowGid = (int) $r['group_id'];
+    if ($splitGroups && $rowGid !== $last):
+        $last = $rowGid;
         ?>
-  <div class="mb-3 <?= $last === (int) $rows[0]['teacher_id'] ? 'mt-0' : 'mt-8' ?> flex flex-wrap items-end justify-between gap-2">
+  <div class="mb-3 <?= $last === (int) $rows[0]['group_id'] ? 'mt-0' : 'mt-8' ?> flex flex-wrap items-end justify-between gap-2">
     <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Hoca</p>
-      <h2 class="font-display text-2xl"><?= e((string) $r['tname']) ?></h2>
+      <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Grup</p>
+      <h2 class="font-display text-2xl"><?= e((string) $r['gname']) ?></h2>
     </div>
-    <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($hid))) ?>">Yalnız bu hoca →</a>
+    <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($rowGid))) ?>">Yalnız bu grup →</a>
   </div>
         <?php
     endif;
@@ -169,7 +171,7 @@ foreach ($rows as $r):
   <article class="card mb-3 flex flex-wrap items-start justify-between gap-3 p-5">
     <div>
     <p class="font-extrabold"><?= e($r['title']) ?></p>
-    <p class="text-sm text-muted"><?= e($r['gname']) ?> · <?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></p>
+    <p class="text-sm text-muted"><?= e((string) $r['tname']) ?> · <?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></p>
     <p class="mt-1 text-xs text-muted"><?= $ready ? 'Video hazır' : 'Video yok' ?></p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -182,5 +184,5 @@ foreach ($rows as $r):
     </div>
   </article>
 <?php endforeach; ?>
-<?php if (!$rows): ?><p class="text-muted"><?= $tid ? 'Bu hocaya ait kayıt yok.' : 'Henüz kayıt yok.' ?></p><?php endif; ?>
+<?php if (!$rows): ?><p class="text-muted"><?= $filterGid ? 'Bu gruba ait kayıt yok.' : 'Henüz kayıt yok.' ?></p><?php endif; ?>
 <?php panel_foot();
