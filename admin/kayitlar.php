@@ -55,18 +55,18 @@ try {
 } catch (Throwable) {
     $rows = [];
 }
-[$rows, $groupNames] = recordings_by_group($rows);
+[$tree, $groupNames] = recordings_lesson_tree($rows);
 if ($gid && !isset($groupNames[$gid])) {
     $gid = 0;
 }
 if ($gid) {
-    $rows = array_values(array_filter($rows, static fn (array $r): bool => (int) $r['group_id'] === $gid));
+    $tree = array_values(array_filter($tree, static fn (array $g): bool => (int) $g['id'] === $gid));
 }
 panel_head('admin', 'kayitlar', 'Ders kayıtları | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4 text-sm text-muted">Kayıtlar gruba göre ayrılır; yeni tarihli ders en altta durur. Test kayıtları öğrenci listesine düşmez. Canlı ders kaydı ve manuel yüklenenler sunucuda kalır.</p>
+<p class="mb-4 text-sm text-muted">Kayıtlar gruba, sonra ders adına (Tefsir, Hadis, Fıkıh…) göre ayrılır. Alt kayıtlar açılır; yeni tarihli ders en altta durur. Test kayıtları öğrenci listesine düşmez.</p>
 <?php
 $manualCfN = 0;
 if (function_exists('vod_manual_cf_recordings')) {
@@ -90,36 +90,31 @@ if ($manualCfN > 0):
   </div>
 <?php endif; ?>
 <?php
-$last = null;
-$splitGroups = $gid === 0 && count($groupNames) > 1;
-foreach ($rows as $r):
-    $ready = !empty($r['video_path']) || !empty($r['video_url']);
-    $watch = url('admin/kayit-izle.php?id=' . (int) $r['id']);
-    $test = function_exists('recording_is_test') && recording_is_test($r);
-    $rowGid = (int) $r['group_id'];
-    if ($splitGroups && $rowGid !== $last):
-        $last = $rowGid;
-        ?>
-  <div class="mb-3 <?= $last === (int) $rows[0]['group_id'] ? 'mt-0' : 'mt-8' ?>">
-    <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Grup</p>
-    <h2 class="font-display text-2xl"><?= e((string) $r['gname']) ?></h2>
-  </div>
-        <?php
-    endif;
-    ?>
-  <article class="card mb-3 flex flex-wrap items-start justify-between gap-3 p-5">
-    <div>
-    <p class="font-extrabold"><?php if ($test): ?><span class="live-pill mr-2"><i></i> Test</span><?php endif; ?><?= e((string) $r['title']) ?></p>
-    <p class="text-sm text-muted"><?= e((string) $r['tname']) ?> · <?= e((string) $r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></p>
-    <p class="mt-1 text-xs text-muted"><?= $ready ? 'Video hazır' : 'Video yok' ?></p>
-    </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <?php if ($ready): ?>
-        <a class="btn-primary text-sm" href="<?= e($watch) ?>">İzle</a>
-      <?php endif; ?>
-      <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
-    </div>
-  </article>
-<?php endforeach; ?>
-<?php if (!$rows): ?><p class="text-muted"><?= $gid ? 'Bu gruba ait kayıt yok.' : 'Henüz kayıt yok. Test yayınında “Kayıt”a basıp odayı bitirince video burada görünür.' ?></p><?php endif; ?>
+if (!$tree):
+    ?><p class="text-muted"><?= $gid ? 'Bu gruba ait kayıt yok.' : 'Henüz kayıt yok. Test yayınında “Kayıt”a basıp odayı bitirince video burada görünür.' ?></p><?php
+else:
+    recordings_render_lesson_tree($tree, static function (array $r): void {
+        $ready = !empty($r['video_path']) || !empty($r['video_url']);
+        $watch = url('admin/kayit-izle.php?id=' . (int) $r['id']);
+        $test = function_exists('recording_is_test') && recording_is_test($r);
+        $label = trim((string) ($r['_lesson_sub'] ?? ''));
+        if ($label === '') {
+            $label = (string) $r['title'];
+        }
+        echo '<article class="card flex flex-wrap items-start justify-between gap-3 p-5">';
+        echo '<div><p class="font-extrabold">';
+        if ($test) {
+            echo '<span class="live-pill mr-2"><i></i> Test</span>';
+        }
+        echo e($label) . '</p>';
+        echo '<p class="text-sm text-muted">' . e((string) $r['tname']) . ' · ' . e((string) $r['recorded_on']) . ' · ' . e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) . '</p>';
+        echo '<p class="mt-1 text-xs text-muted">' . ($ready ? 'Video hazır' : 'Video yok') . '</p></div>';
+        echo '<div class="flex flex-wrap items-center gap-2">';
+        if ($ready) {
+            echo '<a class="btn-primary text-sm" href="' . e($watch) . '">İzle</a>';
+        }
+        echo panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?');
+        echo '</div></article>';
+    }, ['split_groups' => $gid === 0 && count($groupNames) > 1]);
+endif; ?>
 <?php panel_foot();

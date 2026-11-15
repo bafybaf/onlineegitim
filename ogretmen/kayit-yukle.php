@@ -84,12 +84,12 @@ $st = db()->query(
      ORDER BY rec.recorded_on DESC, rec.id DESC"
 );
 $rows = $st ? $st->fetchAll() : [];
-[$rows, $groupNames] = recordings_by_group($rows);
+[$tree, $groupNames] = recordings_lesson_tree($rows);
 if ($filterGid && !isset($groupNames[$filterGid])) {
     $filterGid = 0;
 }
 if ($filterGid) {
-    $rows = array_values(array_filter($rows, static fn (array $r): bool => (int) $r['group_id'] === $filterGid));
+    $tree = array_values(array_filter($tree, static fn (array $g): bool => (int) $g['id'] === $filterGid));
 }
 $me = (int) $u['id'];
 panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
@@ -137,7 +137,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   });
 })();
 </script>
-<p class="mb-4 text-sm text-muted">Kayıtlar gruba göre ayrılır; yeni tarihli ders en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
+<p class="mb-4 text-sm text-muted">Kayıtlar gruba, sonra ders adına göre ayrılır. Alt kayıtlar açılır; yeni tarihli ders en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
 <?php if (count($groupNames) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
     <a class="<?= $filterGid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle')) ?>">Tüm gruplar</a>
@@ -147,42 +147,34 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   </div>
 <?php endif; ?>
 <?php
-$last = null;
-$splitGroups = $filterGid === 0 && count($groupNames) > 1;
-foreach ($rows as $r):
-    $ready = !empty($r['video_path']) || !empty($r['video_url']);
-    $watch = url('ogretmen/kayit-izle.php?id=' . (int) $r['id']);
-    $hid = (int) $r['teacher_id'];
-    $mine = $hid === $me;
-    $rowGid = (int) $r['group_id'];
-    if ($splitGroups && $rowGid !== $last):
-        $last = $rowGid;
-        ?>
-  <div class="mb-3 <?= $last === (int) $rows[0]['group_id'] ? 'mt-0' : 'mt-8' ?> flex flex-wrap items-end justify-between gap-2">
-    <div>
-      <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Grup</p>
-      <h2 class="font-display text-2xl"><?= e((string) $r['gname']) ?></h2>
-    </div>
-    <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($rowGid))) ?>">Yalnız bu grup →</a>
-  </div>
-        <?php
-    endif;
-    ?>
-  <article class="card mb-3 flex flex-wrap items-start justify-between gap-3 p-5">
-    <div>
-    <p class="font-extrabold"><?= e($r['title']) ?></p>
-    <p class="text-sm text-muted"><?= e((string) $r['tname']) ?> · <?= e($r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></p>
-    <p class="mt-1 text-xs text-muted"><?= $ready ? 'Video hazır' : 'Video yok' ?></p>
-    </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <?php if ($ready): ?>
-        <a class="btn-primary text-sm" href="<?= e($watch) ?>">İzle</a>
-      <?php endif; ?>
-      <?php if ($mine): ?>
-        <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
-      <?php endif; ?>
-    </div>
-  </article>
-<?php endforeach; ?>
-<?php if (!$rows): ?><p class="text-muted"><?= $filterGid ? 'Bu gruba ait kayıt yok.' : 'Henüz kayıt yok.' ?></p><?php endif; ?>
+if (!$tree):
+    ?><p class="text-muted"><?= $filterGid ? 'Bu gruba ait kayıt yok.' : 'Henüz kayıt yok.' ?></p><?php
+else:
+    recordings_render_lesson_tree($tree, static function (array $r) use ($me): void {
+        $ready = !empty($r['video_path']) || !empty($r['video_url']);
+        $watch = url('ogretmen/kayit-izle.php?id=' . (int) $r['id']);
+        $mine = (int) $r['teacher_id'] === $me;
+        $label = trim((string) ($r['_lesson_sub'] ?? ''));
+        if ($label === '') {
+            $label = (string) $r['title'];
+        }
+        echo '<article class="card flex flex-wrap items-start justify-between gap-3 p-5">';
+        echo '<div><p class="font-extrabold">' . e($label) . '</p>';
+        echo '<p class="text-sm text-muted">' . e((string) $r['tname']) . ' · ' . e((string) $r['recorded_on']) . ' · ' . e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) . '</p>';
+        echo '<p class="mt-1 text-xs text-muted">' . ($ready ? 'Video hazır' : 'Video yok') . '</p></div>';
+        echo '<div class="flex flex-wrap items-center gap-2">';
+        if ($ready) {
+            echo '<a class="btn-primary text-sm" href="' . e($watch) . '">İzle</a>';
+        }
+        if ($mine) {
+            echo panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?');
+        }
+        echo '</div></article>';
+    }, [
+        'split_groups' => $filterGid === 0 && count($groupNames) > 1,
+        'group_extra' => static function (array $g): string {
+            return '<a class="text-sm font-extrabold text-navy" href="' . e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs((int) $g['id']))) . '">Yalnız bu grup →</a>';
+        },
+    ]);
+endif; ?>
 <?php panel_foot();

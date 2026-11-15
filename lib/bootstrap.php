@@ -98,6 +98,9 @@ if (function_exists('ensure_shop_catalog_schema')) {
 if (function_exists('ensure_public_site_content')) {
     ensure_public_site_content();
 }
+if (function_exists('group_ensure_dkab_2027')) {
+    group_ensure_dkab_2027();
+}
 if (function_exists('ensure_academy_schema')) {
     ensure_academy_schema();
 }

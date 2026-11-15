@@ -973,3 +973,58 @@ function group_attendance_label(?array $att): string
     }
     return $label . ' (yok)';
 }
+
+function group_ensure_dkab_2027(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    if (function_exists('setting') && setting('dkab_auto_group_v1') === '1') {
+        return;
+    }
+    try {
+        $st = db()->query("SELECT id FROM programs WHERE slug IN ('dkab-2027','tefsir') ORDER BY slug = 'dkab-2027' DESC LIMIT 1");
+        $programId = (int) ($st ? $st->fetchColumn() : 0);
+        if ($programId < 1) {
+            return;
+        }
+        $teachers = db()->query("SELECT id FROM users WHERE role = 'ogretmen' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
+        $teacherIds = array_values(array_filter(array_map('intval', is_array($teachers) ? $teachers : [])));
+        if ($teacherIds === []) {
+            return;
+        }
+        $used = db()->query("SELECT name FROM class_groups WHERE name LIKE 'DKAB%'")->fetchAll(PDO::FETCH_COLUMN);
+        $fold = static function (string $s): string {
+            return function_exists('recording_fold_tr') ? recording_fold_tr($s) : mb_strtolower($s, 'UTF-8');
+        };
+        $taken = [];
+        foreach (is_array($used) ? $used : [] as $name) {
+            $taken[$fold((string) $name)] = true;
+        }
+        $name = 'DKAB A';
+        foreach (range('A', 'Z') as $letter) {
+            $try = 'DKAB ' . $letter;
+            if (empty($taken[$fold($try)])) {
+                $name = $try;
+                break;
+            }
+        }
+        group_save([
+            'program_id' => $programId,
+            'teacher_id' => $teacherIds[0],
+            'teacher_ids' => $teacherIds,
+            'name' => $name,
+            'days' => 'Hafta içi 19:00',
+            'cap' => 10,
+            'description' => '2027 DKAB-ÖABT hazırlık. Canlı dersler akşam 19:00; konular bitene kadar hafta içi her gün.',
+            'whatsapp_url' => null,
+        ], 0, true);
+        if (function_exists('setting_set')) {
+            setting_set('dkab_auto_group_v1', '1');
+        }
+    } catch (Throwable) {
+        // Program veya hoca yoksa sessizce geç; grup admin panelinden açılır.
+    }
+}

@@ -41,7 +41,7 @@ $st = db()->prepare($sql);
 $st->execute($params);
 $rows = $st->fetchAll();
 
-[$rows, $groupNames] = recordings_by_group($rows);
+[$tree, $groupNames] = recordings_lesson_tree($rows);
 
 $current = $gid ? $allowed[$gid] : null;
 
@@ -59,8 +59,12 @@ function ogrenci_kayit_card(array $r, int $backGid): void
     if ($backGid) {
         $watch .= '&grup=' . $backGid;
     }
-    echo '<article class="card mb-3 flex flex-wrap items-center justify-between gap-3 p-5">';
-    echo '<div><p class="font-extrabold">' . e($r['title']) . '</p>';
+    $label = trim((string) ($r['_lesson_sub'] ?? ''));
+    if ($label === '') {
+        $label = (string) $r['title'];
+    }
+    echo '<article class="card flex flex-wrap items-center justify-between gap-3 p-5">';
+    echo '<div><p class="font-extrabold">' . e($label) . '</p>';
     echo '<p class="text-sm text-muted">' . e($r['tname']) . ' · ' . e($r['recorded_on']) . ' · ' . e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) . '</p></div>';
     if ($ready) {
         echo '<a class="btn-primary text-sm" href="' . e(url($watch)) . '">İzle</a>';
@@ -76,7 +80,7 @@ function ogrenci_kayit_card(array $r, int $backGid): void
   <h2 class="font-display text-2xl"><?= e($current['name']) ?></h2>
   <p class="mb-5 text-sm text-muted"><?= e($current['teacher_name']) ?> · Bu dersin kayıtları.</p>
 <?php else: ?>
-  <p class="mb-5 text-sm text-muted">Kayıtlar gruba göre ayrılır; yeni tarihli ders en altta durur.</p>
+  <p class="mb-5 text-sm text-muted">Kayıtlar gruba, sonra ders adına göre ayrılır. Alt kayıtları açın; yeni tarihli ders en altta durur.</p>
 <?php endif; ?>
 
 <?php if (count($groups) > 1): ?>
@@ -88,26 +92,16 @@ function ogrenci_kayit_card(array $r, int $backGid): void
   </div>
 <?php endif; ?>
 
-<?php if (!$rows): ?>
+<?php if (!$tree): ?>
   <div class="card p-5"><?= $gid ? 'Bu gruba ait izlenecek kayıt henüz yok.' : 'Henüz izlenecek kayıt yok.' ?></div>
 <?php else:
-    $last = null;
-    $splitGroups = $gid === 0 && count($groupNames) > 1;
-    foreach ($rows as $r):
-        $rowGid = (int) $r['group_id'];
-        if ($splitGroups && $rowGid !== $last):
-            $last = $rowGid;
-            ?>
-    <div class="mb-3 <?= $last === (int) $rows[0]['group_id'] ? 'mt-0' : 'mt-8' ?> flex flex-wrap items-end justify-between gap-2">
-      <div>
-        <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Grup</p>
-        <h2 class="font-display text-2xl"><?= e($r['gname']) ?></h2>
-      </div>
-      <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/kayitlar.php' . ogrenci_kayit_qs($rowGid))) ?>">Yalnız bu grup →</a>
-    </div>
-            <?php
-        endif;
-        ogrenci_kayit_card($r, $gid ?: $rowGid);
-    endforeach;
+    recordings_render_lesson_tree($tree, static function (array $r) use ($gid): void {
+        ogrenci_kayit_card($r, $gid ?: (int) $r['group_id']);
+    }, [
+        'split_groups' => $gid === 0 && count($groupNames) > 1,
+        'group_extra' => static function (array $g): string {
+            return '<a class="text-sm font-extrabold text-navy" href="' . e(url('ogrenci/kayitlar.php' . ogrenci_kayit_qs((int) $g['id']))) . '">Yalnız bu grup →</a>';
+        },
+    ]);
 endif; ?>
 <?php panel_foot();

@@ -390,6 +390,217 @@ function recordings_by_group(array $rows): array
     return [$flat, $outNames];
 }
 
+/** ÖABT DKAB / ilahiyat ana ders başlıkları; uzun olanlar önce. */
+function recording_lesson_catalog(): array
+{
+    return [
+        'Kur\'an-ı Kerim ve Tecvid',
+        'İslam Tarihi, Kültür ve Medeniyeti',
+        'İslam Mezhepleri ve Akımları',
+        'Akaid ve Kelam',
+        'Akaid & Kelam',
+        'İslam Mezhepleri',
+        'İslam Tarihi',
+        'Din Sosyolojisi',
+        'Din Psikolojisi',
+        'Din Felsefesi',
+        'İslam Felsefesi',
+        'Dinler Tarihi',
+        'Kur\'an-ı Kerim',
+        'Din Eğitimi',
+        'Fıkıh Usulü',
+        'Tecvid',
+        'Tefsir',
+        'Hadis',
+        'Fıkıh',
+        'Kelam',
+        'Akaid',
+        'Siyer',
+        'Nahiv',
+        'Sarf',
+        'Kıraat',
+        'Arapça',
+        'Belagat',
+    ];
+}
+
+function recording_fold_tr(string $s): string
+{
+    $s = function_exists('mb_strtolower') ? mb_strtolower(trim($s), 'UTF-8') : strtolower(trim($s));
+    return strtr($s, [
+        'ı' => 'i', 'İ' => 'i', 'ş' => 's', 'Ş' => 's', 'ğ' => 'g', 'Ğ' => 'g',
+        'ü' => 'u', 'Ü' => 'u', 'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c',
+        'â' => 'a', 'û' => 'u', 'î' => 'i',
+    ]);
+}
+
+function recording_part_is_meta(string $part, string $gname = '', string $tname = ''): bool
+{
+    $p = trim($part);
+    if ($p === '') {
+        return true;
+    }
+    $fold = recording_fold_tr($p);
+    if ($gname !== '' && $fold === recording_fold_tr($gname)) {
+        return true;
+    }
+    if ($tname !== '' && $fold === recording_fold_tr($tname)) {
+        return true;
+    }
+    if (preg_match('/^\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4}(?:\s+\d{1,2}[:.]\d{2})?$/u', $p)) {
+        return true;
+    }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/u', $p)) {
+        return true;
+    }
+    return false;
+}
+
+function recording_match_catalog(string $text): ?string
+{
+    $fold = recording_fold_tr($text);
+    if ($fold === '') {
+        return null;
+    }
+    foreach (recording_lesson_catalog() as $name) {
+        $n = recording_fold_tr($name);
+        if ($n !== '' && str_contains($fold, $n)) {
+            return $name === 'Akaid & Kelam' ? 'Akaid ve Kelam' : $name;
+        }
+    }
+    return null;
+}
+
+/** @return array{heading:string,sub:string} */
+function recording_lesson_heading(array $rec): array
+{
+    $raw = trim((string) ($rec['title'] ?? ''));
+    $test = (bool) preg_match('/^Test\s*·\s*/u', $raw);
+    $raw = trim((string) preg_replace('/^Test\s*·\s*/u', '', $raw));
+    $gname = trim((string) ($rec['gname'] ?? ''));
+    $tname = trim((string) ($rec['tname'] ?? ''));
+    $parts = preg_split('/\s+[—–|-]+\s+/u', $raw) ?: [$raw];
+    $core = [];
+    foreach ($parts as $p) {
+        $p = trim((string) $p);
+        if ($p === '' || recording_part_is_meta($p, $gname, $tname)) {
+            continue;
+        }
+        $core[] = $p;
+    }
+    $joined = $core !== [] ? implode(' — ', $core) : $raw;
+    $heading = recording_match_catalog($joined) ?? recording_match_catalog($raw);
+    if ($heading === null) {
+        $heading = $core[0] ?? ($raw !== '' ? $raw : 'Ders');
+        $heading = preg_replace('/^(?:unite|ünite|ders)\s*\d+\s*[-–:.)]?\s*/iu', '', $heading) ?: $heading;
+        $heading = trim($heading);
+        if ($heading === '') {
+            $heading = 'Ders';
+        }
+    }
+    $sub = $joined;
+    $hf = recording_fold_tr($heading);
+    if ($hf !== '' && str_starts_with(recording_fold_tr($sub), $hf)) {
+        $sub = trim((string) preg_replace('/^' . preg_quote($heading, '/') . '\s*[-–:.)]?\s*/iu', '', $sub));
+    }
+    $sub = preg_replace('/^(?:unite|ünite|ders)?\s*\d+\s*(?:\.?\s*ders)?\s*[-–:.)]?\s*/iu', '', $sub) ?? $sub;
+    $sub = trim((string) $sub);
+    if ($sub === '' || recording_fold_tr($sub) === $hf) {
+        $sub = trim((string) ($rec['recorded_on'] ?? ''));
+    }
+    if ($test) {
+        $sub = $sub !== '' ? 'Test · ' . $sub : 'Test';
+    }
+    return ['heading' => $heading, 'sub' => $sub];
+}
+
+/**
+ * Group → lesson accordion. Newest lesson last; newest session at the bottom of its lesson.
+ *
+ * @return array{0: list<array{id:int,name:string,lessons:list<array{heading:string,rows:list<array>}>}>, 1: array<int,string>}
+ */
+function recordings_lesson_tree(array $rows): array
+{
+    [$flat, $groupNames] = recordings_by_group($rows);
+    $byGroup = [];
+    foreach ($flat as $r) {
+        $byGroup[(int) ($r['group_id'] ?? 0)][] = $r;
+    }
+    $groups = [];
+    foreach ($groupNames as $gid => $gname) {
+        $lessons = [];
+        $latest = [];
+        foreach ($byGroup[(int) $gid] ?? [] as $r) {
+            $info = recording_lesson_heading($r);
+            $key = recording_fold_tr($info['heading']);
+            if ($key === '') {
+                $key = 'ders';
+            }
+            if (!isset($lessons[$key])) {
+                $lessons[$key] = ['heading' => $info['heading'], 'rows' => []];
+                $latest[$key] = ['d' => '', 'id' => 0];
+            }
+            $r['_lesson_sub'] = $info['sub'];
+            $lessons[$key]['rows'][] = $r;
+            $d = (string) ($r['recorded_on'] ?? '');
+            $id = (int) ($r['id'] ?? 0);
+            if ($d > $latest[$key]['d'] || ($d === $latest[$key]['d'] && $id > $latest[$key]['id'])) {
+                $latest[$key] = ['d' => $d, 'id' => $id];
+            }
+        }
+        $order = array_keys($lessons);
+        usort($order, static function (string $a, string $b) use ($latest): int {
+            if ($latest[$a]['d'] !== $latest[$b]['d']) {
+                return $latest[$a]['d'] <=> $latest[$b]['d'];
+            }
+            return $latest[$a]['id'] <=> $latest[$b]['id'];
+        });
+        $outLessons = [];
+        foreach ($order as $key) {
+            $outLessons[] = $lessons[$key];
+        }
+        $groups[] = [
+            'id' => (int) $gid,
+            'name' => $gname,
+            'lessons' => $outLessons,
+        ];
+    }
+    return [$groups, $groupNames];
+}
+
+function recordings_render_lesson_tree(array $tree, callable $card, array $opt = []): void
+{
+    $splitGroups = !empty($opt['split_groups']);
+    $first = true;
+    foreach ($tree as $g) {
+        if ($splitGroups) {
+            echo '<div class="mb-3 ' . ($first ? 'mt-0' : 'mt-8') . ' flex flex-wrap items-end justify-between gap-2">';
+            echo '<div><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Grup</p>';
+            echo '<h2 class="font-display text-2xl">' . e((string) $g['name']) . '</h2></div>';
+            if (!empty($opt['group_extra']) && is_callable($opt['group_extra'])) {
+                echo $opt['group_extra']($g);
+            }
+            echo '</div>';
+        }
+        $first = false;
+        $nLessons = count($g['lessons']);
+        $li = 0;
+        foreach ($g['lessons'] as $lesson) {
+            $li++;
+            $n = count($lesson['rows']);
+            $open = $li === $nLessons ? ' open' : '';
+            echo '<details class="vod-lesson"' . $open . '>';
+            echo '<summary><span class="vod-lesson-title">' . e((string) $lesson['heading']) . '</span>';
+            echo '<span class="vod-lesson-count">' . $n . ' kayıt</span></summary>';
+            echo '<div class="vod-lesson-body">';
+            foreach ($lesson['rows'] as $r) {
+                $card($r);
+            }
+            echo '</div></details>';
+        }
+    }
+}
+
 function vod_abs_from_rec(array $rec): string
 {
     $rel = trim((string) ($rec['video_path'] ?? ''));

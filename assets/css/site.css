@@ -1055,3 +1055,45 @@ body.panel-nav-lock { overflow: hidden; }
 .cookie-bar .btn-primary { padding: 0.55rem 0.95rem; font-size: 0.82rem; }
 .cookie-bar .btn-outline { padding: 0.55rem 0.95rem; font-size: 0.82rem; background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
 .cookie-bar .btn-outline:hover { background: rgba(255,255,255,.08); }
+
+.vod-lesson {
+  margin-bottom: 0.75rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--rl);
+  box-shadow: var(--shadow);
+}
+.vod-lesson > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  padding: 0.95rem 1.15rem;
+}
+.vod-lesson > summary::-webkit-details-marker { display: none; }
+.vod-lesson > summary::after {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: auto;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform .15s;
+}
+.vod-lesson[open] > summary::after { transform: rotate(45deg); }
+.vod-lesson-title {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+.vod-lesson-count {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.vod-lesson-body { padding: 0 0.85rem 0.85rem; }
+.vod-lesson-body .card { margin-bottom: 0.65rem; box-shadow: none; }
+.vod-lesson-body .card:last-child { margin-bottom: 0; }
