@@ -34,7 +34,9 @@ if ($relatedSlug !== '') {
     $related = $bst->fetch() ?: null;
 }
 $isFree = (int) $p['price_now'] <= 0;
-$hideTeachers = in_array((string) $p['slug'], ['dkab-2027', 'tefsir'], true);
+$slugKey = (string) $p['slug'];
+$hideTeachers = in_array($slugKey, ['dkab-2027', 'tefsir'], true);
+$hideQuota = in_array($slugKey, ['dhbt-2026', 'hadis'], true);
 $kayitLabel = $isFree ? 'Ücretsiz sepete ekle' : 'Sepete ekle';
 $askName = (string) ($u['name'] ?? '');
 $askEmail = (string) ($u['email'] ?? '');
@@ -76,6 +78,7 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
         <?= program_body_gallery_html($p) ?>
       </section>
 
+      <?php if (!$hideQuota): ?>
       <section class="card p-6">
         <h2 class="font-display text-2xl">Eğitim ve kontenjan</h2>
         <?php $kontenjan = program_kontenjan_text($p); ?>
@@ -102,6 +105,7 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
           <p class="mt-4 text-sm text-muted">Bu programda henüz açık grup yok. <button type="button" class="font-extrabold text-navy" data-open-ask>Soru sorun</button>; kayıt sonrası grup açılınca panelden haberdar edilirsiniz.</p>
         <?php endif; ?>
       </section>
+      <?php endif; ?>
     </div>
 
     <aside class="grid gap-4 lg:sticky lg:top-24">
