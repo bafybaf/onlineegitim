@@ -46,7 +46,7 @@ legal_page_open(
 <p>Şikâyet: <?= e($c['email']) ?> ve iletişim formu. 6502 sayılı Kanun m.68 uyarınca, Ticaret Bakanlığı’nın her yıl ilan ettiği parasal sınırlar içinde tüketicinin yerleşim yeri veya işlemin yapıldığı yerdeki tüketici hakem heyetine başvurulabilir. Bu sınırın üzerindeki uyuşmazlıklarda tüketici mahkemesi yetkilidir. Tüketici mahkemesinde dava açılmadan önce 6502 sayılı Kanun m.73/A uyarınca arabulucuya başvuru şarttır.</p>
 
 <h3>A.7. Dijital içerik ve teknik şartlar</h3>
-<p>Canlı ders ve kayıtlar tarayıcı üzerinden (gerekirse Zoom veya Cloudflare Stream) izlenir. Güncel tarayıcı, kamerası/mikrofonu olan bir cihaz ve yeterli internet hızı gerekir. Kayıtlar kural olarak panelde yayınlanır; indirme hakkı ayrıca belirtilmedikçe verilmez. İçerik, Alıcı’nın kişisel kullanımı içindir; kopyalama, yayın ve hesap paylaşımı yasaktır. Dijital içeriğin işleyişine ilişkin teknik koruma (oturum, yetki) uygulanır.</p>
+<p>Canlı ders ve kayıtlar, üyeye tanımlanan panel üzerinden tarayıcıda izlenir. Güncel bir tarayıcı, kamerası ve mikrofonu olan bir cihaz ile yeterli internet bağlantısı gerekir. Kayıtlar kural olarak panelde sunulur; indirme hakkı ayrıca belirtilmedikçe verilmez. İçerik, Alıcı’nın kişisel kullanımı içindir; kopyalama, yayın ve hesap paylaşımı yasaktır.</p>
 
 <h3>A.8. Satış sonrası</h3>
 <p>Eğitim desteği panel ve e-posta ile; basılı kitapta ayıplı mal hükümleri 6502 sayılı Kanun m.8 ve devamı ile 6098 sayılı TBK’ya tabidir. Ayıplı malda cayma istisnaları tüketici aleyhine uygulanmaz.</p>

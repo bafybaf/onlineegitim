@@ -35,7 +35,7 @@ legal_page_open(
 <p>Özel nitelikli kişisel veri (din, sağlık, biyometri vb.) talep edilmez. Canlı derste görüntü/ses, eğitim hizmetinin ifası için işlenir; bu kayıtlar pazarlama amacıyla kullanılmaz.</p>
 
 <h2>3. Toplama yöntemi</h2>
-<p>Veriler; üyelik ve sipariş formları, iletişim / “sizi arayalım” formu, öğrenci-öğretmen paneli, canlı ders altyapısı, çerezler, ödeme kuruluşunun dönüş bildirimi ve (açık rızanız varsa) analiz araçları aracılığıyla otomatik veya kısmen otomatik yollarla toplanır.</p>
+<p>Veriler; üyelik ve sipariş formları, iletişim / “sizi arayalım” formu, öğrenci-öğretmen paneli, canlı ders ve kayıt, çerezler, ödeme kuruluşunun dönüş bildirimi ve (açık rızanız varsa) analiz araçları aracılığıyla otomatik veya kısmen otomatik yollarla toplanır.</p>
 
 <h2>4. İşleme amaçları ve hukuki sebepler</h2>
 <p>Kurul, aydınlatma ile açık rızanın iç içe geçirilmesini ve sözleşmenin ifası için zaten işlenmesi gereken verilere rıza dayandırılmasını uygun görmez. Aşağıdaki tabloda amaçlar, Kanun m.5 ve m.6’daki hukuki sebeplere ayrılmıştır.</p>
@@ -64,7 +64,7 @@ legal_page_open(
       <td>m.5/2-e bir hakkın tesisi, kullanılması veya korunması</td>
     </tr>
     <tr>
-      <td>Bilgi güvenliği, kötüye kullanımın ve hesap paylaşımının önlenmesi, oturum/CSRF koruması</td>
+      <td>Bilgi güvenliği, kötüye kullanımın ve hesap paylaşımının önlenmesi, oturum koruması</td>
       <td>m.5/2-f meşru menfaat (temel hak ve özgürlüklere zarar vermemek kaydıyla); kısmen m.5/2-c</td>
     </tr>
     <tr>
@@ -72,7 +72,7 @@ legal_page_open(
       <td>m.5/2-c talebe konu sözleşmenin kurulması / ifası</td>
     </tr>
     <tr>
-      <td>Google Analytics ve benzeri analiz çerezleri</td>
+      <td>İsteğe bağlı analiz çerezleri</td>
       <td>m.5/1 açık rıza (çerez bandı). Siteyi kullanmak rıza sayılmaz.</td>
     </tr>
     <tr>
@@ -80,8 +80,8 @@ legal_page_open(
       <td>m.5/1 açık rıza + 6563 sayılı ETK ve İYS. Zorunlu değildir; alınmadan gönderilmez.</td>
     </tr>
     <tr>
-      <td>Yurt dışına aktarım (Cloudflare, Google, Zoom vb.)</td>
-      <td>Kanun m.9; analiz için açık rıza, hizmet ifası için sözleşmenin gerektirdiği aktarım ve uygun güvenceler</td>
+      <td>Yurt dışındaki hizmet sağlayıcılarına aktarım</td>
+      <td>Kanun m.9; analiz için açık rıza, eğitim ve sitenin sunulması için sözleşmenin gerektirdiği aktarım ve uygun güvenceler</td>
     </tr>
   </tbody>
 </table>
@@ -90,13 +90,13 @@ legal_page_open(
 <p>Veriler, işleme amacıyla sınırlı ve orantılı olarak aşağıdaki alıcılara aktarılabilir:</p>
 <ul>
   <li><b>Ödeme kuruluşu:</b> <?= e($c['odeme']) ?> — tahsilat, 3D Secure, iade. Kart verisi ödeme kuruluşu / banka altyapısındadır.</li>
-  <li><b>Barındırma ve e-posta altyapısı:</b> sitenin çalıştığı sunucu ve SMTP sağlayıcısı.</li>
-  <li><b>Canlı yayın / video:</b> Cloudflare Stream; bazı derslerde Zoom. Görüntü, ses ve katılım bilgisi bu sağlayıcılara iletilir.</li>
-  <li><b>Kimlik doğrulama (tercihen):</b> Google ile giriş kullanırsanız Google’a kimlik doğrulama için gerekli asgari veri gider.</li>
+  <li><b>Barındırma ve e-posta:</b> sitenin ve iletişimin çalışması için hizmet aldığımız altyapı sağlayıcıları.</li>
+  <li><b>Canlı ders ve kayıt:</b> görüntü, ses ve derse katılım bilgisi, eğitimin sunulması için kullandığımız yayın ve kayıt hizmetlerine iletilebilir.</li>
+  <li><b>Hesap girişi (isteğe bağlı):</b> üçüncü taraf hesapla giriş yapılırsa, kimlik doğrulama için gerekli asgari veri ilgili sağlayıcıya gider.</li>
   <li><b>Kargo:</b> basılı kitap siparişinde taşıyıcıya ad, telefon, teslimat adresi.</li>
   <li><b>Yetkili kamu kurumları:</b> mevzuatın zorunlu kıldığı hallerde mahkeme, savcılık, idare, vergi dairesi, GİB, BTK, Tüketici Hakem Heyeti.</li>
 </ul>
-<p>Yurt dışında yerleşik hizmetler (özellikle Cloudflare, Google, Zoom) Kanun m.9 kapsamındadır. Analiz çerezleri için aktarım, çerez bandındaki kabul ile bağlıdır. Zorunlu hizmet aktarımı olmaksızın canlı ders ve sitenin teknik olarak sunulamayacağı durumlarda aktarım, sözleşmenin ifasının gereğidir; bu durumda alternatif bir yerel altyapı sunulmuyorsa bu husus sipariş öncesinde bu metinle bildirilmiş sayılır.</p>
+<p>Bazı hizmet sağlayıcıları yurt dışında yerleşik olabilir; bu aktarımlar Kanun m.9 kapsamındadır. Analiz çerezleri için aktarım, çerez bandındaki kabulünüze bağlıdır. Canlı ders, kayıt ve sitenin sunulması için zorunlu aktarımlar sözleşmenin ifasının gereğidir.</p>
 
 <h2>6. Saklama süreleri</h2>
 <p>Veriler, işleme amacının gerektirdiği süre ve ilgili mevzuattaki zamanaşımı / saklama süreleri kadar tutulur; süre bitince silinir, yok edilir veya anonim hale getirilir.</p>

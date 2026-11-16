@@ -243,7 +243,7 @@ function public_foot(): void
 <div id="cookie-bar" class="cookie-bar" hidden role="dialog" aria-modal="true" aria-labelledby="cookie-bar-title">
   <div class="cookie-bar-copy">
     <p id="cookie-bar-title" class="cookie-bar-heading">Çerez kullanımı</p>
-    <p>Zorunlu çerezler oturum, sepet ve güvenlik için kullanılır. Google Analytics üçüncü taraf ve yurt dışı aktarım içerir; yalnızca açık rızanızla çalışır. Siteyi kullanmanız onay sayılmaz.
+    <p>Zorunlu çerezler oturum, sepet ve güvenlik için kullanılır. Analiz çerezleri yalnızca açık rızanızla çalışır; üçüncü taraf ve yurt dışı aktarım içerebilir. Siteyi kullanmanız onay sayılmaz.
       <a href="<?= e(page_url('cerez-politikasi')) ?>">Çerez politikası</a>
       ·
       <a href="<?= e(page_url('kvkk')) ?>">KVKK aydınlatma</a>

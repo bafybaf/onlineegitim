@@ -21,19 +21,18 @@ legal_page_open(
 <p>Bilgiler yalnızca üyelik ve mesafeli satış sözleşmesinin ifası, canlı ders ve kayıt, fatura, kargo, teknik destek, bilgi güvenliği, tüketici talepleri ve kanuni yükümlülükler için kullanılır. Pazarlama iletisi, 6563 sayılı Kanun ve İYS onayı olmadan gönderilmez. Çerez analitiği ancak <?= legal_link('cerez-politikasi', 'Çerez Politikası') ?> ve çerez bandındaki açık rıza ile çalışır.</p>
 
 <h2>4. Üçüncü taraflar</h2>
-<p>Hizmetin sunulması için aşağıdaki bağımsız hizmetler kullanılır. Bunların kendi gizlilik politikaları da uygulanır:</p>
+<p>Hizmetin sunulması için aşağıdaki bağımsız hizmet grupları kullanılabilir. Bunların kendi gizlilik politikaları da uygulanır:</p>
 <ul>
   <li><?= e($c['odeme']) ?> — tahsilat ve 3D Secure</li>
-  <li>Cloudflare Stream — canlı yayın ve kayıt iletimi</li>
-  <li>Zoom — bazı canlı derslerde görüntülü toplantı</li>
-  <li>Barındırma / VPS ve e-posta (SMTP) sağlayıcısı</li>
-  <li>Google — isteğe bağlı “Google ile giriş”, rıza varsa Analytics; yazı tipleri için Google Fonts (IP adresi Google’a iletilebilir)</li>
+  <li>Canlı ders, görüntü ve kayıt iletimi sağlayan yayın hizmetleri</li>
+  <li>Barındırma ve e-posta hizmeti sağlayıcıları</li>
+  <li>İsteğe bağlı hesap girişi ve (onayınız varsa) ziyaret istatistiği hizmetleri</li>
   <li>Kargo firmaları — yalnızca basılı sipariş teslimatı</li>
 </ul>
 <p>Sitedeki harici bağlantıların içerik ve gizlilik uygulamalarından Satıcı sorumlu değildir.</p>
 
 <h2>5. Güvenlik</h2>
-<p>İletişim HTTPS ile şifrelenir. Oturum çerezi (`oi_sid`) HttpOnly, SameSite=Lax ve mümkünse Secure olarak set edilir. CSRF jetonu oturumda tutulur. Yetkisiz panel erişimi rol kontrolü ile sınırlanır. Bu tedbirler mutlak güvenlik taahhüdü değildir; olası bir ihlalde Kanun m.12 uyarınca Kurul’a ve ilgili kişiye bildirim yükümlülüğü varsa yerine getirilir.</p>
+<p>Site bağlantısı şifreli iletilir. Oturum ve form güvenliği için zorunlu çerezler kullanılır; panel erişimi role göre sınırlanır. Bu tedbirler mutlak güvenlik taahhüdü değildir; olası bir ihlalde Kanun m.12 uyarınca Kurul’a ve ilgili kişiye bildirim yükümlülüğü varsa yerine getirilir.</p>
 <p>Kart bilgisi e-posta, mesaj veya form ile gönderilmemelidir.</p>
 
 <h2>6. İnternet ortamında kayıtların saklanması</h2>

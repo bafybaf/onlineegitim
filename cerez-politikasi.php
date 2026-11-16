@@ -20,7 +20,7 @@ legal_page_open(
   <li><b>Kriter A:</b> iletişim ağının iletimini sağlamak için zorunlu olması, veya</li>
   <li><b>Kriter B:</b> abonenin / kullanıcının açıkça talep ettiği bilgi toplumu hizmetini sunmak için kesinlikle gerekli olması.</li>
 </ul>
-<p>Oturum, güvenlik (CSRF), giriş ve sepet bu kriterleri karşılar. Google Analytics, reklam, yeniden pazarlama ve benzeri istatistik / izleme çerezleri karşılamaz; açık rıza ve (yurt dışı aktarım varsa) Kanun m.9’a uygun dayanak gerekir. Reddetmek, sitenin asıl hizmetini (bilgi alma, üyelik, satın alma) kapatmaz; çerez duvarı uygulanmaz.</p>
+<p>Oturum, güvenlik, giriş ve sepet bu kriterleri karşılar. İstatistik ve izleme çerezleri karşılamaz; açık rıza ve (yurt dışı aktarım varsa) Kanun m.9’a uygun dayanak gerekir. Reddetmek, sitenin asıl hizmetini (bilgi alma, üyelik, satın alma) kapatmaz; çerez duvarı uygulanmaz.</p>
 
 <h2>3. Kullandığımız çerez ve benzeri kayıtlar</h2>
 <table>
@@ -38,7 +38,7 @@ legal_page_open(
     <tr>
       <td><code>oi_sid</code></td>
       <td>Birinci taraf</td>
-      <td>Oturum, giriş, sepet, CSRF jetonu</td>
+      <td>Oturum, giriş, sepet, güvenlik</td>
       <td>Oturum (tarayıcı kapanınca)</td>
       <td>Zorunlu</td>
       <td>Aranmaz (Kriter B)</td>
@@ -52,17 +52,16 @@ legal_page_open(
       <td>Aranmaz (tercihi saklamak için gerekli)</td>
     </tr>
     <tr>
-      <td><code>_ga</code>, <code>_ga_*</code>, <code>_gid</code></td>
-      <td>Google (üçüncü taraf)</td>
+      <td>Analiz çerezleri</td>
+      <td>Üçüncü taraf</td>
       <td>Ziyaret istatistiği</td>
-      <td>En fazla 24 ay / 24 saat (Google varsayılanı)</td>
+      <td>Onayınız süresince, en fazla 24 ay</td>
       <td>Analiz</td>
-      <td>Açık rıza. Yurt dışı aktarım içerir.</td>
+      <td>Açık rıza. Yurt dışı aktarım içerebilir.</td>
     </tr>
   </tbody>
 </table>
-<p>Yönetici panelinde Google Analytics kimliği tanımlı değilse analiz çerezi hiç yüklenmez. Kimlik tanımlı olsa bile “Reddet” seçilmedikçe veya rıza verilmedikçe <code>gtag</code> çağrılmaz.</p>
-<p>Görünüm için Google Fonts isteği tarayıcıdan Google sunucularına gidebilir (IP aktarımı). Bu bağlantı çerez bandından bağımsızdır; engellenirse sistem yazı tipi kullanılır. Kalıcı çözüm, yazı tiplerinin kendi sunucumuzda barındırılmasıdır.</p>
+<p>Analiz çerezleri yalnızca “Kabul et” derseniz çalışır. “Reddet” seçilirse istatistik çerezi yüklenmez.</p>
 
 <h2>4. Bant ve tercih yönetimi</h2>
 <p>İlk ziyarette bant gösterilir. İki seçenek aynı boyutta ve aynı görsel ağırlıktadır:</p>
