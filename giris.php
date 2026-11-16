@@ -2,11 +2,13 @@
 require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
 $u = current_user();
+$next = function_exists('safe_next') ? safe_next($_GET['next'] ?? '') : '';
+$qs = $next !== '' ? ('?next=' . rawurlencode($next)) : '';
 public_head('Giriş | Online İlahiyat');
 ?>
 <main class="mx-auto max-w-3xl px-4 py-16">
   <h1 class="font-display text-center text-4xl">Nereye giriş yapmak istiyorsunuz?</h1>
-  <p class="mt-2 text-center text-sm text-muted"><?= shop_books_visible() ? 'Mağaza ve canlı ders hesapları ayrıdır. Tek şifre ile ikisine birden girilmez.' : 'Canlı ders hesabıyla öğrenci veya öğretmen paneline girin.' ?></p>
+  <p class="mt-2 text-center text-sm text-muted"><?= shop_books_visible() ? 'Öğrenci hesabıyla da kitap alınır. Mağaza hesabı ayrı durur.' : 'Canlı ders hesabıyla öğrenci veya öğretmen paneline girin.' ?></p>
   <?php if ($u): ?>
     <p class="mt-6 text-center text-sm">Şu an <b><?= e($u['name']) ?></b> olarak açıksınız.
       <a class="font-extrabold text-navy" href="<?= e(url(panel_home($u['role']))) ?>"><?= is_shop_role($u['role']) ? 'Hesabıma git' : 'Panele git' ?></a>
@@ -15,13 +17,13 @@ public_head('Giriş | Online İlahiyat');
   <?php endif; ?>
   <div class="mt-10 grid gap-5 <?= shop_books_visible() ? 'md:grid-cols-2' : '' ?>">
     <?php if (shop_books_visible()): ?>
-    <a href="<?= e(page_url('giris-magaza')) ?>" class="card p-6 hover:border-navy">
+    <a href="<?= e(page_url('giris-magaza') . $qs) ?>" class="card p-6 hover:border-navy">
       <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Kitap mağazası</p>
       <h2 class="font-display mt-2 text-2xl">Mağaza girişi</h2>
-      <p class="mt-2 text-sm text-muted">Sipariş ve Kitaplarım. Canlı derse açılmaz.</p>
+      <p class="mt-2 text-sm text-muted">Sipariş ve Kitaplarım. Öğrenci hesabı da bu formdan girebilir.</p>
     </a>
     <?php endif; ?>
-    <a href="<?= e(page_url('giris-ders')) ?>" class="card p-6 hover:border-navy">
+    <a href="<?= e(page_url('giris-ders') . $qs) ?>" class="card p-6 hover:border-navy">
       <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-navy">Canlı eğitim</p>
       <h2 class="font-display mt-2 text-2xl">Ders girişi</h2>
       <p class="mt-2 text-sm text-muted">Öğrenci ve öğretmen paneli, canlı sınıf, test ve ödev.</p>

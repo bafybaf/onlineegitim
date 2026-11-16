@@ -167,8 +167,8 @@ function google_assert_ctx_role(string $ctx, array $u): void
         throw new RuntimeException('Yönetici Google ile giriş yapamaz. /wiys kullanın.');
     }
     if ($ctx === 'magaza') {
-        if (!is_shop_role($role)) {
-            throw new RuntimeException('Bu e-posta eğitim hesabı. Mağaza için ayrı e-posta kullanın veya ders girişine gidin.');
+        if (!in_array($role, ['musteri', 'ogrenci'], true)) {
+            throw new RuntimeException('Bu e-posta ile mağaza girişi yapılamaz. Ders girişini kullanın.');
         }
         return;
     }

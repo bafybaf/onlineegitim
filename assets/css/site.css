@@ -1026,9 +1026,19 @@ body.panel-nav-lock { overflow: hidden; }
   font-family: "Bricolage Grotesque", sans-serif;
   font-size: 1.35rem;
 }
+.legal-doc h3 {
+  margin-top: 1.2rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
 .legal-doc p, .legal-doc li { color: var(--muted); line-height: 1.7; }
 .legal-doc ul { margin: 0.6rem 0 0 1.15rem; list-style: disc; }
 .legal-doc li + li { margin-top: 0.35rem; }
+.legal-doc table { width: 100%; border-collapse: collapse; margin: 0.85rem 0 1.2rem; font-size: 0.88rem; }
+.legal-doc th, .legal-doc td { border: 1px solid var(--border); padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
+.legal-doc th { background: #f7f7f8; color: var(--text); font-weight: 800; }
+.legal-doc .legal-note { font-size: 0.88rem; color: var(--muted); margin-top: 2rem; }
+.legal-doc code { font-size: 0.86em; }
 .legal-consents label { line-height: 1.45; color: var(--text); }
 .cookie-bar {
   position: fixed;
@@ -1049,12 +1059,20 @@ body.panel-nav-lock { overflow: hidden; }
   border: 1px solid rgba(245, 197, 66, .28);
 }
 .cookie-bar[hidden] { display: none !important; }
-.cookie-bar p { margin: 0; font-size: 0.875rem; line-height: 1.5; color: #d4d4d8; max-width: 46rem; }
+.cookie-bar-copy { max-width: 46rem; }
+.cookie-bar p { margin: 0; font-size: 0.875rem; line-height: 1.5; color: #d4d4d8; }
+.cookie-bar-heading { color: #fff !important; font-weight: 800; margin-bottom: 0.35rem !important; }
 .cookie-bar a { color: #f5c542; font-weight: 800; }
 .cookie-bar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.cookie-bar .btn-primary { padding: 0.55rem 0.95rem; font-size: 0.82rem; }
-.cookie-bar .btn-outline { padding: 0.55rem 0.95rem; font-size: 0.82rem; background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
-.cookie-bar .btn-outline:hover { background: rgba(255,255,255,.08); }
+.cookie-bar-actions button {
+  min-width: 9.5rem;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.82rem;
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255,255,255,.45);
+}
+.cookie-bar-actions button:hover { background: rgba(255,255,255,.08); }
 
 .vod-lesson {
   margin-bottom: 0.75rem;

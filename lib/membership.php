@@ -386,7 +386,9 @@ function payment_success_href(array $payment): string
     return match ($payment['kind'] ?? '') {
         'uyelik_ders', 'program' => url('ogrenci/index.php'),
         'uyelik_magaza' => url('magaza/index.php'),
-        default => shop_books_visible() ? url('magaza/kitaplarim.php') : url('magaza/index.php'),
+        default => (current_user() && (current_user()['role'] ?? '') === 'ogrenci')
+            ? url('ogrenci/kitaplarim.php')
+            : (shop_books_visible() ? url('magaza/kitaplarim.php') : url('magaza/index.php')),
     };
 }
 
@@ -408,7 +410,7 @@ function payment_login_file(?array $payment): string
 {
     return in_array($payment['kind'] ?? '', ['uyelik_ders', 'program'], true)
         ? 'giris-ders.php'
-        : 'giris-magaza.php';
+        : 'giris.php';
 }
 
 function can_pay_kind(array $u, string $kind): bool
@@ -417,7 +419,7 @@ function can_pay_kind(array $u, string $kind): bool
         return false;
     }
     return match ($kind) {
-        'kitap' => is_shop_role($u['role']) && ($u['status'] ?? '') === 'aktif',
+        'kitap' => function_exists('can_buy_shop') ? can_buy_shop($u) : (is_shop_role($u['role']) && ($u['status'] ?? '') === 'aktif'),
         'uyelik_magaza' => false,
         'uyelik_ders', 'program' => $u['role'] === 'ogrenci',
         default => false,

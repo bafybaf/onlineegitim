@@ -109,14 +109,8 @@ function catalog_program_copy(): array
             . "Amacımız sadece soru çözmek değil; sorunun nasıl düşünülmesi gerektiğini öğretmek.\n\n"
             . "2026 DHBT’ye hazırlanan herkesi bekliyoruz!\n\n"
             . "onlineilahiyat.com",
-        'dkab-2027' => "2027 DKAB’YE HAZIRLANIYORSAN, DOĞRU YERDESİN!\n\n"
-            . "DKAB hazırlığında başarı; sadece çok çalışmakla değil, doğru bilgiyi doğru kaynaktan, sistemli ve sınav odaklı şekilde öğrenmekle gelir.\n\n"
-            . "2027 DKAB Detaylı Konu Anlatımı Full Paket ile sınavda ihtiyaç duyacağın konuları kapsamlı ve anlaşılır bir şekilde çalış, eksiklerini tamamla ve hazırlık sürecini daha planlı hâle getir.\n\n"
-            . "DETAYLI KONU ANLATIMI\nKonular yüzeysel değil, sınavda ihtiyaç duyacağın ayrıntılar dikkate alınarak ele alınır.\n\n"
-            . "AKADEMİSYEN EĞİTİMCİLER\nAlanında uzman akademisyen eğitmenlerle konuları doğrudan uzmanlarından öğren.\n\n"
-            . "CANLI DERSLER\nDersleri canlı takip et, anlatımı anlık olarak dinle ve çalışma sürecini daha verimli hâle getir.\n\n"
-            . "FULL PAKET\nDKAB hazırlığını tek bir sistem içerisinde, düzenli ve kapsamlı şekilde yürüt.\n\n"
-            . "🎯 HEDEF BELLİ: 2027 DKAB’DE BAŞARI!\nBugün başladığın çalışma, sınav günü sahip olduğun bilgiye dönüşecek.\n2027 DKAB hazırlığını şansa bırakma.\nDoğru plan, doğru kaynak ve güçlü bir eğitim sistemiyle hazırlan.\n\n"
+        'dkab-2027' => "2027 DKAB-ÖABT Detaylı Konu Anlatımı Full Paket.\n\n"
+            . "Detaylı konu anlatımı.\nCanlı dersler.\nDers kayıtları.\n\n"
             . "onlineilahiyat.com",
         'mbsts-2027' => "2027 MBSTS’YE HAZIRLANIYORSAN, HAZIRLIĞINI SAĞLAM TEMELLER ÜZERİNE KUR!\n\n"
             . "MBSTS’de başarı; bilgiyi ezberlemekten çok, konulara hâkim olmayı ve sınavın gerektirdiği bakış açısını kazanmayı gerektirir.\n\n"
@@ -206,7 +200,7 @@ function catalog_book_copy(): array
 function program_kontenjan_text(array $p): string
 {
     return match ((string) ($p['slug'] ?? '')) {
-        'dkab-2027' => '9 Kasım 2026 tarihinde DKAB-ÖABT derslerine başlanacaktır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz. Canlı dersler akşam 19:00 saatlerinde başlar. Konular tamamlana kadar hafta içi her gün ders yapılır. Kayıt sonrası grup açılınca ders programı hakkında panelden haberdar edilirsiniz.',
+        'dkab-2027' => '9 Kasım 2026 tarihinde DKAB-ÖABT derslerine başlanacaktır. Canlı dersler akşam 19:00 saatlerinde başlar. Konular tamamlana kadar hafta içi her gün ders yapılır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz.',
         'mbsts-2027' => '9 Kasım 2026 tarihinde MBSTS derslerine başlanacaktır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz. Canlı dersler akşam 19:00 saatlerinde başlar. Konular tamamlana kadar hafta içi her gün ders yapılır. Kayıt sonrası grup açılınca ders programı hakkında panelden haberdar edilirsiniz.',
         'arapca-yokdil' => '30 Aralık 2026 tarihinde ARAPÇA YDS-YÖKDİL derslerine başlanacaktır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz. Canlı dersler akşam 19:00 saatlerinde başlar. Hafta içi 2 gün / 1 saat ders yapılır. Kayıt sonrası grup açılınca ders programı hakkında panelden haberdar edilirsiniz.',
         default => '',

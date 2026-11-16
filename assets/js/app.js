@@ -53,6 +53,36 @@
       btn.textContent = "Sepete eklendi";
     });
   });
+  document.querySelectorAll("[data-buy-program]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const root = btn.closest("#program-pay") || document;
+      const need = ["accept_sales", "accept_kvkk", "accept_digital"];
+      for (const name of need) {
+        const el = root.querySelector('input[name="' + name + '"]');
+        if (el && !el.checked) {
+          if (typeof el.reportValidity === "function") el.reportValidity();
+          return;
+        }
+      }
+      const body = new URLSearchParams({ action: "checkout_program", program_id: btn.dataset.buyProgram });
+      need.forEach((name) => body.set(name, "1"));
+      const r = await fetch(base + "api/cart.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+      const j = await r.json().catch(() => ({}));
+      if (j.ok && j.pay_url) {
+        location.href = j.pay_url;
+        return;
+      }
+      if (j.error === "login" || j.error === "shop_account") {
+        const login = btn.getAttribute("data-login") || "";
+        if (login) location.href = login;
+        return;
+      }
+      if (j.error === "consent") {
+        const el = root.querySelector("input[name=\"accept_sales\"]");
+        if (el && typeof el.reportValidity === "function") el.reportValidity();
+      }
+    });
+  });
 
   document.querySelectorAll("[data-oi-slider]").forEach((root) => {
     const slides = [...root.querySelectorAll(".oi-slide")];

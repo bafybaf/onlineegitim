@@ -46,7 +46,8 @@ $ship = (int) ($autoCamp['ship'] ?? $ship);
 $total = max(0, $sub - $campDisc) + $ship;
 $done = isset($_GET['ok']);
 $shopUser = current_user();
-$shopReady = $shopUser && is_shop_role($shopUser['role']) && ($shopUser['status'] ?? '') === 'aktif';
+$shopReady = can_buy_shop($shopUser);
+$shopLogin = shop_login_url('sepet');
 $addresses = $shopReady ? user_addresses((int) $shopUser['id']) : [];
 public_head('Sepet | Online İlahiyat');
 ?>
@@ -58,7 +59,7 @@ public_head('Sepet | Online İlahiyat');
 </header>
 <main class="mx-auto max-w-7xl px-4 py-10 lg:px-8">
 <?php if ($done): ?>
-  <div class="card p-8"><h2 class="font-display text-3xl">Sipariş alındı</h2><p class="mt-2 text-muted">Kitaplar Kitaplarım’da, eğitimler Eğitimlerim’de görünür. Sınıf yerleştirmenizi yönetim yapar.</p><a class="btn-primary mt-4" href="<?= e(url('magaza/index.php')) ?>">Hesabıma git</a></div>
+  <div class="card p-8"><h2 class="font-display text-3xl">Sipariş alındı</h2><p class="mt-2 text-muted">Kitaplar Kitaplarım’da, eğitimler Eğitimlerim’de görünür. Sınıf yerleştirmenizi yönetim yapar.</p><a class="btn-primary mt-4" href="<?= e(url($shopUser ? panel_home((string) $shopUser['role']) : 'giris')) ?>">Hesabıma git</a></div>
 <?php elseif (!$rows && !$progRows): ?>
   <div class="card overflow-hidden max-w-xl">
     <img src="<?= e(url('assets/img/kitaplik.jpg')) ?>" alt="" class="h-56 w-full object-cover">
@@ -178,9 +179,9 @@ public_head('Sepet | Online İlahiyat');
           <p class="text-xs text-muted">Kupon kodu ödeme anında uygulanır. Kod girmezseniz sepetteki otomatik kampanya kalır.</p>
         <?php endif; ?>
         <?php if (!$shopUser): ?>
-          <a href="<?= e(url('giris-magaza.php?next=sepet')) ?>" class="btn-primary text-center">Giriş yapıp satın al · <?= money($total) ?></a>
+          <a href="<?= e($shopLogin) ?>" class="btn-primary text-center">Giriş yapıp satın al · <?= money($total) ?></a>
         <?php elseif (!$shopReady): ?>
-          <p class="rounded-xl bg-soft px-3 py-2 text-sm font-bold">Sepet mağaza hesabıyla ödenir. Eğitim oturumunuz açık; <a class="text-navy" href="<?= e(url('giris-magaza.php?next=sepet')) ?>">mağaza girişini</a> kullanın.</p>
+          <p class="rounded-xl bg-soft px-3 py-2 text-sm font-bold">Satın alım için aktif öğrenci veya mağaza hesabı gerekir.</p>
         <?php else: ?>
           <?php legal_consent_sales($needDigital); ?>
           <button id="checkout" class="btn-primary">Satın al</button>
@@ -231,8 +232,8 @@ public_head('Sepet | Online İlahiyat');
       const r = await fetch(OI_BASE + 'api/cart.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
       const j = await r.json();
       if (j.ok && j.pay_url) location.href = j.pay_url;
-      else if (j.error === 'login') location.href = <?= json_encode(url('giris-magaza.php?next=sepet')) ?>;
-      else if (j.error === 'shop_account') alert('Satın alım için mağaza girişi gerekir. Ders hesabı ile sipariş alınmaz.');
+      else if (j.error === 'login') location.href = <?= json_encode($shopLogin) ?>;
+      else if (j.error === 'shop_account') alert('Satın alım için aktif öğrenci veya mağaza hesabı gerekir.');
       else if (j.error === 'stock') alert('Stok yetersiz. Adedi düşürün.');
       else if (j.error === 'address') alert(j.message || 'Teslimat için telefon, şehir ve açık adres gerekli.');
       else if (j.error === 'consent') alert(j.message || 'Satın almadan önce sözleşmeleri onaylayın.');

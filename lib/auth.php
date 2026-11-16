@@ -54,6 +54,17 @@ function is_shop_role(string $role): bool
     return $role === 'musteri';
 }
 
+function can_buy_shop(?array $u): bool
+{
+    if (!$u) {
+        return false;
+    }
+    if (($u['status'] ?? '') !== 'aktif') {
+        return false;
+    }
+    return in_array((string) ($u['role'] ?? ''), ['musteri', 'ogrenci'], true);
+}
+
 function is_edu_role(string $role): bool
 {
     return in_array($role, ['ogrenci', 'ogretmen'], true);

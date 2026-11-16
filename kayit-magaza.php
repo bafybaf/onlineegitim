@@ -3,15 +3,15 @@ require_once __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/includes/layout.php';
 $err = flash_error();
 $u = current_user();
-if ($u && is_shop_role($u['role'])) {
+if ($u && can_buy_shop($u)) {
     redirect(panel_home($u['role']));
 }
-if ($u && !is_shop_role($u['role'])) {
-    $err = $err ?: 'Mağaza hesabı ayrıdır. Mağaza için farklı e-posta kullanın veya çıkış yapın.';
+if ($u && !can_buy_shop($u)) {
+    $err = $err ?: 'Bu hesapla mağaza kaydı açılmaz.';
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($u && !is_shop_role($u['role'])) {
-        $err = 'Açık eğitim oturumunuz var. Mağaza için ayrı e-posta ile kaydolun.';
+    if ($u && !can_buy_shop($u) && !is_shop_role($u['role'])) {
+        $err = 'Açık oturumunuz var. Çıkış yapmadan mağaza kaydı açılamaz.';
     } else {
         try {
             $name = post('name');

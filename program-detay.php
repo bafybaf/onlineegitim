@@ -34,9 +34,13 @@ if ($relatedSlug !== '') {
     $related = $bst->fetch() ?: null;
 }
 $isFree = (int) $p['price_now'] <= 0;
+$hideTeachers = in_array((string) $p['slug'], ['dkab-2027', 'tefsir'], true);
 $kayitLabel = $isFree ? 'Ücretsiz sepete ekle' : 'Sepete ekle';
 $askName = (string) ($u['name'] ?? '');
 $askEmail = (string) ($u['email'] ?? '');
+$shopUser = can_buy_shop($u);
+$payNext = 'program/' . (string) $p['slug'];
+$payLogin = shop_login_url($payNext);
 public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
 ?>
 <header class="bg-soft">
@@ -47,7 +51,12 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
     <p class="mt-4 text-sm font-bold text-navy"><?= e($p['hours']) ?> · <?= e($p['tag']) ?></p>
     <p class="mt-4"><?= program_price_html($p, 'price-now text-3xl md:text-4xl') ?></p>
     <div class="mt-7 flex flex-wrap gap-3">
+      <?php if ($isFree): ?>
       <button type="button" class="btn-primary" data-add-program="<?= (int) $p['id'] ?>"><?= e($kayitLabel) ?></button>
+      <?php else: ?>
+      <a href="#program-pay" class="btn-primary">Satın al</a>
+      <button type="button" class="btn-outline" data-add-program="<?= (int) $p['id'] ?>"><?= e($kayitLabel) ?></button>
+      <?php endif; ?>
       <a href="<?= e(page_url('sepet')) ?>" class="btn-outline">Sepete git</a>
       <button type="button" class="btn-outline" data-open-ask>Soru sor</button>
     </div>
@@ -77,12 +86,12 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
         <?php endif; ?>
         <?php if ($groups): ?>
           <table class="table mt-4">
-            <thead><tr><th>Grup</th><th>Hoca</th><th>Gün</th><th>Kontenjan</th></tr></thead>
+            <thead><tr><th>Grup</th><?php if (!$hideTeachers): ?><th>Hoca</th><?php endif; ?><th>Gün</th><th>Kontenjan</th></tr></thead>
             <tbody>
               <?php foreach ($groups as $g): ?>
               <tr>
                 <td class="font-extrabold"><?= e($g['name']) ?></td>
-                <td><?= e($g['teacher']) ?></td>
+                <?php if (!$hideTeachers): ?><td><?= e($g['teacher']) ?></td><?php endif; ?>
                 <td><?= e($g['days']) ?></td>
                 <td><?= (int) $g['n'] ?> / <?= (int) $g['cap'] ?></td>
               </tr>
@@ -105,11 +114,21 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
           <p class="font-display mt-1 text-3xl"><?= e(money_or_free((int) $p['price_now'])) ?></p>
           <p class="mt-1 text-sm text-white/70"><?= e($p['tag']) ?></p>
         </div>
-        <div class="grid gap-3 p-6">
+        <div class="grid gap-3 p-6" <?= $isFree ? '' : 'id="program-pay"' ?>>
+          <?php if ($isFree): ?>
           <button type="button" class="btn-primary" data-add-program="<?= (int) $p['id'] ?>"><?= e($kayitLabel) ?></button>
+          <?php else: ?>
+          <?php legal_consent_sales(true); ?>
+          <?php if ($shopUser): ?>
+          <button type="button" class="btn-primary" data-buy-program="<?= (int) $p['id'] ?>" data-login="<?= e($payLogin) ?>">Sipay ile öde</button>
+          <?php else: ?>
+          <a href="<?= e($payLogin) ?>" class="btn-primary text-center">Sipay ile öde</a>
+          <?php endif; ?>
+          <button type="button" class="btn-outline" data-add-program="<?= (int) $p['id'] ?>"><?= e($kayitLabel) ?></button>
+          <?php endif; ?>
           <button type="button" class="btn-outline" data-open-ask>Soru sor</button>
           <?php if (!$u): ?>
-            <a href="<?= e(url('giris-magaza.php?next=sepet')) ?>" class="text-center text-sm font-extrabold text-navy">Hesabınız varsa mağaza girişi</a>
+            <a href="<?= e($payLogin) ?>" class="text-center text-sm font-extrabold text-navy">Mağaza girişi</a>
           <?php endif; ?>
         </div>
       </div>
@@ -131,7 +150,7 @@ public_head($p['title'] . ' | Online İlahiyat', catalog_seo_excerpt($body));
 <div id="ask-modal" class="modal">
   <div class="card w-full max-w-md p-6">
     <h3 class="font-display text-2xl">Soru sor</h3>
-    <p class="mt-2 text-sm text-muted"><?= e((string) $p['title']) ?> hakkında sorunuzu yazın; yanıt yönetime ve ilgili hocaya düşer.</p>
+    <p class="mt-2 text-sm text-muted"><?= e((string) $p['title']) ?></p>
     <form class="mt-4 grid gap-3" method="post" action="<?= e(url('api/program-soru.php')) ?>" data-ask-form>
       <?= csrf_field() ?>
       <?= security_honeypot_field() ?>

@@ -1,11 +1,12 @@
 (function () {
   var KEY = 'oi_cookie_consent';
+  var VERSION = 2;
   function read() {
     try { return JSON.parse(localStorage.getItem(KEY) || ''); } catch (e) { return null; }
   }
   function save(analytics) {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ v: 1, necessary: true, analytics: !!analytics, t: Date.now() }));
+      localStorage.setItem(KEY, JSON.stringify({ v: VERSION, necessary: true, analytics: !!analytics, t: Date.now() }));
     } catch (e) {}
   }
   function loadGa() {
@@ -21,10 +22,10 @@
     window.gtag('config', window.OI_GA);
   }
   var c = read();
-  if (c && c.analytics) loadGa();
+  if (c && c.v === VERSION && c.analytics) loadGa();
   var bar = document.getElementById('cookie-bar');
   if (!bar) return;
-  if (c && c.v) {
+  if (c && c.v === VERSION) {
     bar.hidden = true;
     return;
   }

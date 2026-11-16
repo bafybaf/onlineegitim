@@ -29,7 +29,7 @@ public_head('Ders girişi | Online İlahiyat');
 <main class="mx-auto max-w-md px-4 py-16">
   <p class="text-center text-xs font-extrabold uppercase tracking-[0.18em] text-navy">Canlı eğitim</p>
   <h1 class="font-display mt-2 text-center text-4xl">Ders girişi</h1>
-  <p class="mt-2 text-center text-sm text-muted">Öğrenci ve öğretmen aynı formdan girer. Kitap ödemesi için mağaza girişi gerekir.</p>
+  <p class="mt-2 text-center text-sm text-muted">Öğrenci ve öğretmen aynı formdan girer. Öğrenci hesabıyla kitap da alınır.</p>
   <?php if ($u && is_shop_role($u['role'])): ?>
     <p class="mt-4 rounded-xl bg-soft px-3 py-2 text-center text-sm font-bold">Açık mağaza oturumunuz var. Canlı ders için eğitim üyeliğiyle giriş yapın.</p>
   <?php endif; ?>
@@ -44,7 +44,7 @@ public_head('Ders girişi | Online İlahiyat');
     <?php google_button('ders', $next !== '' ? $next : '', 'mt-3'); ?>
   </form>
   <div class="mt-6 grid gap-2 text-sm">
-    <p class="text-muted">Kitap siparişi için <a class="font-extrabold text-navy" href="<?= e(page_url('giris-magaza')) ?>">mağaza girişini</a> kullanın.</p>
+    <p class="text-muted">Yalnız mağaza hesabınız varsa <a class="font-extrabold text-navy" href="<?= e(page_url('giris-magaza')) ?>">mağaza girişini</a> kullanın.</p>
     <p class="text-center"><a class="font-extrabold text-navy" href="<?= e(page_url('kayit-ders')) ?>">Ders kaydı</a></p>
   </div>
 </main>

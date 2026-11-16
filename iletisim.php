@@ -29,17 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 public_head('İletişim | Online İlahiyat');
 ?>
-<header class="bg-soft py-6">
-  <div class="mx-auto max-w-7xl px-4 lg:px-8">
-    <h1 class="font-display text-2xl md:text-3xl">İletişim</h1>
-    <p class="mt-2 text-muted"><?= shop_books_visible() ? 'Kayıt, kitap siparişi ve canlı ders teknik destek · info@onlineilahiyat.com.tr' : 'Kayıt ve canlı ders teknik destek · info@onlineilahiyat.com.tr' ?></p>
-  </div>
-</header>
-<main class="mx-auto max-w-xl px-4 py-12">
-  <?php if (function_exists('legal_company_block')) { legal_company_block(); } ?>
-  <?php if ($ok): ?><p class="mb-4 font-bold text-accent">Mesajınız iletildi.</p><?php endif; ?>
+<main class="mx-auto max-w-xl px-4 py-12 lg:px-8">
+  <h1 class="font-display text-2xl md:text-3xl">İletişim</h1>
+  <?php if ($ok): ?><p class="mt-4 font-bold text-accent">Mesajınız iletildi.</p><?php endif; ?>
   <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-  <form method="post" class="card grid gap-3 p-6">
+  <form method="post" class="card mt-6 grid gap-3 p-6">
     <?= csrf_field() ?>
     <?= security_honeypot_field() ?>
     <input required name="name" class="rounded-xl border px-3 py-2" placeholder="Ad soyad" autocomplete="name">

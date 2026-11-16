@@ -34,7 +34,7 @@ if ($action === 'add') {
     if (!$u) {
         json_out(['ok' => false, 'error' => 'login'], 401);
     }
-    if (!is_shop_role($u['role']) || ($u['status'] ?? '') !== 'aktif') {
+    if (!can_buy_shop($u)) {
         json_out(['ok' => false, 'error' => 'shop_account'], 403);
     }
     $items = cart();
@@ -158,6 +158,37 @@ if ($action === 'add') {
     $_SESSION['cart'] = [];
     $_SESSION['cart_programs'] = [];
     json_out(['ok' => true, 'pay_url' => payment_checkout_url($payment), 'count' => 0]);
+} elseif ($action === 'checkout_program') {
+    $u = current_user();
+    if (!$u) {
+        json_out(['ok' => false, 'error' => 'login'], 401);
+    }
+    if (!can_buy_shop($u)) {
+        json_out(['ok' => false, 'error' => 'shop_account'], 403);
+    }
+    $id = (int) post('program_id');
+    $st = db()->prepare('SELECT * FROM programs WHERE id = ?');
+    $st->execute([$id]);
+    $p = $st->fetch();
+    if (!$p) {
+        json_out(['ok' => false, 'error' => 'empty']);
+    }
+    if (function_exists('legal_sales_accepted') && !legal_sales_accepted(true)) {
+        json_out(['ok' => false, 'error' => 'consent', 'message' => legal_sales_error()], 422);
+    }
+    $price = (int) ($p['price_now'] ?? 0);
+    $basket = [[
+        'name' => (string) $p['title'],
+        'price' => $price,
+        'qty' => 1,
+        'program_id' => (int) $p['id'],
+        'is_digital' => 1,
+    ]];
+    $payment = payment_create((int) $u['id'], 'kitap', max(0, $price), $basket, [
+        'ship_mode' => 'dijital',
+        'program_id' => (int) $p['id'],
+    ]);
+    json_out(['ok' => true, 'pay_url' => payment_checkout_url($payment), 'count' => cart_count()]);
 }
 
 json_out(['ok' => true, 'count' => cart_count()]);

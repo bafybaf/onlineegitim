@@ -5,14 +5,14 @@ $err = flash_error();
 $ok = flash_ok();
 $next = safe_next($_GET['next'] ?? $_POST['next'] ?? '');
 $u = current_user();
-if ($u && is_shop_role($u['role'])) {
+if ($u && can_buy_shop($u)) {
     if ($next !== '') {
         redirect($next);
     }
     redirect(panel_home($u['role']));
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $res = attempt_login(post('email'), post('password'), ['musteri']);
+    $res = attempt_login(post('email'), post('password'), ['musteri', 'ogrenci']);
     if ($res['ok']) {
         finish_login($res['user'], $next);
     }
@@ -23,8 +23,8 @@ public_head('Mağaza girişi | Online İlahiyat');
 <main class="mx-auto max-w-md px-4 py-16">
   <p class="text-center text-xs font-extrabold uppercase tracking-[0.18em] text-accent">Kitap mağazası</p>
   <h1 class="font-display mt-2 text-center text-4xl">Mağaza girişi</h1>
-  <?php if ($u && !is_shop_role($u['role'])): ?>
-    <p class="mt-4 rounded-xl bg-soft px-3 py-2 text-center text-sm font-bold">Açık eğitim oturumunuz var. Mağaza için ayrı üyelikle giriş yapın.</p>
+  <?php if ($u && !can_buy_shop($u)): ?>
+    <p class="mt-4 rounded-xl bg-soft px-3 py-2 text-center text-sm font-bold">Bu hesapla alışveriş yok. Öğrenci veya mağaza hesabı kullanın.</p>
   <?php endif; ?>
   <?php if ($ok): ?><p class="mt-4 text-center font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
   <?php if ($err): ?><p class="mt-4 text-center font-bold text-accent"><?= e($err) ?></p><?php endif; ?>

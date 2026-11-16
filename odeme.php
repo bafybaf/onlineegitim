@@ -46,14 +46,31 @@ if (!sipay_configured()) {
 
 $existing = trim((string) ($payment['gateway_token'] ?? ''));
 $init = sipay_create_link($payment, $u);
+$payLink = '';
 if (!empty($init['ok']) && !empty($init['link'])) {
-    redirect((string) $init['link']);
-}
-if (($payment['provider'] ?? '') === 'sipay' && str_starts_with($existing, 'http')) {
-    redirect($existing);
+    $payLink = (string) $init['link'];
+} elseif (($payment['provider'] ?? '') === 'sipay' && str_starts_with($existing, 'http')) {
+    $payLink = $existing;
 }
 
 public_head('Ödeme | Online İlahiyat');
+if ($payLink !== ''):
+?>
+<main class="mx-auto max-w-3xl px-4 py-10 lg:px-8">
+  <div class="card overflow-hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e5e7] px-6 py-4">
+      <div>
+        <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Sipay</p>
+        <h1 class="font-display mt-1 text-2xl">Ödeme</h1>
+        <p class="mt-1 text-sm text-muted"><?= e(money((int) $payment['total'])) ?> · <?= e($oid) ?></p>
+      </div>
+      <a class="btn-outline text-sm" href="<?= e($payLink) ?>" rel="noopener">Formu yeni sekmede aç</a>
+    </div>
+    <iframe src="<?= e($payLink) ?>" title="Sipay ödeme formu" class="block w-full bg-white" style="min-height:720px;border:0"></iframe>
+  </div>
+</main>
+<?php
+else:
 ?>
 <main class="mx-auto max-w-xl px-4 py-16">
   <div class="card p-8">
@@ -65,4 +82,5 @@ public_head('Ödeme | Online İlahiyat');
   </div>
 </main>
 <?php
+endif;
 public_foot();

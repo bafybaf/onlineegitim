@@ -83,6 +83,12 @@ if (function_exists('ensure_class_groups_schema')) {
     ensure_class_groups_schema();
 }
 ensure_shop_account_model();
+if (function_exists('ensure_shop_books_open')) {
+    ensure_shop_books_open();
+}
+if (function_exists('ensure_student_term_100d')) {
+    ensure_student_term_100d();
+}
 if (function_exists('ensure_address_schema')) {
     ensure_address_schema();
 }

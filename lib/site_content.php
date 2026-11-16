@@ -223,7 +223,7 @@ function site_featured_program_defs(): array
             'price_old' => 6000,
             'price_now' => 3499,
             'tag' => 'Full paket',
-            'description' => '2027 DKAB’ye hazırlanıyorsan, doğru yerdesin!',
+            'description' => '2027 DKAB-ÖABT hazırlık.',
             'body' => $copy['dkab-2027'] ?? '',
             'image' => 'assets/img/programs/dkab-2027.jpg',
         ],

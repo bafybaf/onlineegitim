@@ -7,7 +7,7 @@ public_head('Kayıt Ol | Online İlahiyat');
 ?>
 <main class="mx-auto max-w-3xl px-4 py-16">
   <h1 class="font-display text-center text-4xl">Hangi hesabı açmak istiyorsunuz?</h1>
-  <p class="mt-2 text-center text-sm text-muted"><?= shop_books_visible() ? 'Mağaza ve canlı ders kayıtları ayrı hesaplardır.' : 'Canlı ders kaydı öğrenci paneline açılır.' ?></p>
+  <p class="mt-2 text-center text-sm text-muted"><?= shop_books_visible() ? 'Ders kaydı öğrenci paneline açılır; aynı hesapla kitap da alınır. Yalnız kitap için mağaza kaydı yeter.' : 'Canlı ders kaydı öğrenci paneline açılır.' ?></p>
   <div class="mt-10 grid gap-5 <?= shop_books_visible() ? 'md:grid-cols-2' : '' ?>">
     <?php if (shop_books_visible()): ?>
     <a href="<?= e(page_url('kayit-magaza')) ?>" class="card p-6 hover:border-navy">

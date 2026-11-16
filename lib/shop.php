@@ -5,6 +5,64 @@ function shop_books_visible(): bool
     return function_exists('setting_bool') && setting_bool('shop_books_visible', false);
 }
 
+function shop_login_url(string $next = 'sepet'): string
+{
+    $next = trim($next);
+    if ($next === '') {
+        $next = 'sepet';
+    }
+    return url('giris.php?next=' . rawurlencode($next));
+}
+
+function ensure_shop_books_open(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (function_exists('setting') && setting('shop_books_reopen_v1') === '1') {
+            return;
+        }
+        if (function_exists('setting_set')) {
+            setting_set('shop_books_visible', '1');
+            setting_set('shop_books_reopen_v1', '1');
+        }
+    } catch (Throwable) {
+        $done = false;
+    }
+}
+
+function ensure_student_term_100d(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (function_exists('setting') && setting('student_term_100d_v1') === '1') {
+            return;
+        }
+        db()->exec(
+            "UPDATE users
+             SET status = 'aktif', membership_expires_at = DATE_ADD(NOW(), INTERVAL 100 DAY)
+             WHERE role = 'ogrenci' AND status IN ('aktif','bekliyor')"
+        );
+        db()->exec(
+            "UPDATE enrollments e
+             INNER JOIN users u ON u.id = e.student_id AND u.role = 'ogrenci'
+             SET e.expires_at = DATE_ADD(NOW(), INTERVAL 100 DAY)"
+        );
+        if (function_exists('setting_set')) {
+            setting_set('student_term_100d_v1', '1');
+        }
+    } catch (Throwable) {
+        $done = false;
+    }
+}
+
 function shop_books_require_visible(): void
 {
     if (shop_books_visible()) {
