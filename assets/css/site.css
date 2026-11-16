@@ -1115,3 +1115,132 @@ body.panel-nav-lock { overflow: hidden; }
 .vod-lesson-body { padding: 0 0.85rem 0.85rem; }
 .vod-lesson-body .card { margin-bottom: 0.65rem; box-shadow: none; }
 .vod-lesson-body .card:last-child { margin-bottom: 0; }
+
+.pdp-crumb {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem;
+  margin-bottom: 1.35rem; font-size: 13px; font-weight: 700; color: var(--muted);
+}
+.pdp-crumb a { color: var(--navy); }
+.pdp-crumb a:hover { text-decoration: underline; }
+.pdp-top {
+  display: grid; gap: 1.75rem; align-items: start;
+}
+@media (min-width: 960px) {
+  .pdp-top { grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 2.5rem; }
+}
+.pdp-gallery { display: grid; gap: 10px; }
+.pdp-stage {
+  display: grid; place-items: center;
+  min-height: 380px;
+  padding: 1.25rem;
+  background: #f5f5f7;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.pdp-stage img, .pdp-stage .book-cover, .pdp-stage .book-cover-fallback {
+  max-height: 520px; width: auto; max-width: 100%; height: auto;
+  object-fit: contain; display: block;
+}
+.pdp-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.pdp-thumb {
+  width: 62px; height: 78px; padding: 4px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: #fff; overflow: hidden; cursor: pointer;
+}
+.pdp-thumb.is-on { border-color: #111; }
+.pdp-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pdp-buy { min-width: 0; }
+@media (min-width: 960px) {
+  .pdp-buy { position: sticky; top: 88px; }
+}
+.pdp-flag {
+  display: inline-flex; margin-bottom: .65rem;
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: .28rem .7rem; font-size: 12px; font-weight: 800; color: var(--navy);
+}
+.pdp-title {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: clamp(1.55rem, 2.4vw, 2.05rem);
+  line-height: 1.2; letter-spacing: -.02em;
+}
+.pdp-author { margin-top: .45rem; font-size: 1.05rem; font-weight: 800; color: var(--text); }
+.pdp-pub { margin-top: .15rem; font-size: 14px; font-weight: 700; color: var(--muted); }
+.pdp-price-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .55rem .7rem;
+  margin-top: 1.1rem; padding-top: 1.05rem; border-top: 1px solid var(--border);
+}
+.pdp-price-old { color: var(--muted); text-decoration: line-through; font-weight: 700; font-size: 1rem; }
+.pdp-price { font-size: 2rem; font-weight: 800; color: #111; letter-spacing: -.03em; line-height: 1; }
+.pdp-off {
+  display: inline-flex; align-items: center;
+  background: #111; color: #fff; border-radius: 6px;
+  padding: .22rem .5rem; font-size: 12px; font-weight: 800;
+}
+.pdp-stock { margin-top: .7rem; font-size: 14px; font-weight: 800; }
+.pdp-stock.is-on { color: #0f7a4a; }
+.pdp-stock.is-off { color: #b42318; }
+.pdp-oos { margin-top: 1rem; font-weight: 700; color: var(--muted); }
+.pdp-actions {
+  display: flex; flex-direction: column; gap: .65rem;
+  margin-top: 1.1rem;
+}
+.pdp-actions-row { display: flex; gap: .65rem; align-items: stretch; }
+.pdp-qty {
+  display: inline-flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff;
+}
+.pdp-qty button {
+  width: 42px; background: #fff; border: 0; font-size: 1.15rem; font-weight: 800; cursor: pointer; color: #111;
+}
+.pdp-qty button:hover { background: #f5f5f7; }
+.pdp-qty input {
+  width: 46px; border: 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  text-align: center; font-weight: 800; font-size: 15px; color: #111;
+  -moz-appearance: textfield;
+}
+.pdp-qty input::-webkit-outer-spin-button,
+.pdp-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pdp-add, .pdp-buy-now { min-height: 46px; padding-left: 1.35rem; padding-right: 1.35rem; width: 100%; }
+.pdp-add { flex: 1 1 auto; }
+.pdp-ship {
+  margin-top: 1.15rem; display: grid; gap: .4rem;
+  font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.45;
+}
+.pdp-ship a { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+.pdp-facts {
+  margin-top: 1.2rem; border-top: 1px solid var(--border);
+}
+.pdp-facts > div {
+  display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .75rem;
+  padding: .7rem 0; border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.pdp-facts dt { color: var(--muted); font-weight: 700; }
+.pdp-facts dd { font-weight: 800; color: #111; }
+.pdp-facts a { color: #111; }
+.pdp-facts a:hover { text-decoration: underline; }
+.pdp-desc { margin-top: 2.4rem; max-width: 44rem; }
+.pdp-desc h2, .pdp-more h2 {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 1.35rem; margin-bottom: .9rem;
+}
+.pdp-desc p { font-size: 1.02rem; line-height: 1.7; color: var(--text); }
+.pdp-desc p + p { margin-top: .85rem; }
+.pdp-more { margin-top: 2.6rem; padding-top: 1.6rem; border-top: 1px solid var(--border); }
+.pdp-more-grid {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 900px) {
+  .pdp-more-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.pdp-card {
+  border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: #fff;
+}
+.pdp-card-cover { display: block; }
+.pdp-card-cover .book-cover-wrap { border-radius: 0; }
+.pdp-card-body { padding: .85rem .9rem 1rem; }
+.pdp-card-body h3 { font-size: 14px; font-weight: 800; line-height: 1.35; }
+.pdp-card-body h3 a:hover { text-decoration: underline; }
+.pdp-card-body > p { margin-top: .2rem; font-size: 13px; font-weight: 700; color: var(--muted); }
+.pdp-card-price { margin-top: .45rem !important; display: flex; gap: .4rem; align-items: baseline; color: #111; font-weight: 800; }
+.pdp-card-add { width: 100%; margin-top: .7rem; padding: .55rem .8rem; font-size: 13px; }

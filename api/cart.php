@@ -10,10 +10,11 @@ if (!shop_books_visible() && in_array($action, ['add', 'set', 'checkout'], true)
 }
 if ($action === 'add') {
     $id = (int) post('book_id');
+    $qty = max(1, (int) post('qty') ?: 1);
     $st = db()->prepare('SELECT id FROM books WHERE id = ?');
     $st->execute([$id]);
     if ($st->fetch()) {
-        cart_set($id, (cart()[$id] ?? 0) + 1);
+        cart_set($id, (cart()[$id] ?? 0) + $qty);
     }
 } elseif ($action === 'add_program') {
     $id = (int) post('program_id');

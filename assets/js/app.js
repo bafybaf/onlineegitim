@@ -6,8 +6,9 @@
   paint(window.OI_CART || 0);
 
   window.OICart = {
-    async add(id) {
-      const r = await fetch(base + "api/cart.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "action=add&book_id=" + id });
+    async add(id, qty) {
+      const n = Math.max(1, Number(qty) || 1);
+      const r = await fetch(base + "api/cart.php", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "action=add&book_id=" + id + "&qty=" + n });
       const j = await r.json();
       paint(j.count);
       return j;
@@ -41,10 +42,52 @@
     }
   };
 
-    document.querySelectorAll("[data-add-book]").forEach((btn) => {
+    document.querySelectorAll("[data-qty-box]").forEach((box) => {
+    const input = box.querySelector("input");
+    if (!input) return;
+    const min = Number(input.min || 1);
+    const max = Number(input.max || 9);
+    const clamp = (n) => Math.min(max, Math.max(min, n));
+    box.querySelector("[data-qty-down]")?.addEventListener("click", () => {
+      input.value = String(clamp(Number(input.value) - 1));
+    });
+    box.querySelector("[data-qty-up]")?.addEventListener("click", () => {
+      input.value = String(clamp(Number(input.value) + 1));
+    });
+    input.addEventListener("change", () => {
+      input.value = String(clamp(Number(input.value) || 1));
+    });
+  });
+
+  const bookQty = (el) => {
+    const buy = el.closest(".pdp-buy");
+    const qtyEl = buy ? buy.querySelector("[data-book-qty]") : null;
+    return qtyEl ? Number(qtyEl.value) || 1 : 1;
+  };
+
+  document.querySelectorAll("[data-add-book]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      await OICart.add(btn.dataset.addBook);
+      await OICart.add(btn.dataset.addBook, bookQty(btn));
       btn.textContent = "Sepete eklendi";
+    });
+  });
+  document.querySelectorAll("[data-buy-book]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await OICart.add(btn.dataset.buyBook, bookQty(btn));
+      const href = btn.getAttribute("data-cart") || "";
+      if (href) location.href = href;
+    });
+  });
+  document.querySelectorAll("[data-pdp-gallery]").forEach((root) => {
+    const main = root.querySelector("[data-pdp-main]");
+    root.querySelectorAll("[data-pdp-thumb]").forEach((thumb) => {
+      thumb.addEventListener("click", () => {
+        const src = thumb.getAttribute("data-pdp-thumb") || "";
+        if (main && src) {
+          main.src = src;
+        }
+        root.querySelectorAll("[data-pdp-thumb]").forEach((t) => t.classList.toggle("is-on", t === thumb));
+      });
     });
   });
   document.querySelectorAll("[data-add-program]").forEach((btn) => {

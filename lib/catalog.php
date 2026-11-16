@@ -14,12 +14,23 @@ function catalog_copy(string $kind, string $slug): string
 
 function catalog_body(string $kind, string $slug, string $db = ''): string
 {
-    $long = catalog_copy($kind, $slug);
     $db = trim($db);
+    if ($kind === 'book' && $db !== '') {
+        return $db;
+    }
+    $long = catalog_copy($kind, $slug);
     if ($long !== '') {
         return $long;
     }
     return $db;
+}
+
+function book_discount_percent(int $old, int $now): int
+{
+    if ($old <= 0 || $now <= 0 || $old <= $now) {
+        return 0;
+    }
+    return (int) round((($old - $now) / $old) * 100);
 }
 
 function catalog_book_pages(string $slug, int $db = 0): int
@@ -46,17 +57,8 @@ function catalog_book_publisher(string $slug, string $author = '', string $db = 
     if ($db !== '') {
         return $db;
     }
-    $map = [
-        'tefsir-ozet' => 'Online İlahiyat Yayınları',
-        'riyazu' => 'Nevevî Külliyatı / Online İlahiyat',
-        'muvatta' => 'Online İlahiyat Yayınları',
-        'akaid-ders' => 'Online İlahiyat Kadrosu',
-        'nahiv' => 'Dil Atölyesi',
-        'usul' => 'Usul Serisi',
-        'tecvid' => 'Kıraat Birimi',
-        'siyer' => 'Siyer Okulu',
-    ];
-    return $map[$slug] ?? $author;
+    $author = trim($author);
+    return $author !== '' ? $author : '';
 }
 
 function catalog_related_book_slug(string $programSlug): string
@@ -188,30 +190,14 @@ function catalog_program_copy(): array
 function catalog_book_copy(): array
 {
     return [
-        'tefsir-ozet' => "Tefsir usulünün temel meselelerini ders temposuna uygun özetleyen bir el kitabıdır. Meal-tefsir farkı, nüzul ortamı, muhkem-müteşabih ve klasik müfessir hatları kısa başlıklarla anlatılır.\n\n"
-            . "Tefsir programı öğrencileri için hazırlanmıştır; her bölüm sonunda tekrar soruları vardır. Âyet örnekleri Bakara ve Âl-i İmrân’dan seçilmiştir.\n\n"
-            . "Basılı nüsha kargoyla gelir. Notlarınızı derste işaretleyerek kullanın; dijital seçenek sepette ayrıca belirlenebilir.",
-        'riyazu' => "Riyazü’s-Salihin’den derslerde okunan hadislerin seçme metin ve kısa şerhidir. Niyet, ihlas, ilim ve edep babları öne çıkarılır.\n\n"
-            . "Hadis programı ve ev halkı okuması için sadeleştirilmiştir. İsnad notları dipnottadır; metin ezberi için satır aralığı geniştir.\n\n"
-            . "Nevevî’nin tertibi korunmuş, şerh cümleleri ders diline çekilmiştir. Basılı stok sınırlıdır.",
-        'muvatta' => "İmam Mâlik’in Muvatta’sından seçme babların ders notu ve şerh denemesidir. Medine ameli, hadis-fıkıh ilişkisi ve amelin delil değeri vurgulanır.\n\n"
-            . "Hadis ve fıkıh öğrencisine köprü metindir. Her babın sonunda kısa mesele sorusu bulunur; hoca bunları ödev olarak da kullanabilir.\n\n"
-            . "Basılı cilt, ders sırasında işaretlemeye uygundur. 500₺ üzeri siparişlerde kargo sepet kurallarına göre ücretsizdir.",
-        'akaid-ders' => "Akaid derslerinin slayt ve notlarının derlenmiş dijital nüshasıdır. İman esasları, kelam ıstılahları ve sık sorulan şüpheler maddeler hâlinde işlenir.\n\n"
-            . "PDF ödeme sonrası öğrenci paneline düşer; basılı kargo yoktur. Akaid programıyla birlikte okunması önerilir.\n\n"
-            . "Kısa maddeler, ezber kartı gibi kullanılabilir. Güncel sorular dipnotta işaretlenmiştir.",
-        'nahiv' => "Nahiv kaidelerini alıştırma ağırlıklı anlatan pratik bir kitaptır. Mübteda-haber, fâil-mef‘ûl ve i‘rab cetvelleri her ünitede tekrar edilir.\n\n"
-            . "Klasik Arapça programının ilk dönem kaynağıdır. Cümle çözümleri boşluk doldurma ve i‘rab satırıyla pekiştirilir.\n\n"
-            . "Basılı nüsha defter gibi kullanılır. Stok azaldığında yeni baskı bekletilebilir; erken sipariş önerilir.",
-        'usul' => "Fıkıh usulüne giriş niteliğindedir. Delil türleri, emir-nehiy, umum-husus, nesh ve kıyas başlıkları sade dilde anlatılır.\n\n"
-            . "Fıkıh programının teorik omurgasıdır. Her bölümde kısa mesele uygulaması vardır; furû ile usul birbirine bağlanır.\n\n"
-            . "Basılı kitap, ders notunun yanına konmak için tasarlandı. Kavram dizini arka kısımdadır.",
-        'tecvid' => "Mahreç, sıfat, med ve idğam konularını şema ve tabloyla gösteren bir atlasdır. Az sayfa, çok görsel; ders sırasında masada açık durur.\n\n"
-            . "Kıraat ve hafızlık takibinde yanınıza alın. Harf çıkış yerleri renkli şemayla işaretlenmiştir.\n\n"
-            . "Baskı adedi sınırlıdır. Stok ikiye düştüğünde yeni siparişi ertelemeyin.",
-        'siyer' => "Siyer-i Nebi’nin Mekke ve Medine dönemini özetleyen ders kitabıdır. Gazve, seriyye ve ahlâk başlıkları vaaz için işaretlenmiştir.\n\n"
-            . "Vaizlik programı ve genel okur için sadeleştirilmiştir. Kronoloji tablosu arka kapaktadır; hutbe konusu seçerken işe yarar.\n\n"
-            . "Basılı nüsha kargoyla gelir. Siyer okuması tefsir ve hadis derslerine de zemin olur.",
+        'tefsir-ozet' => "Tefsir usulünün temel konularını özetleyen el kitabı. Meal-tefsir farkı, nüzul ortamı, muhkem-müteşabih ve klasik müfessir hatları kısa başlıklarla anlatılır. Bölüm sonlarında tekrar soruları vardır.",
+        'riyazu' => "Riyazü’s-Salihin’den seçilmiş hadis metinleri ve kısa şerh. Niyet, ihlas, ilim ve edep babları öne alınmıştır. Nevevî’nin tertibi korunur; isnad notları dipnottadır.",
+        'muvatta' => "İmam Mâlik’in Muvatta’sından seçme bablar. Medine ameli, hadis-fıkıh ilişkisi ve amelin delil değeri işlenir. Her babın sonunda kısa mesele sorusu bulunur.",
+        'akaid-ders' => "Akaid ders notlarının dijital nüshası. İman esasları, kelam ıstılahları ve sık sorulan sorular maddeler hâlinde derlenmiştir. Ödeme sonrası Kitaplarım bölümünden indirilir.",
+        'nahiv' => "Nahiv kaidelerini alıştırma ağırlıklı anlatan pratik kitap. Mübteda-haber, fâil-mef‘ûl ve i‘rab cetvelleri her ünitede tekrar edilir.",
+        'usul' => "Fıkıh usulüne giriş. Delil türleri, emir-nehiy, umum-husus, nesh ve kıyas sade dilde anlatılır. Bölümlerde kısa mesele uygulaması vardır.",
+        'tecvid' => "Mahreç, sıfat, med ve idğam konularını şema ve tabloyla gösteren atlas. Harf çıkış yerleri işaretlidir.",
+        'siyer' => "Siyer-i Nebi’nin Mekke ve Medine dönemini özetleyen ders kitabı. Gazve, seriyye ve ahlâk başlıkları hutbe ve vaaz için işaretlenmiştir. Arkada kronoloji tablosu bulunur.",
     ];
 }
 

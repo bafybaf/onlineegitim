@@ -549,6 +549,35 @@ function book_gallery_html(array $b, string $kind = 'card', string $href = ''): 
     return gallery_slider_html($srcs, (string) ($b['title'] ?? ''), $wrap, 'book-cover', $href);
 }
 
+function book_pdp_gallery_html(array $b): string
+{
+    $srcs = media_public_urls('book', (int) ($b['id'] ?? 0));
+    if (!$srcs) {
+        $one = book_cover_src($b);
+        if ($one !== '') {
+            $srcs = [$one];
+        }
+    }
+    $title = (string) ($b['title'] ?? '');
+    $html = '<div class="pdp-gallery" data-pdp-gallery>';
+    if (!$srcs) {
+        $html .= '<div class="pdp-stage">' . book_cover_html($b, '', 'detail') . '</div></div>';
+        return $html;
+    }
+    $html .= '<div class="pdp-stage"><img src="' . e($srcs[0]) . '" alt="' . e($title) . '" data-pdp-main></div>';
+    if (count($srcs) > 1) {
+        $html .= '<div class="pdp-thumbs">';
+        foreach ($srcs as $i => $src) {
+            $on = $i === 0 ? ' is-on' : '';
+            $html .= '<button type="button" class="pdp-thumb' . $on . '" data-pdp-thumb="' . e($src) . '" aria-label="Görsel ' . ($i + 1) . '">'
+                . '<img src="' . e($src) . '" alt=""></button>';
+        }
+        $html .= '</div>';
+    }
+    $html .= '</div>';
+    return $html;
+}
+
 function program_gallery_html(array $p, string $kind = 'card', string $href = ''): string
 {
     $srcs = media_public_urls('program', (int) ($p['id'] ?? 0));
