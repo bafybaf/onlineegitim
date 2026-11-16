@@ -109,8 +109,26 @@ function catalog_program_copy(): array
             . "Amacımız sadece soru çözmek değil; sorunun nasıl düşünülmesi gerektiğini öğretmek.\n\n"
             . "2026 DHBT’ye hazırlanan herkesi bekliyoruz!\n\n"
             . "onlineilahiyat.com",
-        'dkab-2027' => "2027 DKAB-ÖABT Detaylı Konu Anlatımı Full Paket.\n\n"
-            . "Detaylı konu anlatımı.\nCanlı dersler.\nDers kayıtları.\n\n"
+        'dkab-2027' => "2027 DKAB-ÖABT HAZIRLIKLARINA BİRLİKTE BAŞLIYORUZ!\n\n"
+            . "2027 DKAB-ÖABT sınavına hazırlanıyorsan doğru yerdesin!\n\n"
+            . "Başarıya ulaşmak için yalnızca çok çalışmak değil; konuları doğru kaynaklardan, sistemli ve sınav odaklı bir şekilde öğrenmek gerekiyor.\n\n"
+            . "onlineilahiyat.com olarak 2027 DKAB hazırlık sürecinde seni kapsamlı bir eğitim programıyla buluşturuyoruz.\n\n"
+            . "EĞİTİM PROGRAMINDA NELER VAR?\n"
+            . "• Detaylı ve kapsamlı konu anlatımı\n"
+            . "• Alanında uzman akademisyen eğitimciler\n"
+            . "• Canlı ve interaktif Zoom dersleri\n"
+            . "• Sınav odaklı, sistemli ve planlı çalışma\n\n"
+            . "CANLI DERS VE DERS KAYITLARI\n"
+            . "Eğitimler Zoom üzerinden canlı olarak gerçekleştirilecektir. Canlı derslere katılamayan veya konuları tekrar etmek isteyen öğrencilerimiz için kaydedilen dersler, onlineilahiyat.com internet sitesinde bulunan “Ders Kayıtları” bölümüne yüklenecektir. Böylece dersleri daha sonra yeniden izleyebilir ve konu tekrarlarınızı yapabilirsiniz.\n\n"
+            . "TAMAMEN ÜCRETSİZ DERSLER!\n"
+            . "Eğitim başlangıcı: 16 Kasım 2026\n"
+            . "Ders başlangıç saati: 19.00\n"
+            . "Ders günleri: Hafta içi 3 veya 4 gün\n"
+            . "Eğitim platformu: Zoom\n"
+            . "Ders bağlantısı: Her gün @onlineilahiyat Instagram sayfasının bio bölümünden paylaşılacaktır.\n\n"
+            . "HEDEFİMİZ BELLİ: 2027 DKAB’DE BAŞARI!\n"
+            . "Bugün attığın adım, sınav günündeki başarının temelini oluşturacak.\n\n"
+            . "2027 DKAB hazırlığını şansa bırakma. Doğru kaynak, güçlü anlatım ve düzenli çalışmayla hedefe birlikte ilerleyelim.\n\n"
             . "onlineilahiyat.com",
         'mbsts-2027' => "2027 MBSTS’YE HAZIRLANIYORSAN, HAZIRLIĞINI SAĞLAM TEMELLER ÜZERİNE KUR!\n\n"
             . "MBSTS’de başarı; bilgiyi ezberlemekten çok, konulara hâkim olmayı ve sınavın gerektirdiği bakış açısını kazanmayı gerektirir.\n\n"
@@ -200,7 +218,7 @@ function catalog_book_copy(): array
 function program_kontenjan_text(array $p): string
 {
     return match ((string) ($p['slug'] ?? '')) {
-        'dkab-2027' => '9 Kasım 2026 tarihinde DKAB-ÖABT derslerine başlanacaktır. Canlı dersler akşam 19:00 saatlerinde başlar. Konular tamamlana kadar hafta içi her gün ders yapılır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz.',
+        'dkab-2027' => 'Eğitim başlangıcı 16 Kasım 2026. Canlı dersler saat 19.00’da başlar. Hafta içi 3 veya 4 gün ders yapılır. Ders bağlantısı her gün @onlineilahiyat Instagram bio’sundan paylaşılır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz.',
         'mbsts-2027' => '9 Kasım 2026 tarihinde MBSTS derslerine başlanacaktır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz. Canlı dersler akşam 19:00 saatlerinde başlar. Konular tamamlana kadar hafta içi her gün ders yapılır. Kayıt sonrası grup açılınca ders programı hakkında panelden haberdar edilirsiniz.',
         'arapca-yokdil' => '30 Aralık 2026 tarihinde ARAPÇA YDS-YÖKDİL derslerine başlanacaktır. Kayıt sonrası grup açılınca panelden haberdar edilirsiniz. Canlı dersler akşam 19:00 saatlerinde başlar. Hafta içi 2 gün / 1 saat ders yapılır. Kayıt sonrası grup açılınca ders programı hakkında panelden haberdar edilirsiniz.',
         default => '',

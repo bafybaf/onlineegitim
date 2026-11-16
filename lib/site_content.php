@@ -219,7 +219,7 @@ function site_featured_program_defs(): array
             'aliases' => ['tefsir'],
             'title' => '2027 DKAB KURSU',
             'level' => 'DKAB-İHL',
-            'hours' => 'Hafta içi her gün · 19:00',
+            'hours' => 'Hafta içi 3 veya 4 gün · 19:00',
             'price_old' => 6000,
             'price_now' => 3499,
             'tag' => 'Full paket',
