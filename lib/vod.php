@@ -832,6 +832,33 @@ function recording_card_meta(array $r): string
     return implode(' · ', $bits);
 }
 
+function recording_recs_matching_heading(int $gid, string $heading): array
+{
+    if ($gid < 1) {
+        return [];
+    }
+    $want = recording_fold_tr($heading);
+    if ($want === '') {
+        return [];
+    }
+    $st = db()->prepare(
+        'SELECT rec.*, g.name gname, p.slug program_slug
+         FROM recordings rec
+         JOIN class_groups g ON g.id = rec.group_id
+         LEFT JOIN programs p ON p.id = g.program_id
+         WHERE rec.group_id = ?'
+    );
+    $st->execute([$gid]);
+    $out = [];
+    foreach ($st->fetchAll() as $r) {
+        $info = recording_lesson_heading($r);
+        if (recording_fold_tr((string) ($info['heading'] ?? '')) === $want) {
+            $out[] = $r;
+        }
+    }
+    return $out;
+}
+
 /**
  * Group → lesson accordion. Newest lesson last; newest session at the bottom of its lesson.
  *
@@ -981,6 +1008,7 @@ function recordings_render_lesson_tree(array $tree, callable $card, array $opt =
 {
     $splitGroups = !empty($opt['split_groups']);
     $movable = !empty($opt['movable']);
+    $catEdit = !empty($opt['cat_edit']);
     $first = true;
     foreach ($tree as $g) {
         $fam = (string) ($g['family'] ?? '');
@@ -1014,12 +1042,27 @@ function recordings_render_lesson_tree(array $tree, callable $card, array $opt =
             }
             $open = ($openThis || ($openRec < 1 && ($lesson['key'] ?? '') !== '' && ($lesson['key'] ?? '') === ($g['open_key'] ?? ''))) ? ' open' : '';
             echo '<details class="vod-lesson"' . $open;
+            echo ' data-vod-group="' . (int) ($g['id'] ?? 0) . '" data-vod-heading="' . e($heading) . '"';
             if ($canMove && $catalogCat !== '') {
                 echo ' data-vod-cat="' . e($catalogCat) . '"';
             }
             echo '>';
             echo '<summary><span class="vod-lesson-title">' . e($heading) . '</span>';
-            echo '<span class="vod-lesson-count">' . $n . ' kayıt</span></summary>';
+            echo '<span class="vod-lesson-count">' . $n . ' kayıt</span>';
+            if ($catEdit) {
+                echo '<span class="vod-lesson-actions">';
+                echo '<button type="button" class="btn-outline text-sm" data-cat-edit>Düzenle</button>';
+                echo '<button type="button" class="text-sm font-extrabold text-accent" data-cat-del>Sil</button>';
+                echo '</span>';
+            }
+            echo '</summary>';
+            if ($catEdit) {
+                echo '<form class="vod-cat-edit" data-cat-edit-form>';
+                echo '<input name="cat_to" required class="w-full rounded-xl border px-3 py-2" value="' . e($heading) . '" aria-label="Kategori adı">';
+                echo '<button class="btn-primary text-sm" type="submit">Kaydet</button>';
+                echo '<button type="button" class="btn-outline text-sm" data-cat-edit-cancel>Vazgeç</button>';
+                echo '</form>';
+            }
             echo '<div class="vod-lesson-body">';
             if ($canMove) {
                 echo '<p class="vod-drop-hint"' . ($n > 0 ? ' hidden' : '') . '>Kayıt yok. Tutamacından sürükleyip buraya bırakın.</p>';

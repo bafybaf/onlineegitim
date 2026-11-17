@@ -367,6 +367,88 @@
     });
   }
 
+  function bindCatHeadings() {
+    document.querySelectorAll(".vod-lesson > summary").forEach((summary) => {
+      if (summary.dataset.catHeadBound) return;
+      summary.dataset.catHeadBound = "1";
+      summary.addEventListener("click", (e) => {
+        if (e.target.closest("[data-cat-edit],[data-cat-del],.vod-lesson-actions,button,a,input,select,label")) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+    });
+    document.addEventListener("click", (e) => {
+      const editBtn = e.target.closest("[data-cat-edit]");
+      if (editBtn) {
+        e.preventDefault();
+        const box = editBtn.closest(".vod-lesson");
+        if (!box) return;
+        document.querySelectorAll(".vod-lesson.is-cat-editing").forEach((el) => {
+          if (el !== box) el.classList.remove("is-cat-editing");
+        });
+        box.classList.add("is-cat-editing");
+        box.open = true;
+        const input = box.querySelector('.vod-cat-edit input[name="cat_to"]');
+        if (input) {
+          input.focus({ preventScroll: true });
+          input.select();
+        }
+        return;
+      }
+      const cancel = e.target.closest("[data-cat-edit-cancel]");
+      if (cancel) {
+        e.preventDefault();
+        cancel.closest(".vod-lesson")?.classList.remove("is-cat-editing");
+        return;
+      }
+      const delBtn = e.target.closest("[data-cat-del]");
+      if (delBtn) {
+        e.preventDefault();
+        const box = delBtn.closest(".vod-lesson");
+        if (!box) return;
+        const heading = box.getAttribute("data-vod-heading") || "";
+        const n = box.querySelectorAll("[data-vod-rec]").length || box.querySelectorAll("[data-rec-card]").length;
+        if (n < 1) {
+          alert("Bu kategoride silinecek kayıt yok.");
+          return;
+        }
+        if (!window.confirm("“" + heading + "” altındaki " + n + " kayıt silinsin mi? Bu işlem geri alınmaz.")) return;
+        postForm(base + "api/kayit-cat.php", {
+          action: "delete_cat",
+          group_id: box.getAttribute("data-vod-group") || "0",
+          cat_from: heading,
+        }).then((j) => {
+          if (!j || !j.ok) {
+            alert("Silinemedi.");
+            return;
+          }
+          location.reload();
+        }).catch(() => alert("Silinemedi."));
+      }
+    });
+    document.addEventListener("submit", (e) => {
+      const form = e.target.closest("[data-cat-edit-form]");
+      if (!form) return;
+      e.preventDefault();
+      const box = form.closest(".vod-lesson");
+      if (!box) return;
+      const to = (form.querySelector('input[name="cat_to"]') || {}).value || "";
+      postForm(base + "api/kayit-cat.php", {
+        action: "rename_cat",
+        group_id: box.getAttribute("data-vod-group") || "0",
+        cat_from: box.getAttribute("data-vod-heading") || "",
+        cat_to: to,
+      }).then((j) => {
+        if (!j || !j.ok) {
+          alert("Kaydedilemedi.");
+          return;
+        }
+        location.reload();
+      }).catch(() => alert("Kaydedilemedi."));
+    });
+  }
+
   function bindRecEdit() {
     const editing = document.querySelector("[data-rec-card].is-editing");
     if (editing) {
@@ -405,4 +487,5 @@
   bindVodMove();
   bindRecCats();
   bindRecEdit();
+  bindCatHeadings();
 })();

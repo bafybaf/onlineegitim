@@ -117,6 +117,6 @@ else:
         }
         echo panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?');
         echo '</div></article>';
-    }, ['split_groups' => $gid === 0 && count($groupNames) > 1, 'movable' => true]);
+    }, ['split_groups' => $gid === 0 && count($groupNames) > 1, 'movable' => true, 'cat_edit' => true]);
 endif; ?>
 <?php panel_foot();

@@ -1094,7 +1094,7 @@ body.panel-nav-lock { overflow: hidden; }
   content: "";
   width: 0.45rem;
   height: 0.45rem;
-  margin-left: auto;
+  margin-left: 0.45rem;
   border-right: 2px solid var(--muted);
   border-bottom: 2px solid var(--muted);
   transform: rotate(-45deg);
@@ -1106,12 +1106,32 @@ body.panel-nav-lock { overflow: hidden; }
   font-weight: 800;
   font-size: 1.15rem;
   color: var(--text);
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .vod-lesson-count {
   font-size: 12px;
   font-weight: 800;
   color: var(--muted);
 }
+.vod-lesson-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.vod-lesson:not(.is-cat-editing) > .vod-cat-edit { display: none; }
+.vod-lesson.is-cat-editing > .vod-cat-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.15rem 0.85rem;
+}
+.vod-lesson.is-cat-editing > .vod-cat-edit input { flex: 1 1 12rem; min-width: 0; }
+.vod-lesson.is-cat-editing > summary .vod-lesson-actions { visibility: hidden; }
 .vod-lesson-body { padding: 0 0.85rem 0.85rem; }
 .vod-lesson-body .card { margin-bottom: 0.65rem; box-shadow: none; }
 .vod-lesson-body .card:last-child { margin-bottom: 0; }
