@@ -63,11 +63,12 @@ if ($gid && !isset($groupNames[$gid])) {
 if ($gid) {
     $tree = array_values(array_filter($tree, static fn (array $g): bool => (int) $g['id'] === $gid));
 }
+$tree = recordings_pad_catalog_tree($tree);
 panel_head('admin', 'kayitlar', 'Ders kayıtları | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4 text-sm text-muted">Kayıtlar gruba, DHBT ve DKAB’de seçilen kategoriye göre ayrılır. Alt kayıtlar açılır; yeni tarihli ders en altta durur. Test kayıtları öğrenci listesine düşmez.</p>
+<p class="mb-4 text-sm text-muted">Kayıtlar gruba, DHBT ve DKAB’de kategoriye göre ayrılır. Eski kaydı tutamacından sürükleyip doğru başlığa bırakın veya Taşı listesini kullanın. Yeni tarihli ders en altta durur. Test kayıtları öğrenci listesine düşmez.</p>
 <?php
 $manualCfN = 0;
 if (function_exists('vod_manual_cf_recordings')) {
@@ -108,7 +109,7 @@ else:
             echo '<span class="live-pill mr-2"><i></i> Test</span>';
         }
         echo e($label) . '</p>';
-        echo '<p class="text-sm text-muted">' . e((string) $r['tname']) . ' · ' . e((string) $r['recorded_on']) . ' · ' . e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) . '</p>';
+        echo '<p class="text-sm text-muted">' . e(recording_card_meta($r)) . '</p>';
         echo '<p class="mt-1 text-xs text-muted">' . ($ready ? 'Video hazır' : 'Video yok') . '</p></div>';
         echo '<div class="flex flex-wrap items-center gap-2">';
         if ($ready) {
@@ -116,6 +117,6 @@ else:
         }
         echo panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?');
         echo '</div></article>';
-    }, ['split_groups' => $gid === 0 && count($groupNames) > 1]);
+    }, ['split_groups' => $gid === 0 && count($groupNames) > 1, 'movable' => true]);
 endif; ?>
 <?php panel_foot();

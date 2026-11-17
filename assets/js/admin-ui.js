@@ -208,9 +208,129 @@
     });
   }
 
+  function vodRefreshLesson(lesson) {
+    if (!lesson) return;
+    const n = lesson.querySelectorAll("[data-vod-rec]").length;
+    const count = lesson.querySelector(".vod-lesson-count");
+    if (count) count.textContent = n + " kayıt";
+    const hint = lesson.querySelector(".vod-drop-hint");
+    if (hint) hint.hidden = n > 0;
+    if (!lesson.dataset.vodCat && n === 0) lesson.hidden = true;
+  }
+
+  function vodInsertSorted(body, rec) {
+    const hint = body.querySelector(".vod-drop-hint");
+    const d = rec.dataset.recOn || "";
+    const id = Number(rec.dataset.vodRec || 0);
+    const items = [...body.querySelectorAll("[data-vod-rec]")];
+    const next = items.find((el) => {
+      const ed = el.dataset.recOn || "";
+      const eid = Number(el.dataset.vodRec || 0);
+      return ed > d || (ed === d && eid > id);
+    });
+    if (next) body.insertBefore(rec, next);
+    else body.appendChild(rec);
+    if (hint && hint.parentNode === body) body.insertBefore(hint, body.firstChild);
+  }
+
+  function vodSaveCat(id, cat) {
+    return postForm(base + "api/kayit-cat.php", { id, lesson_cat: cat });
+  }
+
+  function bindVodMove() {
+    document.querySelectorAll("[data-vod-move]").forEach((board) => {
+      if (board.dataset.vodBound) return;
+      board.dataset.vodBound = "1";
+
+      board.addEventListener("change", (e) => {
+        const sel = e.target.closest("[data-vod-move-sel]");
+        if (!sel || !board.contains(sel)) return;
+        const rec = sel.closest("[data-vod-rec]");
+        const lesson = [...board.querySelectorAll(".vod-lesson[data-vod-cat]")].find((el) => el.dataset.vodCat === sel.value);
+        const id = Number(rec && rec.dataset.vodRec);
+        if (!rec || !lesson || !id || !sel.value) return;
+        const from = rec.closest(".vod-lesson");
+        if (from === lesson) return;
+        vodSaveCat(id, sel.value).then((j) => {
+          if (!j || !j.ok) {
+            alert("Taşınamadı.");
+            location.reload();
+            return;
+          }
+          vodInsertSorted(lesson.querySelector(".vod-lesson-body"), rec);
+          vodRefreshLesson(from);
+          vodRefreshLesson(lesson);
+          lesson.open = true;
+        }).catch(() => location.reload());
+      });
+
+      board.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        const handle = e.target.closest(".vod-rec-handle");
+        if (!handle || !board.contains(handle)) return;
+        const rec = handle.closest("[data-vod-rec]");
+        if (!rec) return;
+        e.preventDefault();
+        try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+        rec.classList.add("is-dragging");
+        document.body.classList.add("is-sorting");
+        const prevPe = rec.style.pointerEvents;
+        rec.style.pointerEvents = "none";
+        const from = rec.closest(".vod-lesson");
+        let overLesson = null;
+
+        const clearDrop = () => {
+          board.querySelectorAll(".vod-lesson.is-drop").forEach((el) => el.classList.remove("is-drop"));
+        };
+        const onMove = (ev) => {
+          const under = document.elementFromPoint(ev.clientX, ev.clientY);
+          const lesson = under && under.closest(".vod-lesson[data-vod-cat]");
+          clearDrop();
+          if (!lesson || !board.contains(lesson)) {
+            overLesson = null;
+            return;
+          }
+          overLesson = lesson;
+          lesson.classList.add("is-drop");
+          if (!lesson.open) lesson.open = true;
+        };
+        const onUp = () => {
+          handle.removeEventListener("pointermove", onMove);
+          handle.removeEventListener("pointerup", onUp);
+          handle.removeEventListener("pointercancel", onUp);
+          rec.classList.remove("is-dragging");
+          document.body.classList.remove("is-sorting");
+          rec.style.pointerEvents = prevPe;
+          clearDrop();
+          const dest = overLesson;
+          overLesson = null;
+          if (!dest || dest === from) return;
+          const cat = dest.dataset.vodCat || "";
+          const id = Number(rec.dataset.vodRec || 0);
+          if (!cat || !id) return;
+          const sel = rec.querySelector("[data-vod-move-sel]");
+          if (sel) sel.value = cat;
+          vodInsertSorted(dest.querySelector(".vod-lesson-body"), rec);
+          vodRefreshLesson(from);
+          vodRefreshLesson(dest);
+          vodSaveCat(id, cat).then((j) => {
+            if (!j || !j.ok) {
+              alert("Taşınamadı.");
+              location.reload();
+            }
+          }).catch(() => location.reload());
+        };
+        handle.addEventListener("pointermove", onMove);
+        handle.addEventListener("pointerup", onUp);
+        handle.addEventListener("pointercancel", onUp);
+      });
+    });
+  }
+
   wrapFileInputs();
   bindDropzones();
   bindMediaBoxes();
   bindListSort();
   bindSliders();
+  bindVodMove();
 })();

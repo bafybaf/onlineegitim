@@ -411,20 +411,11 @@ function live_cf_save_video_recording(PDO $pdo, array $room, array $video, strin
     $topic = trim((string) ($room['topic'] ?? ''));
     $title = trim((string) ($room['title'] ?? 'Ders'));
     $when = date('d.m.Y H:i');
-    $teacher = trim((string) ($room['teacher_name'] ?? ''));
-    if ($teacher === '' && !empty($room['teacher_id'])) {
-        $tn = $pdo->prepare('SELECT name FROM users WHERE id = ?');
-        $tn->execute([(int) $room['teacher_id']]);
-        $teacher = trim((string) ($tn->fetchColumn() ?: ''));
-    }
     $label = $topic !== '' && $topic !== 'Ders' ? $topic . ' — ' . $title : $title;
     if ($kindLabel !== '') {
         $label .= ' — ' . $kindLabel;
     }
     $label .= ' — ' . $when;
-    if ($teacher !== '') {
-        $label .= ' — ' . $teacher;
-    }
     $isTest = function_exists('live_room_is_test') && live_room_is_test($room);
     if ($isTest && !str_starts_with($label, 'Test ·')) {
         $label = 'Test · ' . $label;

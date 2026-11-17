@@ -66,7 +66,7 @@ function ogrenci_kayit_card(array $r, int $backGid): void
     }
     echo '<article class="card flex flex-wrap items-center justify-between gap-3 p-5">';
     echo '<div><p class="font-extrabold">' . e($label) . '</p>';
-    echo '<p class="text-sm text-muted">' . e($r['tname']) . ' · ' . e($r['recorded_on']) . ' · ' . e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) . '</p></div>';
+    echo '<p class="text-sm text-muted">' . e(recording_card_meta($r)) . '</p></div>';
     if ($ready) {
         echo '<a class="btn-primary text-sm" href="' . e(url($watch)) . '">İzle</a>';
     } else {
@@ -79,7 +79,7 @@ function ogrenci_kayit_card(array $r, int $backGid): void
 <?php if ($current): ?>
   <p class="mb-2"><a class="text-sm font-extrabold text-navy" href="<?= e(url('ogrenci/derslerim')) ?>">← Derslerim</a></p>
   <h2 class="font-display text-2xl"><?= e($current['name']) ?></h2>
-  <p class="mb-5 text-sm text-muted"><?= e($current['teacher_name']) ?> · Bu dersin kayıtları.</p>
+  <p class="mb-5 text-sm text-muted">Bu dersin kayıtları.</p>
 <?php else: ?>
   <p class="mb-5 text-sm text-muted">Kayıtlar gruba, DHBT ve DKAB’de ders kategorisine göre ayrılır. Alt kayıtları açın; yeni tarihli ders en altta durur.</p>
 <?php endif; ?>

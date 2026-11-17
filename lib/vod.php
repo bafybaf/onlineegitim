@@ -748,8 +748,11 @@ function recording_part_is_meta(string $part, string $gname = '', string $tname 
     if ($gname !== '' && $fold === recording_fold_tr($gname)) {
         return true;
     }
-    if ($tname !== '' && $fold === recording_fold_tr($tname)) {
-        return true;
+    if ($tname !== '') {
+        $tf = recording_fold_tr($tname);
+        if ($tf !== '' && ($fold === $tf || str_ends_with($fold, ' ' . $tf) || str_starts_with($fold, $tf . ' '))) {
+            return true;
+        }
     }
     if (preg_match('/^\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4}(?:\s+\d{1,2}[:.]\d{2})?$/u', $p)) {
         return true;
@@ -822,6 +825,9 @@ function recording_lesson_heading(array $rec): array
     }
     $sub = preg_replace('/^(?:unite|ünite|ders)?\s*\d+\s*(?:\.?\s*ders)?\s*[-–:.)]?\s*/iu', '', $sub) ?? $sub;
     $sub = trim((string) $sub);
+    if ($tname !== '') {
+        $sub = trim((string) preg_replace('/\s*[—–|-]\s*' . preg_quote($tname, '/') . '\s*$/iu', '', $sub));
+    }
     if ($sub === '' || recording_fold_tr($sub) === $hf) {
         $sub = trim((string) ($rec['recorded_on'] ?? ''));
     }
@@ -829,6 +835,21 @@ function recording_lesson_heading(array $rec): array
         $sub = $sub !== '' ? 'Test · ' . $sub : 'Test';
     }
     return ['heading' => $heading, 'sub' => $sub];
+}
+
+function recording_card_meta(array $r): string
+{
+    $bits = [];
+    $on = trim((string) ($r['recorded_on'] ?? ''));
+    if ($on !== '') {
+        $bits[] = $on;
+    }
+    $len = function_exists('vod_length_label') ? vod_length_label($r) : (((int) ($r['mins'] ?? 0)) . ' dk');
+    $len = trim((string) $len);
+    if ($len !== '') {
+        $bits[] = $len;
+    }
+    return implode(' · ', $bits);
 }
 
 /**
@@ -845,9 +866,14 @@ function recordings_lesson_tree(array $rows): array
     }
     $groups = [];
     foreach ($groupNames as $gid => $gname) {
+        $list = $byGroup[(int) $gid] ?? [];
+        $family = recording_program_family(
+            (string) (($list[0]['program_slug'] ?? '')),
+            $gname
+        );
         $lessons = [];
         $latest = [];
-        foreach ($byGroup[(int) $gid] ?? [] as $r) {
+        foreach ($list as $r) {
             $info = recording_lesson_heading($r);
             $key = recording_fold_tr($info['heading']);
             if ($key === '') {
@@ -858,6 +884,8 @@ function recordings_lesson_tree(array $rows): array
                 $latest[$key] = ['d' => '', 'id' => 0];
             }
             $r['_lesson_sub'] = $info['sub'];
+            $r['_family'] = $family;
+            $r['_heading'] = $info['heading'];
             $lessons[$key]['rows'][] = $r;
             $d = (string) ($r['recorded_on'] ?? '');
             $id = (int) ($r['id'] ?? 0);
@@ -866,10 +894,6 @@ function recordings_lesson_tree(array $rows): array
             }
         }
         $order = array_keys($lessons);
-        $family = recording_program_family(
-            (string) (($byGroup[(int) $gid][0]['program_slug'] ?? '')),
-            $gname
-        );
         $rank = [];
         foreach (recording_subject_catalog($family) as $i => $name) {
             $rank[recording_fold_tr($name)] = $i;
@@ -904,6 +928,7 @@ function recordings_lesson_tree(array $rows): array
         $groups[] = [
             'id' => (int) $gid,
             'name' => $gname,
+            'family' => $family,
             'open_key' => $openKey,
             'lessons' => $outLessons,
         ];
@@ -911,11 +936,75 @@ function recordings_lesson_tree(array $rows): array
     return [$groups, $groupNames];
 }
 
+/** DHBT/DKAB katalog başlıklarını boş olsa da gösterir; eşleşmeyen eski başlıklar sonda kalır. */
+function recordings_pad_catalog_tree(array $tree): array
+{
+    foreach ($tree as &$g) {
+        $fam = (string) ($g['family'] ?? '');
+        if ($fam === '') {
+            continue;
+        }
+        $byKey = [];
+        foreach ($g['lessons'] as $lesson) {
+            $byKey[(string) ($lesson['key'] ?? '')] = $lesson;
+        }
+        $out = [];
+        foreach (recording_subject_catalog($fam) as $name) {
+            $key = recording_fold_tr($name);
+            if (isset($byKey[$key])) {
+                $out[] = $byKey[$key];
+                unset($byKey[$key]);
+            } else {
+                $out[] = ['heading' => $name, 'key' => $key, 'rows' => []];
+            }
+        }
+        foreach ($byKey as $lesson) {
+            if (($lesson['key'] ?? '') === '') {
+                continue;
+            }
+            $out[] = $lesson;
+        }
+        $g['lessons'] = $out;
+    }
+    unset($g);
+    return $tree;
+}
+
+function recordings_move_select_html(string $family, string $current, int $recId): string
+{
+    if ($family === '' || $recId < 1) {
+        return '';
+    }
+    $cats = recording_subject_catalog($family);
+    if ($cats === []) {
+        return '';
+    }
+    $cur = recording_fold_tr($current);
+    $opts = '';
+    $matched = false;
+    foreach ($cats as $name) {
+        $sel = recording_fold_tr($name) === $cur ? ' selected' : '';
+        if ($sel !== '') {
+            $matched = true;
+        }
+        $opts .= '<option value="' . e($name) . '"' . $sel . '>' . e($name) . '</option>';
+    }
+    $html = '<label class="vod-move"><span>Taşı</span><select data-vod-move-sel>';
+    if (!$matched) {
+        $html .= '<option value="" disabled selected>Kategori seçin</option>';
+    }
+    $html .= $opts . '</select></label>';
+    return $html;
+}
+
 function recordings_render_lesson_tree(array $tree, callable $card, array $opt = []): void
 {
     $splitGroups = !empty($opt['split_groups']);
+    $movable = !empty($opt['movable']);
     $first = true;
     foreach ($tree as $g) {
+        $fam = (string) ($g['family'] ?? '');
+        $canMove = $movable && $fam !== '';
         if ($splitGroups) {
             echo '<div class="mb-3 ' . ($first ? 'mt-0' : 'mt-8') . ' flex flex-wrap items-end justify-between gap-2">';
             echo '<div><p class="text-xs font-extrabold uppercase tracking-[0.16em] text-navy">Grup</p>';
@@ -926,17 +1015,41 @@ function recordings_render_lesson_tree(array $tree, callable $card, array $opt =
             echo '</div>';
         }
         $first = false;
+        if ($canMove) {
+            echo '<div data-vod-move data-vod-group="' . (int) ($g['id'] ?? 0) . '">';
+        }
         foreach ($g['lessons'] as $lesson) {
             $n = count($lesson['rows']);
+            $heading = (string) ($lesson['heading'] ?? '');
+            $catalogCat = $fam !== '' ? recording_normalize_subject($heading, $fam) : '';
             $open = (($lesson['key'] ?? '') !== '' && ($lesson['key'] ?? '') === ($g['open_key'] ?? '')) ? ' open' : '';
-            echo '<details class="vod-lesson"' . $open . '>';
-            echo '<summary><span class="vod-lesson-title">' . e((string) $lesson['heading']) . '</span>';
+            echo '<details class="vod-lesson"' . $open;
+            if ($canMove && $catalogCat !== '') {
+                echo ' data-vod-cat="' . e($catalogCat) . '"';
+            }
+            echo '>';
+            echo '<summary><span class="vod-lesson-title">' . e($heading) . '</span>';
             echo '<span class="vod-lesson-count">' . $n . ' kayıt</span></summary>';
             echo '<div class="vod-lesson-body">';
+            if ($canMove) {
+                echo '<p class="vod-drop-hint"' . ($n > 0 ? ' hidden' : '') . '>Kayıt yok. Tutamacından sürükleyip buraya bırakın.</p>';
+            }
             foreach ($lesson['rows'] as $r) {
+                if ($canMove) {
+                    echo '<div class="vod-rec" data-vod-rec="' . (int) ($r['id'] ?? 0) . '" data-rec-on="' . e((string) ($r['recorded_on'] ?? '')) . '">';
+                    echo '<span class="vod-rec-handle sort-handle" title="Sürükleyerek taşı" aria-label="Sürükleyerek taşı">⋮⋮</span>';
+                    echo '<div class="vod-rec-main">';
+                }
                 $card($r);
+                if ($canMove) {
+                    echo recordings_move_select_html($fam, (string) ($r['_heading'] ?? $heading), (int) ($r['id'] ?? 0));
+                    echo '</div></div>';
+                }
             }
             echo '</div></details>';
+        }
+        if ($canMove) {
+            echo '</div>';
         }
     }
 }
@@ -1149,17 +1262,8 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
     $topic = trim((string) ($room['topic'] ?? ''));
     $title = trim((string) ($room['title'] ?? 'Ders'));
     $when = date('d.m.Y H:i');
-    $teacher = trim((string) ($room['teacher_name'] ?? ''));
-    if ($teacher === '' && !empty($room['teacher_id'])) {
-        $tn = $pdo->prepare('SELECT name FROM users WHERE id = ?');
-        $tn->execute([(int) $room['teacher_id']]);
-        $teacher = trim((string) ($tn->fetchColumn() ?: ''));
-    }
     $label = $topic !== '' && $topic !== 'Ders' ? $topic . ' — ' . $title : $title;
     $label .= ' — ' . $when;
-    if ($teacher !== '') {
-        $label .= ' — ' . $teacher;
-    }
     $bytes = vod_file_bytes($dest);
     $hintMs = $sec > 1 ? $sec * 1000.0 : max(0, $mins) * 60 * 1000.0;
     $stamped = false;

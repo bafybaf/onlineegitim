@@ -108,6 +108,7 @@ if ($filterGid && !isset($groupNames[$filterGid])) {
 if ($filterGid) {
     $tree = array_values(array_filter($tree, static fn (array $g): bool => (int) $g['id'] === $filterGid));
 }
+$tree = recordings_pad_catalog_tree($tree);
 $me = (int) $u['id'];
 panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
 ?>
@@ -155,7 +156,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   });
 })();
 </script>
-<p class="mb-4 text-sm text-muted">DHBT ve DKAB kayıtlarında kategori seçin; dersler o başlığın altına düşer. Yeni tarihli kayıt en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
+<p class="mb-4 text-sm text-muted">DHBT ve DKAB’de eski kayıtlar durur; tutamacından sürükleyip doğru kategoriye bırakın veya Taşı listesini kullanın. Yeni tarihli kayıt en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
 <?php if (count($groupNames) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
     <a class="<?= $filterGid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle')) ?>">Tüm gruplar</a>
@@ -178,7 +179,7 @@ else:
         }
         echo '<article class="card flex flex-wrap items-start justify-between gap-3 p-5">';
         echo '<div><p class="font-extrabold">' . e($label) . '</p>';
-        echo '<p class="text-sm text-muted">' . e((string) $r['tname']) . ' · ' . e((string) $r['recorded_on']) . ' · ' . e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) . '</p>';
+        echo '<p class="text-sm text-muted">' . e(recording_card_meta($r)) . '</p>';
         echo '<p class="mt-1 text-xs text-muted">' . ($ready ? 'Video hazır' : 'Video yok') . '</p></div>';
         echo '<div class="flex flex-wrap items-center gap-2">';
         if ($ready) {
@@ -190,6 +191,7 @@ else:
         echo '</div></article>';
     }, [
         'split_groups' => $filterGid === 0 && count($groupNames) > 1,
+        'movable' => true,
         'group_extra' => static function (array $g): string {
             return '<a class="text-sm font-extrabold text-navy" href="' . e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs((int) $g['id']))) . '">Yalnız bu grup →</a>';
         },

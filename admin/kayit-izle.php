@@ -44,7 +44,7 @@ $err = flash_error();
   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
     <a class="text-sm font-extrabold text-navy" href="<?= e(url('admin/kayitlar')) ?>">← <?= e((string) $r['gname']) ?></a>
     <h2 class="font-display text-lg leading-tight"><?php if ($test): ?><span class="live-pill mr-2"><i></i> Test</span><?php endif; ?><?= e((string) $r['title']) ?></h2>
-    <span class="text-xs text-muted"><?= e((string) $r['tname']) ?> · <?= e((string) $r['recorded_on']) ?> · <?= e(function_exists('vod_length_label') ? vod_length_label($r) : ((int) $r['mins'] . ' dk')) ?></span>
+    <span class="text-xs text-muted"><?= e(function_exists('recording_card_meta') ? recording_card_meta($r) : ((string) $r['recorded_on'] . ' · ' . (int) $r['mins'] . ' dk')) ?></span>
   </div>
   <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
 </div>
