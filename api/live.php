@@ -134,6 +134,21 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
     $topic = post('topic') ?: ($isTest ? 'Test yayını' : 'Ders');
     $title = $isTest ? ('Test · ' . (string) $g['name']) : (string) $g['name'];
     $allowJson = $isTest ? json_encode($allow) : null;
+    $lessonCat = '';
+    if (function_exists('ensure_recordings_lesson_cat_schema')) {
+        ensure_recordings_lesson_cat_schema();
+    }
+    $fam = function_exists('recording_family_for_group_id') ? recording_family_for_group_id($gid) : '';
+    if ($fam !== '' && function_exists('recording_normalize_subject')) {
+        $lessonCat = recording_normalize_subject(post('lesson_cat'), $fam);
+        if ($lessonCat === '' && !$isTest) {
+            if (post('html')) {
+                flash_error('Kategori seçin.');
+                redirect($u['role'] === 'admin' ? 'admin/canli.php' : 'ogretmen/canli.php');
+            }
+            json_out(['ok' => false, 'error' => 'lesson_cat']);
+        }
+    }
     if (!$room) {
         $key = live_new_stream_key($pdo);
         $inserted = false;
@@ -195,6 +210,13 @@ if ($action === 'start' && in_array($u['role'], ['ogretmen', 'admin'], true)) {
         } catch (Throwable $e) {
         }
         live_room_save_zoom($pdo, (int) $room['id'], $mode, $zoomUrl, $zoomPass);
+    }
+    $ridSave = (int) ($room['id'] ?? 0);
+    if ($ridSave > 0) {
+        try {
+            $pdo->prepare('UPDATE live_rooms SET lesson_cat = ? WHERE id = ?')->execute([$lessonCat !== '' ? $lessonCat : null, $ridSave]);
+        } catch (Throwable) {
+        }
     }
     if (post('html')) {
         redirect(canli_url((int) $room['id']));

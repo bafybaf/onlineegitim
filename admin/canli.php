@@ -74,7 +74,7 @@ $all = db()->query(
      ORDER BY r.status = 'live' DESC, r.id DESC
      LIMIT 120"
 )->fetchAll();
-$groups = db()->query('SELECT id, name FROM class_groups ORDER BY name')->fetchAll();
+$groups = db()->query('SELECT g.id, g.name, p.slug AS program_slug FROM class_groups g LEFT JOIN programs p ON p.id = g.program_id ORDER BY g.name')->fetchAll();
 $enrollSql = 'SELECT e.group_id, u.id, u.name FROM enrollments e JOIN users u ON u.id = e.student_id WHERE 1=1';
 $enCols = function_exists('live_enrollment_columns') ? live_enrollment_columns() : [];
 if (isset($enCols['status'])) {
@@ -202,12 +202,13 @@ $err = flash_error();
     <input type="hidden" name="test" value="1">
     <input type="hidden" name="record" value="1">
     <label class="text-sm font-bold">Grup
-      <select id="test-group" name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
+      <select id="test-group" name="group_id" data-cat-group class="mt-1 w-full rounded-xl border px-3 py-2 font-normal">
         <?php foreach ($groups as $g): ?>
           <option value="<?= (int) $g['id'] ?>"><?= e((string) $g['name']) ?></option>
         <?php endforeach; ?>
       </select>
     </label>
+    <?php recording_subject_picker_html($groups); ?>
     <label class="text-sm font-bold">Konu
       <input name="topic" class="mt-1 w-full rounded-xl border px-3 py-2 font-normal" value="Test yayını">
     </label>

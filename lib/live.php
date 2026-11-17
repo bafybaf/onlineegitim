@@ -433,9 +433,10 @@ function live_cf_save_video_recording(PDO $pdo, array $room, array $video, strin
         ensure_recordings_duration_schema();
     }
     $title = function_exists('vod_clip_title') ? vod_clip_title($label) : mb_substr($label, 0, 180);
+    $lessonCat = function_exists('recording_cat_from_room') ? recording_cat_from_room($room) : '';
     try {
-        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path, is_test) VALUES (?,?,?,?,?,CURDATE(),?,?,?)')
-            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $url, $path, $isTest ? 1 : 0]);
+        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path, is_test, lesson_cat) VALUES (?,?,?,?,?,CURDATE(),?,?,?,?)')
+            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $url, $path, $isTest ? 1 : 0, $lessonCat !== '' ? $lessonCat : null]);
     } catch (Throwable $e) {
         try {
             $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path) VALUES (?,?,?,?,?,CURDATE(),?,?)')
@@ -447,6 +448,15 @@ function live_cf_save_video_recording(PDO $pdo, array $room, array $video, strin
             } catch (Throwable $e3) {
                 return false;
             }
+        }
+        if ($lessonCat !== '' && function_exists('recording_apply_lesson_cat')) {
+            $rid = (int) $pdo->lastInsertId();
+            if ($rid < 1) {
+                $q = $pdo->prepare('SELECT id FROM recordings WHERE video_path = ? OR video_url = ? ORDER BY id DESC LIMIT 1');
+                $q->execute([$path, $url]);
+                $rid = (int) $q->fetchColumn();
+            }
+            recording_apply_lesson_cat($pdo, $rid, $lessonCat);
         }
     }
     if (!$isTest && function_exists('notify_group_students')) {

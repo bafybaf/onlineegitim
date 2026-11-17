@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 require_once __DIR__ . '/../includes/layout.php';
 $u = require_role('ogretmen');
+if (function_exists('ensure_recordings_lesson_cat_schema')) {
+    ensure_recordings_lesson_cat_schema();
+}
 if (function_exists('vod_recover_teacher_pending')) {
     try {
         vod_recover_teacher_pending(db(), (int) $u['id']);
@@ -16,6 +19,7 @@ $titleKeep = '';
 $urlKeep = '';
 $minsKeep = 45;
 $gidKeep = 0;
+$catKeep = '';
 
 function ogretmen_kayit_qs(int $gid): string
 {
@@ -42,15 +46,20 @@ if (post('delete_id')) {
         $titleKeep = $title;
         $minsKeep = $mins;
         $urlKeep = $url;
-        $owns = false;
+        $owns = null;
         foreach ($groups as $g) {
             if ((int) $g['id'] === $gid) {
-                $owns = true;
+                $owns = $g;
                 break;
             }
         }
+        $fam = $owns ? recording_program_family((string) ($owns['program_slug'] ?? ''), (string) ($owns['name'] ?? '')) : '';
+        $cat = $fam !== '' ? recording_normalize_subject(post('lesson_cat'), $fam) : '';
+        $catKeep = $cat;
         if (!$owns || $title === '') {
             $err = 'Grup ve başlık zorunlu.';
+        } elseif ($fam !== '' && $cat === '') {
+            $err = 'Kategori seçin.';
         } else {
             try {
                 $path = academy_store_upload('video', 'vod', academy_mimes_video(), 300);
@@ -63,8 +72,15 @@ if (post('delete_id')) {
                 if ($url !== '' && !filter_var($url, FILTER_VALIDATE_URL)) {
                     throw new RuntimeException('Geçerli bir video adresi girin.');
                 }
-                db()->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),?,?)')
-                    ->execute([$gid, (int) $u['id'], $title, $mins, $url !== '' ? $url : null, $path]);
+                ensure_recordings_lesson_cat_schema();
+                try {
+                    db()->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path, lesson_cat) VALUES (?,?,?,?,CURDATE(),?,?,?)')
+                        ->execute([$gid, (int) $u['id'], $title, $mins, $url !== '' ? $url : null, $path, $cat !== '' ? $cat : null]);
+                } catch (Throwable $eIns) {
+                    db()->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, recorded_on, video_url, video_path) VALUES (?,?,?,?,CURDATE(),?,?)')
+                        ->execute([$gid, (int) $u['id'], $title, $mins, $url !== '' ? $url : null, $path]);
+                    recording_apply_lesson_cat(db(), (int) db()->lastInsertId(), $cat);
+                }
                 notify_group_students($gid, 'Yeni ders kaydı', $title, url('ogrenci/kayitlar'));
                 flash_ok('Kayıt yüklendi. Öğrenciler Ders kayıtları menüsünden izler.');
                 redirect('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($gid));
@@ -76,10 +92,11 @@ if (post('delete_id')) {
 }
 $owned = function_exists('group_owned_in_sql') ? group_owned_in_sql((int) $u['id']) : '0';
 $st = db()->query(
-    "SELECT rec.*, g.name gname, t.name tname
+    "SELECT rec.*, g.name gname, t.name tname, p.slug program_slug
      FROM recordings rec
      JOIN class_groups g ON g.id = rec.group_id
      JOIN users t ON t.id = rec.teacher_id
+     LEFT JOIN programs p ON p.id = g.program_id
      WHERE rec.group_id IN ($owned)
      ORDER BY rec.recorded_on DESC, rec.id DESC"
 );
@@ -98,15 +115,16 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <form method="post" enctype="multipart/form-data" class="card mb-6 grid gap-3 p-5 md:grid-cols-2">
   <label class="text-sm font-bold">Grup
-    <select name="group_id" required class="mt-1 w-full rounded-xl border px-3 py-2">
+    <select name="group_id" data-cat-group required class="mt-1 w-full rounded-xl border px-3 py-2">
       <?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"<?= $gidKeep === (int) $g['id'] ? ' selected' : '' ?>><?= e($g['name']) ?></option><?php endforeach; ?>
     </select>
   </label>
   <label class="text-sm font-bold">Süre (dk)
     <input name="mins" type="number" min="1" max="300" value="<?= (int) $minsKeep ?>" class="mt-1 w-full rounded-xl border px-3 py-2">
   </label>
+  <?php recording_subject_picker_html($groups, $catKeep); ?>
   <label class="text-sm font-bold md:col-span-2">Başlık
-    <input name="title" required class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="Örn. Bakara 1–20 kaydı" value="<?= e($titleKeep) ?>">
+    <input name="title" required class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="Örn. Soru çözümü 1–20" value="<?= e($titleKeep) ?>">
   </label>
   <label class="text-sm font-bold">Video dosyası
     <input name="video" type="file" accept="video/mp4,video/webm" class="mt-1 w-full text-sm">
@@ -137,7 +155,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   });
 })();
 </script>
-<p class="mb-4 text-sm text-muted">Kayıtlar gruba, sonra ders adına göre ayrılır. Alt kayıtlar açılır; yeni tarihli ders en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
+<p class="mb-4 text-sm text-muted">DHBT ve DKAB kayıtlarında kategori seçin; dersler o başlığın altına düşer. Yeni tarihli kayıt en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
 <?php if (count($groupNames) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
     <a class="<?= $filterGid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle')) ?>">Tüm gruplar</a>

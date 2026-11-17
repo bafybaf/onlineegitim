@@ -23,8 +23,9 @@ $err = flash_error();
     <p class="mt-2 text-sm text-muted">Açık odalar kapanmaz. Admin’in açtığı kanallardan birini seçin: Cloudflare, Zoom (sitede) veya Zoom linki. Sohbet ve yoklama sitede kalır.</p>
     <input type="hidden" name="action" value="start"><input type="hidden" name="html" value="1">
     <label class="mt-4 block text-sm font-bold">Grup
-      <select name="group_id" class="mt-1 w-full rounded-xl border px-3 py-2"><?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= e($g['name']) ?></option><?php endforeach; ?></select>
+      <select name="group_id" data-cat-group class="mt-1 w-full rounded-xl border px-3 py-2"><?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= e($g['name']) ?></option><?php endforeach; ?></select>
     </label>
+    <?php recording_subject_picker_html($groups); ?>
     <label class="mt-3 block text-sm font-bold">Konu<input name="topic" class="mt-1 w-full rounded-xl border px-3 py-2" value="Yeni ders"></label>
     <input type="hidden" name="record" value="1">
     <label class="mt-2 flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="yoklama" value="1" checked> Yoklamayı aç</label>

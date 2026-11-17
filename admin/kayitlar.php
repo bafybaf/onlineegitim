@@ -45,10 +45,11 @@ if (post('delete_id')) {
 $rows = [];
 try {
     $rows = db()->query(
-        'SELECT rec.*, g.name gname, t.name tname
+        'SELECT rec.*, g.name gname, t.name tname, p.slug program_slug
          FROM recordings rec
          JOIN class_groups g ON g.id = rec.group_id
          JOIN users t ON t.id = rec.teacher_id
+         LEFT JOIN programs p ON p.id = g.program_id
          ORDER BY rec.recorded_on DESC, rec.id DESC
          LIMIT 300'
     )->fetchAll();
@@ -66,7 +67,7 @@ panel_head('admin', 'kayitlar', 'Ders kayıtları | Admin', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<p class="mb-4 text-sm text-muted">Kayıtlar gruba, sonra ders adına (Tefsir, Hadis, Fıkıh…) göre ayrılır. Alt kayıtlar açılır; yeni tarihli ders en altta durur. Test kayıtları öğrenci listesine düşmez.</p>
+<p class="mb-4 text-sm text-muted">Kayıtlar gruba, DHBT ve DKAB’de seçilen kategoriye göre ayrılır. Alt kayıtlar açılır; yeni tarihli ders en altta durur. Test kayıtları öğrenci listesine düşmez.</p>
 <?php
 $manualCfN = 0;
 if (function_exists('vod_manual_cf_recordings')) {

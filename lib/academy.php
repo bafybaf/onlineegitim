@@ -345,10 +345,11 @@ function notify_group_students(int $groupId, string $title, string $body, string
 
 function teacher_groups(int $teacherId): array
 {
+    $join = 'SELECT g.*, p.slug AS program_slug FROM class_groups g LEFT JOIN programs p ON p.id = g.program_id';
     if (function_exists('group_owned_in_sql')) {
-        return db()->query('SELECT * FROM class_groups WHERE id IN (' . group_owned_in_sql($teacherId) . ') ORDER BY name')->fetchAll();
+        return db()->query($join . ' WHERE g.id IN (' . group_owned_in_sql($teacherId) . ') ORDER BY g.name')->fetchAll();
     }
-    $st = db()->prepare('SELECT * FROM class_groups WHERE teacher_id=? ORDER BY name');
+    $st = db()->prepare($join . ' WHERE g.teacher_id=? ORDER BY g.name');
     $st->execute([$teacherId]);
     return $st->fetchAll();
 }

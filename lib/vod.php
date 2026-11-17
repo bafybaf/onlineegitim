@@ -304,6 +304,7 @@ function ensure_recordings_duration_schema(): void
     } catch (Throwable) {
     }
     ensure_recordings_test_schema();
+    ensure_recordings_lesson_cat_schema();
 }
 
 function ensure_recordings_test_schema(): void
@@ -330,6 +331,309 @@ function ensure_recordings_test_schema(): void
         );
     } catch (Throwable) {
     }
+    ensure_recordings_lesson_cat_schema();
+}
+
+function ensure_recordings_lesson_cat_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        db()->exec("ALTER TABLE recordings ADD COLUMN lesson_cat VARCHAR(160) NULL");
+    } catch (Throwable) {
+    }
+    try {
+        db()->exec("ALTER TABLE live_rooms ADD COLUMN lesson_cat VARCHAR(160) NULL");
+    } catch (Throwable) {
+    }
+    try {
+        $rows = db()->query(
+            "SELECT rec.id, rec.title, rec.lesson_cat, g.name gname, p.slug program_slug
+             FROM recordings rec
+             JOIN class_groups g ON g.id = rec.group_id
+             LEFT JOIN programs p ON p.id = g.program_id
+             WHERE rec.lesson_cat IS NULL OR rec.lesson_cat = ''"
+        )->fetchAll();
+        if ($rows) {
+            $up = db()->prepare('UPDATE recordings SET lesson_cat = ? WHERE id = ?');
+            foreach ($rows as $r) {
+                $fam = recording_program_family((string) ($r['program_slug'] ?? ''), (string) ($r['gname'] ?? ''));
+                if ($fam === '') {
+                    continue;
+                }
+                $hit = recording_match_subject((string) ($r['title'] ?? ''), $fam)
+                    ?? recording_match_subject((string) ($r['gname'] ?? ''), $fam);
+                if ($hit !== null) {
+                    $up->execute([$hit, (int) $r['id']]);
+                }
+            }
+        }
+    } catch (Throwable) {
+    }
+}
+
+function recording_program_family(string $slug, string $gname = ''): string
+{
+    $s = recording_fold_tr($slug);
+    $g = recording_fold_tr($gname);
+    if (str_contains($s, 'dkab') || $s === 'tefsir' || str_contains($g, 'dkab') || str_contains($g, 'oabt')) {
+        return 'dkab';
+    }
+    if (str_contains($s, 'dhbt') || $s === 'hadis' || str_contains($g, 'dhbt')) {
+        return 'dhbt';
+    }
+    return '';
+}
+
+function recording_family_for_group_id(int $gid): string
+{
+    if ($gid < 1) {
+        return '';
+    }
+    try {
+        $st = db()->prepare(
+            'SELECT g.name, p.slug AS program_slug
+             FROM class_groups g
+             LEFT JOIN programs p ON p.id = g.program_id
+             WHERE g.id = ? LIMIT 1'
+        );
+        $st->execute([$gid]);
+        $row = $st->fetch();
+        if (!$row) {
+            return '';
+        }
+        return recording_program_family((string) ($row['program_slug'] ?? ''), (string) ($row['name'] ?? ''));
+    } catch (Throwable) {
+        return '';
+    }
+}
+
+/** @return list<string> */
+function recording_subject_catalog(string $family): array
+{
+    if ($family === 'dhbt') {
+        return [
+            'Kur’ân Bilgisi - Tefsir ve Tecvid Soru Çözümü',
+            'İslam İnanç Esasları - Kelam Soru Çözümü',
+            'Siyer - İslam Tarihi - Kültür ve Medeniyet Soru Çözümü',
+            'İslam İbadet Esasları - Fıkıh Soru Çözümü',
+            'Hadis Usûlü ve Tarihi Soru Çözümü',
+            'Mezhepler Tarihi Soru Çözümü',
+            'Dinler Tarihi Soru Çözümü',
+        ];
+    }
+    if ($family === 'dkab') {
+        return [
+            'Kur’ân Bilgisi - Tefsir - Tecvid',
+            'İslam İnanç Esasları - Kelam',
+            'Hadis Usûlü ve Tarihi',
+            'İslam Mezhepleri Tarihi',
+            'İslam İbadet Esasları - Fıkıh',
+            'Dinler Tarihi',
+            'Siyer ve İslam Tarihi - İslam Kültür ve Medeniyeti',
+            'İslam Felsefesi',
+            'Din Felsefesi',
+            'Din Psikolojisi',
+            'Din Sosyolojisi',
+            'Din Eğitimi',
+        ];
+    }
+    return recording_lesson_catalog();
+}
+
+function recording_normalize_subject(string $raw, string $family): string
+{
+    $raw = trim($raw);
+    if ($raw === '' || $family === '') {
+        return '';
+    }
+    $hit = recording_match_subject($raw, $family);
+    return $hit ?? '';
+}
+
+function recording_match_subject(string $text, string $family): ?string
+{
+    $fold = recording_fold_tr($text);
+    if ($fold === '') {
+        return null;
+    }
+    $cats = recording_subject_catalog($family);
+    $ranked = $cats;
+    usort($ranked, static fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+    foreach ($ranked as $name) {
+        $n = recording_fold_tr($name);
+        if ($n !== '' && (str_contains($fold, $n) || str_contains($n, $fold))) {
+            return $name;
+        }
+    }
+    foreach (recording_subject_keywords($family) as $needle => $label) {
+        if ($needle !== '' && str_contains($fold, $needle)) {
+            return $label;
+        }
+    }
+    return null;
+}
+
+/** @return array<string,string> */
+function recording_subject_keywords(string $family): array
+{
+    if ($family === 'dhbt') {
+        return [
+            'kuran bilgisi' => 'Kur’ân Bilgisi - Tefsir ve Tecvid Soru Çözümü',
+            'tefsir ve tecvid' => 'Kur’ân Bilgisi - Tefsir ve Tecvid Soru Çözümü',
+            'inanc esas' => 'İslam İnanç Esasları - Kelam Soru Çözümü',
+            'kultur ve medeniyet' => 'Siyer - İslam Tarihi - Kültür ve Medeniyet Soru Çözümü',
+            'ibadet esas' => 'İslam İbadet Esasları - Fıkıh Soru Çözümü',
+            'hadis usul' => 'Hadis Usûlü ve Tarihi Soru Çözümü',
+            'mezhepler tarihi' => 'Mezhepler Tarihi Soru Çözümü',
+            'dinler tarihi' => 'Dinler Tarihi Soru Çözümü',
+            'tecvid' => 'Kur’ân Bilgisi - Tefsir ve Tecvid Soru Çözümü',
+            'tefsir' => 'Kur’ân Bilgisi - Tefsir ve Tecvid Soru Çözümü',
+            'kuran' => 'Kur’ân Bilgisi - Tefsir ve Tecvid Soru Çözümü',
+            'kelam' => 'İslam İnanç Esasları - Kelam Soru Çözümü',
+            'akaid' => 'İslam İnanç Esasları - Kelam Soru Çözümü',
+            'siyer' => 'Siyer - İslam Tarihi - Kültür ve Medeniyet Soru Çözümü',
+            'medeniyet' => 'Siyer - İslam Tarihi - Kültür ve Medeniyet Soru Çözümü',
+            'fikih' => 'İslam İbadet Esasları - Fıkıh Soru Çözümü',
+            'hadis' => 'Hadis Usûlü ve Tarihi Soru Çözümü',
+            'mezhep' => 'Mezhepler Tarihi Soru Çözümü',
+            'dinler' => 'Dinler Tarihi Soru Çözümü',
+        ];
+    }
+    if ($family === 'dkab') {
+        return [
+            'kuran bilgisi' => 'Kur’ân Bilgisi - Tefsir - Tecvid',
+            'inanc esas' => 'İslam İnanç Esasları - Kelam',
+            'hadis usul' => 'Hadis Usûlü ve Tarihi',
+            'mezhepleri tarihi' => 'İslam Mezhepleri Tarihi',
+            'ibadet esas' => 'İslam İbadet Esasları - Fıkıh',
+            'dinler tarihi' => 'Dinler Tarihi',
+            'kultur ve medeniyet' => 'Siyer ve İslam Tarihi - İslam Kültür ve Medeniyeti',
+            'islam felsefe' => 'İslam Felsefesi',
+            'din felsefe' => 'Din Felsefesi',
+            'din psikoloji' => 'Din Psikolojisi',
+            'din sosyoloji' => 'Din Sosyolojisi',
+            'din egitim' => 'Din Eğitimi',
+            'tecvid' => 'Kur’ân Bilgisi - Tefsir - Tecvid',
+            'tefsir' => 'Kur’ân Bilgisi - Tefsir - Tecvid',
+            'kuran' => 'Kur’ân Bilgisi - Tefsir - Tecvid',
+            'kelam' => 'İslam İnanç Esasları - Kelam',
+            'akaid' => 'İslam İnanç Esasları - Kelam',
+            'hadis' => 'Hadis Usûlü ve Tarihi',
+            'mezhep' => 'İslam Mezhepleri Tarihi',
+            'fikih' => 'İslam İbadet Esasları - Fıkıh',
+            'dinler' => 'Dinler Tarihi',
+            'siyer' => 'Siyer ve İslam Tarihi - İslam Kültür ve Medeniyeti',
+            'medeniyet' => 'Siyer ve İslam Tarihi - İslam Kültür ve Medeniyeti',
+            'psikoloji' => 'Din Psikolojisi',
+            'sosyoloji' => 'Din Sosyolojisi',
+        ];
+    }
+    return [];
+}
+
+function recording_apply_lesson_cat(PDO $pdo, int $id, string $cat): void
+{
+    if ($id < 1) {
+        return;
+    }
+    $cat = trim($cat);
+    ensure_recordings_lesson_cat_schema();
+    try {
+        if ($cat === '') {
+            $pdo->prepare('UPDATE recordings SET lesson_cat = NULL WHERE id = ?')->execute([$id]);
+            return;
+        }
+        $pdo->prepare('UPDATE recordings SET lesson_cat = ? WHERE id = ?')->execute([$cat, $id]);
+    } catch (Throwable) {
+    }
+}
+
+function recording_cat_from_room(array $room): string
+{
+    $cat = trim((string) ($room['lesson_cat'] ?? ''));
+    $gid = (int) ($room['group_id'] ?? 0);
+    $fam = $gid > 0 ? recording_family_for_group_id($gid) : '';
+    if ($cat !== '' && $fam !== '') {
+        $ok = recording_normalize_subject($cat, $fam);
+        if ($ok !== '') {
+            return $ok;
+        }
+    }
+    if ($fam === '') {
+        return '';
+    }
+    return recording_normalize_subject((string) ($room['topic'] ?? ''), $fam);
+}
+
+/** @param list<array<string,mixed>> $groups */
+function recording_subject_picker_html(array $groups, string $keep = ''): void
+{
+    $map = [];
+    foreach ($groups as $g) {
+        $map[(string) (int) ($g['id'] ?? 0)] = recording_program_family(
+            (string) ($g['program_slug'] ?? ''),
+            (string) ($g['name'] ?? '')
+        );
+    }
+    $lists = [
+        'dkab' => recording_subject_catalog('dkab'),
+        'dhbt' => recording_subject_catalog('dhbt'),
+    ];
+    ?>
+  <label class="mt-3 text-sm font-bold md:col-span-2" data-cat-wrap hidden>
+    Kategori
+    <select name="lesson_cat" data-cat-select data-keep="<?= e($keep) ?>" class="mt-1 w-full rounded-xl border px-3 py-2">
+      <option value="">Kategori seçin</option>
+    </select>
+    <span class="mt-1 block text-xs font-normal text-muted">DHBT ve DKAB gruplarında zorunlu. Ders kaydı bu başlığın altında listelenir.</span>
+  </label>
+  <script>
+  window.OI_REC_CATS = <?= json_encode(['map' => $map, 'lists' => $lists], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+  (function () {
+    var data = window.OI_REC_CATS || {};
+    document.querySelectorAll("[data-cat-wrap]").forEach(function (wrap) {
+      var catSel = wrap.querySelector("[data-cat-select]");
+      var form = wrap.closest("form");
+      var groupSel = form && form.querySelector("[data-cat-group]");
+      if (!groupSel || !catSel) return;
+      if (wrap.getAttribute("data-cat-bound") === "1") return;
+      wrap.setAttribute("data-cat-bound", "1");
+      var keep = catSel.getAttribute("data-keep") || "";
+      function fill() {
+        var gid = String(groupSel.value || "");
+        var fam = (data.map && data.map[gid]) || "";
+        var list = (data.lists && data.lists[fam]) || [];
+        catSel.innerHTML = "";
+        if (!fam || !list.length) {
+          wrap.hidden = true;
+          catSel.required = false;
+          return;
+        }
+        wrap.hidden = false;
+        var optional = !!(form && form.querySelector('input[name="test"]'));
+        catSel.required = !optional;
+        var blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "Kategori seçin";
+        catSel.appendChild(blank);
+        list.forEach(function (name) {
+          var o = document.createElement("option");
+          o.value = name;
+          o.textContent = name;
+          if (keep && keep === name) o.selected = true;
+          catSel.appendChild(o);
+        });
+      }
+      groupSel.addEventListener("change", fill);
+      fill();
+    });
+  })();
+  </script>
+    <?php
 }
 
 function recording_is_test(array $rec): bool
@@ -479,6 +783,7 @@ function recording_lesson_heading(array $rec): array
     $raw = trim((string) preg_replace('/^Test\s*·\s*/u', '', $raw));
     $gname = trim((string) ($rec['gname'] ?? ''));
     $tname = trim((string) ($rec['tname'] ?? ''));
+    $family = recording_program_family((string) ($rec['program_slug'] ?? ''), $gname);
     $parts = preg_split('/\s+[—–|-]+\s+/u', $raw) ?: [$raw];
     $core = [];
     foreach ($parts as $p) {
@@ -489,7 +794,19 @@ function recording_lesson_heading(array $rec): array
         $core[] = $p;
     }
     $joined = $core !== [] ? implode(' — ', $core) : $raw;
-    $heading = recording_match_catalog($joined) ?? recording_match_catalog($raw);
+    $saved = trim((string) ($rec['lesson_cat'] ?? ''));
+    $heading = null;
+    if ($saved !== '') {
+        $heading = $family !== '' ? (recording_normalize_subject($saved, $family) ?: $saved) : $saved;
+    }
+    if ($heading === null && $family !== '') {
+        $heading = recording_match_subject($joined, $family)
+            ?? recording_match_subject($raw, $family)
+            ?? recording_match_subject($gname, $family);
+    }
+    if ($heading === null) {
+        $heading = recording_match_catalog($joined) ?? recording_match_catalog($raw);
+    }
     if ($heading === null) {
         $heading = $core[0] ?? ($raw !== '' ? $raw : 'Ders');
         $heading = preg_replace('/^(?:unite|ünite|ders)\s*\d+\s*[-–:.)]?\s*/iu', '', $heading) ?: $heading;
@@ -549,19 +866,45 @@ function recordings_lesson_tree(array $rows): array
             }
         }
         $order = array_keys($lessons);
-        usort($order, static function (string $a, string $b) use ($latest): int {
+        $family = recording_program_family(
+            (string) (($byGroup[(int) $gid][0]['program_slug'] ?? '')),
+            $gname
+        );
+        $rank = [];
+        foreach (recording_subject_catalog($family) as $i => $name) {
+            $rank[recording_fold_tr($name)] = $i;
+        }
+        usort($order, static function (string $a, string $b) use ($latest, $rank): int {
+            $ra = $rank[$a] ?? 1000;
+            $rb = $rank[$b] ?? 1000;
+            if ($ra !== $rb) {
+                return $ra <=> $rb;
+            }
             if ($latest[$a]['d'] !== $latest[$b]['d']) {
                 return $latest[$a]['d'] <=> $latest[$b]['d'];
             }
             return $latest[$a]['id'] <=> $latest[$b]['id'];
         });
+        $openKey = '';
+        $maxD = '';
+        $maxId = 0;
+        foreach ($latest as $k => $info) {
+            if ($info['d'] > $maxD || ($info['d'] === $maxD && $info['id'] > $maxId)) {
+                $openKey = $k;
+                $maxD = $info['d'];
+                $maxId = $info['id'];
+            }
+        }
         $outLessons = [];
         foreach ($order as $key) {
-            $outLessons[] = $lessons[$key];
+            $row = $lessons[$key];
+            $row['key'] = $key;
+            $outLessons[] = $row;
         }
         $groups[] = [
             'id' => (int) $gid,
             'name' => $gname,
+            'open_key' => $openKey,
             'lessons' => $outLessons,
         ];
     }
@@ -583,12 +926,9 @@ function recordings_render_lesson_tree(array $tree, callable $card, array $opt =
             echo '</div>';
         }
         $first = false;
-        $nLessons = count($g['lessons']);
-        $li = 0;
         foreach ($g['lessons'] as $lesson) {
-            $li++;
             $n = count($lesson['rows']);
-            $open = $li === $nLessons ? ' open' : '';
+            $open = (($lesson['key'] ?? '') !== '' && ($lesson['key'] ?? '') === ($g['open_key'] ?? '')) ? ' open' : '';
             echo '<details class="vod-lesson"' . $open . '>';
             echo '<summary><span class="vod-lesson-title">' . e((string) $lesson['heading']) . '</span>';
             echo '<span class="vod-lesson-count">' . $n . ' kayıt</span></summary>';
@@ -843,10 +1183,11 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
     }
     ensure_recordings_duration_schema();
     $title = vod_clip_title($label);
+    $lessonCat = recording_cat_from_room($room);
     $okRow = false;
     try {
-        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path, is_test) VALUES (?,?,?,?,?,CURDATE(),NULL,?,?)')
-            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $name, $isTest ? 1 : 0]);
+        $pdo->prepare('INSERT INTO recordings (group_id, teacher_id, title, mins, duration_sec, recorded_on, video_url, video_path, is_test, lesson_cat) VALUES (?,?,?,?,?,CURDATE(),NULL,?,?,?)')
+            ->execute([(int) $room['group_id'], (int) $room['teacher_id'], $title, $mins, $sec, $name, $isTest ? 1 : 0, $lessonCat !== '' ? $lessonCat : null]);
         $okRow = true;
     } catch (Throwable $e) {
         try {
@@ -875,6 +1216,9 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
             $recId = (int) $q->fetchColumn();
         }
         $GLOBALS['_vod_last_commit_id'] = $recId;
+        if ($recId > 0 && $lessonCat !== '') {
+            recording_apply_lesson_cat($pdo, $recId, $lessonCat);
+        }
     }
     return true;
 }

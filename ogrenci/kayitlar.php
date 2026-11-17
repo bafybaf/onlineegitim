@@ -25,10 +25,11 @@ if ($gid && !isset($allowed[$gid])) {
     $gid = 0;
 }
 
-$sql = "SELECT rec.*, g.name gname, t.name tname
+$sql = "SELECT rec.*, g.name gname, t.name tname, p.slug program_slug
      FROM recordings rec
      JOIN class_groups g ON g.id=rec.group_id
      JOIN users t ON t.id=rec.teacher_id
+     LEFT JOIN programs p ON p.id = g.program_id
      JOIN enrollments e ON e.group_id=rec.group_id AND e.student_id=?
      WHERE (rec.is_test = 0 OR rec.is_test IS NULL)";
 $params = [(int) $u['id']];
@@ -80,7 +81,7 @@ function ogrenci_kayit_card(array $r, int $backGid): void
   <h2 class="font-display text-2xl"><?= e($current['name']) ?></h2>
   <p class="mb-5 text-sm text-muted"><?= e($current['teacher_name']) ?> · Bu dersin kayıtları.</p>
 <?php else: ?>
-  <p class="mb-5 text-sm text-muted">Kayıtlar gruba, sonra ders adına göre ayrılır. Alt kayıtları açın; yeni tarihli ders en altta durur.</p>
+  <p class="mb-5 text-sm text-muted">Kayıtlar gruba, DHBT ve DKAB’de ders kategorisine göre ayrılır. Alt kayıtları açın; yeni tarihli ders en altta durur.</p>
 <?php endif; ?>
 
 <?php if (count($groups) > 1): ?>
