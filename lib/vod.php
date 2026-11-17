@@ -837,6 +837,20 @@ function recording_lesson_heading(array $rec): array
     return ['heading' => $heading, 'sub' => $sub];
 }
 
+function recording_edit_title(array $rec): string
+{
+    $raw = trim((string) ($rec['title'] ?? ''));
+    if (!function_exists('recording_lesson_heading')) {
+        return $raw;
+    }
+    $info = recording_lesson_heading($rec);
+    $sub = trim((string) ($info['sub'] ?? ''));
+    if ($sub !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/u', $sub)) {
+        return $sub;
+    }
+    return $raw !== '' ? $raw : $sub;
+}
+
 function recording_card_meta(array $r): string
 {
     $bits = [];

@@ -325,6 +325,64 @@ function academy_delete_recording(int $recId, int $teacherId, bool $asAdmin = fa
     db()->prepare('DELETE FROM recordings WHERE id = ? AND teacher_id = ?')->execute([$recId, $teacherId]);
 }
 
+function academy_teacher_recording(int $recId, int $teacherId): ?array
+{
+    if ($recId < 1 || $teacherId < 1) {
+        return null;
+    }
+    $owned = function_exists('group_owned_in_sql') ? group_owned_in_sql($teacherId) : '0';
+    $st = db()->prepare(
+        "SELECT rec.*, g.name gname, p.slug program_slug
+         FROM recordings rec
+         JOIN class_groups g ON g.id = rec.group_id
+         LEFT JOIN programs p ON p.id = g.program_id
+         WHERE rec.id = ? AND rec.group_id IN ($owned)
+         LIMIT 1"
+    );
+    $st->execute([$recId]);
+    $row = $st->fetch();
+    return $row ?: null;
+}
+
+function academy_update_recording(int $recId, int $teacherId, array $fields): void
+{
+    $row = academy_teacher_recording($recId, $teacherId);
+    if (!$row) {
+        throw new RuntimeException('Kayıt bulunamadı.');
+    }
+    $gid = (int) ($fields['group_id'] ?? $row['group_id']);
+    $title = trim((string) ($fields['title'] ?? ''));
+    $mins = max(1, min(300, (int) ($fields['mins'] ?? $row['mins'])));
+    $url = array_key_exists('video_url', $fields) ? $fields['video_url'] : ($row['video_url'] ?? null);
+    $path = array_key_exists('video_path', $fields) ? $fields['video_path'] : ($row['video_path'] ?? null);
+    $cat = trim((string) ($fields['lesson_cat'] ?? ''));
+    if ($title === '') {
+        throw new RuntimeException('Başlık zorunlu.');
+    }
+    $url = is_string($url) && trim($url) !== '' ? trim($url) : null;
+    $path = is_string($path) && $path !== '' ? $path : null;
+    $oldPath = (string) ($row['video_path'] ?? '');
+    if ($path !== null && $path !== $oldPath && $oldPath !== '') {
+        academy_unlink_stored($oldPath);
+    }
+    if ($path === null) {
+        $path = $oldPath !== '' ? $oldPath : null;
+    }
+    if (function_exists('ensure_recordings_lesson_cat_schema')) {
+        ensure_recordings_lesson_cat_schema();
+    }
+    try {
+        db()->prepare('UPDATE recordings SET group_id = ?, title = ?, mins = ?, video_url = ?, video_path = ?, lesson_cat = ? WHERE id = ?')
+            ->execute([$gid, $title, $mins, $url, $path, $cat !== '' ? $cat : null, $recId]);
+    } catch (Throwable) {
+        db()->prepare('UPDATE recordings SET group_id = ?, title = ?, mins = ?, video_url = ?, video_path = ? WHERE id = ?')
+            ->execute([$gid, $title, $mins, $url, $path, $recId]);
+        if (function_exists('recording_apply_lesson_cat')) {
+            recording_apply_lesson_cat(db(), $recId, $cat);
+        }
+    }
+}
+
 function notify_user(int $userId, string $title, string $body, string $link = ''): void
 {
     try {

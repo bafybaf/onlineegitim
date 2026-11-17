@@ -46,9 +46,12 @@ $err = flash_error();
     <h2 class="font-display text-lg leading-tight"><?= e($r['title']) ?></h2>
     <span class="text-xs text-muted"><?= e(function_exists('recording_card_meta') ? recording_card_meta($r) : ((string) $r['recorded_on'] . ' · ' . (int) $r['mins'] . ' dk')) ?></span>
   </div>
-  <?php if ((int) $r['teacher_id'] === (int) $u['id']): ?>
-    <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
-  <?php endif; ?>
+  <div class="flex flex-wrap items-center gap-2">
+    <a class="btn-outline text-sm" href="<?= e(url('ogretmen/kayit-yukle.php?duzenle=' . (int) $r['id'] . '&grup=' . (int) ($r['group_id'] ?? 0) . '#kayit-form')) ?>">Düzenle</a>
+    <?php if ((int) $r['teacher_id'] === (int) $u['id']): ?>
+      <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
+    <?php endif; ?>
+  </div>
 </div>
 <style>.vod-wide{margin-left:-1.5rem;margin-right:-1.5rem;width:calc(100% + 3rem)}@media(min-width:768px){.vod-wide{margin-left:-2.25rem;margin-right:-2.25rem;width:calc(100% + 4.5rem)}}</style>
 <div class="vod-wide" style="background:#000;border-radius:.75rem;overflow:hidden">

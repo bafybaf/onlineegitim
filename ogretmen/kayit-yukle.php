@@ -20,10 +20,23 @@ $urlKeep = '';
 $minsKeep = 45;
 $gidKeep = 0;
 $catKeep = '';
+$editId = (int) (post('edit_id') ?: ($_GET['duzenle'] ?? 0));
+$edit = $editId > 0 ? academy_teacher_recording($editId, (int) $u['id']) : null;
+if ($editId > 0 && !$edit && !post('delete_id')) {
+    $err = 'Kayıt bulunamadı veya bu gruba ait değil.';
+    $editId = 0;
+}
 
-function ogretmen_kayit_qs(int $gid): string
+function ogretmen_kayit_qs(int $gid, int $editId = 0): string
 {
-    return $gid > 0 ? ('?grup=' . $gid) : '';
+    $q = [];
+    if ($gid > 0) {
+        $q['grup'] = $gid;
+    }
+    if ($editId > 0) {
+        $q['duzenle'] = $editId;
+    }
+    return $q ? ('?' . http_build_query($q)) : '';
 }
 
 if (post('delete_id')) {
@@ -35,7 +48,9 @@ if (post('delete_id')) {
         $err = $e->getMessage();
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (function_exists('request_post_too_large') && request_post_too_large()) {
+    if ((int) post('edit_id') > 0 && !$edit) {
+        $err = 'Kayıt bulunamadı veya bu gruba ait değil.';
+    } elseif (function_exists('request_post_too_large') && request_post_too_large()) {
         $err = request_upload_limit_message(300);
     } else {
         $gid = (int) post('group_id');
@@ -56,6 +71,7 @@ if (post('delete_id')) {
         $fam = $owns ? recording_program_family((string) ($owns['program_slug'] ?? ''), (string) ($owns['name'] ?? '')) : '';
         $cat = $fam !== '' ? recording_normalize_subject(post('lesson_cat'), $fam) : '';
         $catKeep = $cat;
+        $isEdit = $edit && (int) post('edit_id') === (int) $edit['id'];
         if (!$owns || $title === '') {
             $err = 'Grup ve başlık zorunlu.';
         } elseif ($fam !== '' && $cat === '') {
@@ -63,14 +79,33 @@ if (post('delete_id')) {
         } else {
             try {
                 $path = academy_store_upload('video', 'vod', academy_mimes_video(), 300);
-                if ($path === null && $url === '') {
-                    throw new RuntimeException('MP4 yükleyin veya harici video adresi girin.');
-                }
                 if ($path && function_exists('vod_optimize_upload')) {
                     $path = vod_optimize_upload($path);
                 }
                 if ($url !== '' && !filter_var($url, FILTER_VALIDATE_URL)) {
                     throw new RuntimeException('Geçerli bir video adresi girin.');
+                }
+                if ($isEdit) {
+                    $keepPath = (string) ($edit['video_path'] ?? '');
+                    $keepUrl = (string) ($edit['video_url'] ?? '');
+                    $finalPath = $path ?? ($keepPath !== '' ? $keepPath : null);
+                    $finalUrl = $url !== '' ? $url : ($path ? null : ($keepUrl !== '' ? $keepUrl : null));
+                    if ($finalPath === null && $finalUrl === null) {
+                        throw new RuntimeException('MP4 yükleyin veya harici video adresi girin.');
+                    }
+                    academy_update_recording((int) $edit['id'], (int) $u['id'], [
+                        'group_id' => $gid,
+                        'title' => $title,
+                        'mins' => $mins,
+                        'video_url' => $finalUrl,
+                        'video_path' => $finalPath,
+                        'lesson_cat' => $cat,
+                    ]);
+                    flash_ok('Kayıt güncellendi.');
+                    redirect('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($gid));
+                }
+                if ($path === null && $url === '') {
+                    throw new RuntimeException('MP4 yükleyin veya harici video adresi girin.');
                 }
                 ensure_recordings_lesson_cat_schema();
                 try {
@@ -89,6 +124,19 @@ if (post('delete_id')) {
             }
         }
     }
+}
+if ($edit && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $gidKeep = (int) $edit['group_id'];
+    $minsKeep = max(1, (int) ($edit['mins'] ?? 45));
+    $urlKeep = (string) ($edit['video_url'] ?? '');
+    $titleKeep = recording_edit_title($edit);
+    $famEdit = recording_program_family((string) ($edit['program_slug'] ?? ''), (string) ($edit['gname'] ?? ''));
+    $infoEdit = recording_lesson_heading($edit);
+    $catKeep = $famEdit !== ''
+        ? (recording_normalize_subject((string) ($edit['lesson_cat'] ?? ''), $famEdit)
+            ?: recording_normalize_subject((string) ($infoEdit['heading'] ?? ''), $famEdit)
+            ?: '')
+        : '';
 }
 $owned = function_exists('group_owned_in_sql') ? group_owned_in_sql((int) $u['id']) : '0';
 $st = db()->query(
@@ -114,7 +162,16 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
 ?>
 <?php if ($ok): ?><p class="mb-4 font-bold text-green-700"><?= e($ok) ?></p><?php endif; ?>
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
-<form method="post" enctype="multipart/form-data" class="card mb-6 grid gap-3 p-5 md:grid-cols-2">
+<form id="kayit-form" method="post" enctype="multipart/form-data" class="card mb-6 grid gap-3 p-5 md:grid-cols-2">
+  <?php if ($edit): ?>
+    <input type="hidden" name="edit_id" value="<?= (int) $edit['id'] ?>">
+    <div class="md:col-span-2 flex flex-wrap items-end justify-between gap-2">
+      <h2 class="font-display text-xl">Kaydı düzenle</h2>
+      <a class="text-sm font-extrabold text-navy" href="<?= e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($filterGid))) ?>">Vazgeç</a>
+    </div>
+  <?php else: ?>
+    <h2 class="font-display text-xl md:col-span-2">Yeni kayıt</h2>
+  <?php endif; ?>
   <label class="text-sm font-bold">Grup
     <select name="group_id" data-cat-group required class="mt-1 w-full rounded-xl border px-3 py-2">
       <?php foreach ($groups as $g): ?><option value="<?= (int) $g['id'] ?>"<?= $gidKeep === (int) $g['id'] ? ' selected' : '' ?>><?= e($g['name']) ?></option><?php endforeach; ?>
@@ -133,8 +190,10 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   <label class="text-sm font-bold">veya harici adres
     <input name="video_url" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="https://..." value="<?= e($urlKeep) ?>">
   </label>
-  <p class="md:col-span-2 text-xs text-muted">Dosyalar public klasöre konulmaz. Siz ve kayıtlı öğrenciler izleyebilir. En fazla 300 MB. Yüklerken kalite korunarak 1080p MP4’e sıkıştırılır; bu biraz sürebilir.</p>
-  <button class="btn-primary md:col-span-2">Yükle</button>
+  <p class="md:col-span-2 text-xs text-muted"><?= $edit
+      ? 'Başlık ve alt kategoriyi buradan değiştirin. Video boş bırakılırsa mevcut dosya kalır. En fazla 300 MB.'
+      : 'Dosyalar public klasöre konulmaz. Siz ve kayıtlı öğrenciler izleyebilir. En fazla 300 MB. Yüklerken kalite korunarak 1080p MP4’e sıkıştırılır; bu biraz sürebilir.' ?></p>
+  <button class="btn-primary md:col-span-2"><?= $edit ? 'Kaydet' : 'Yükle' ?></button>
 </form>
 <script>
 (function () {
@@ -156,7 +215,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   });
 })();
 </script>
-<p class="mb-4 text-sm text-muted">DHBT ve DKAB’de eski kayıtlar durur; tutamacından sürükleyip doğru kategoriye bırakın veya Taşı listesini kullanın. Yeni tarihli kayıt en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
+<p class="mb-4 text-sm text-muted">Kaydı düzenle ile başlık ve alt kategoriyi değiştirin. DHBT ve DKAB’de tutamacından sürükleyerek de taşıyabilirsiniz. Yeni tarihli kayıt en altta durur. Yalnız kendi yüklediğinizi silebilirsiniz.</p>
 <?php if (count($groupNames) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
     <a class="<?= $filterGid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle')) ?>">Tüm gruplar</a>
@@ -169,7 +228,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
 if (!$tree):
     ?><p class="text-muted"><?= $filterGid ? 'Bu gruba ait kayıt yok.' : 'Henüz kayıt yok.' ?></p><?php
 else:
-    recordings_render_lesson_tree($tree, static function (array $r) use ($me): void {
+    recordings_render_lesson_tree($tree, static function (array $r) use ($me, $filterGid): void {
         $ready = !empty($r['video_path']) || !empty($r['video_url']);
         $watch = url('ogretmen/kayit-izle.php?id=' . (int) $r['id']);
         $mine = (int) $r['teacher_id'] === $me;
@@ -185,6 +244,7 @@ else:
         if ($ready) {
             echo '<a class="btn-primary text-sm" href="' . e($watch) . '">İzle</a>';
         }
+        echo '<a class="btn-outline text-sm" href="' . e(url('ogretmen/kayit-yukle.php' . ogretmen_kayit_qs($filterGid ?: (int) $r['group_id'], (int) $r['id']))) . '#kayit-form">Düzenle</a>';
         if ($mine) {
             echo panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?');
         }
