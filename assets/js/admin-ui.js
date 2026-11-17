@@ -327,10 +327,82 @@
     });
   }
 
+  function bindRecCats() {
+    const data = window.OI_REC_CATS || {};
+    document.querySelectorAll("[data-cat-wrap]").forEach((wrap) => {
+      const catSel = wrap.querySelector("[data-cat-select]");
+      const form = wrap.closest("form");
+      const groupSel = form && form.querySelector("[data-cat-group]");
+      if (!groupSel || !catSel) return;
+      if (wrap.getAttribute("data-cat-bound") === "1") return;
+      wrap.setAttribute("data-cat-bound", "1");
+      const keep = catSel.getAttribute("data-keep") || "";
+      const fill = () => {
+        const gid = String(groupSel.value || "");
+        const fam = (data.map && data.map[gid]) || "";
+        const list = (data.lists && data.lists[fam]) || [];
+        catSel.innerHTML = "";
+        if (!fam || !list.length) {
+          wrap.hidden = true;
+          catSel.required = false;
+          return;
+        }
+        wrap.hidden = false;
+        const optional = !!(form && form.querySelector('input[name="test"]'));
+        catSel.required = !optional;
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "Kategori seçin";
+        catSel.appendChild(blank);
+        list.forEach((name) => {
+          const o = document.createElement("option");
+          o.value = name;
+          o.textContent = name;
+          if (keep && keep === name) o.selected = true;
+          catSel.appendChild(o);
+        });
+      };
+      groupSel.addEventListener("change", fill);
+      fill();
+    });
+  }
+
+  function bindRecEdit() {
+    const editing = document.querySelector("[data-rec-card].is-editing");
+    if (editing) {
+      const box = editing.closest("details");
+      if (box) box.open = true;
+    }
+    document.addEventListener("click", (e) => {
+      const openBtn = e.target.closest("[data-rec-edit]");
+      if (openBtn) {
+        e.preventDefault();
+        const card = openBtn.closest("[data-rec-card]");
+        if (!card) return;
+        document.querySelectorAll("[data-rec-card].is-editing").forEach((el) => {
+          if (el !== card) el.classList.remove("is-editing");
+        });
+        card.classList.add("is-editing");
+        const box = card.closest("details");
+        if (box) box.open = true;
+        const title = card.querySelector('.vod-rec-edit input[name="title"]');
+        if (title) title.focus({ preventScroll: true });
+        return;
+      }
+      const cancel = e.target.closest("[data-rec-edit-cancel]");
+      if (cancel) {
+        e.preventDefault();
+        cancel.closest("[data-rec-card]")?.classList.remove("is-editing");
+      }
+    });
+  }
+
   wrapFileInputs();
   bindDropzones();
   bindMediaBoxes();
   bindListSort();
   bindSliders();
   bindVodMove();
+  bindRecCats();
+  bindRecEdit();
 })();

@@ -47,7 +47,7 @@ $err = flash_error();
     <span class="text-xs text-muted"><?= e(function_exists('recording_card_meta') ? recording_card_meta($r) : ((string) $r['recorded_on'] . ' · ' . (int) $r['mins'] . ' dk')) ?></span>
   </div>
   <div class="flex flex-wrap items-center gap-2">
-    <a class="btn-outline text-sm" href="<?= e(url('ogretmen/kayit-yukle.php?duzenle=' . (int) $r['id'] . '&grup=' . (int) ($r['group_id'] ?? 0) . '#kayit-form')) ?>">Düzenle</a>
+    <a class="btn-outline text-sm" href="<?= e(url('ogretmen/kayit-yukle.php' . '?grup=' . (int) ($r['group_id'] ?? 0) . '&duzenle=' . (int) $r['id'] . '#kayit-' . (int) $r['id'])) ?>">Düzenle</a>
     <?php if ((int) $r['teacher_id'] === (int) $u['id']): ?>
       <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
     <?php endif; ?>

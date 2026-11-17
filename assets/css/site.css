@@ -1135,6 +1135,10 @@ body.panel-nav-lock { overflow: hidden; }
 }
 .vod-rec-main { flex: 1; min-width: 0; }
 .vod-rec-main .card { margin-bottom: 0; }
+.vod-rec-card.is-editing .vod-rec-view { display: none; }
+.vod-rec-card:not(.is-editing) .vod-rec-edit { display: none; }
+.vod-rec-card.is-editing + .vod-move { display: none; }
+.vod-rec-edit { margin: 0; }
 .vod-move {
   display: flex;
   flex-wrap: wrap;

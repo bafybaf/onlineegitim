@@ -570,7 +570,7 @@ function recording_cat_from_room(array $room): string
 }
 
 /** @param list<array<string,mixed>> $groups */
-function recording_subject_picker_html(array $groups, string $keep = ''): void
+function recording_subject_picker_html(array $groups, string $keep = '', array $opt = []): void
 {
     $map = [];
     foreach ($groups as $g) {
@@ -583,57 +583,23 @@ function recording_subject_picker_html(array $groups, string $keep = ''): void
         'dkab' => recording_subject_catalog('dkab'),
         'dhbt' => recording_subject_catalog('dhbt'),
     ];
+    $class = (string) ($opt['class'] ?? 'mt-3 text-sm font-bold md:col-span-2');
+    $hint = !array_key_exists('hint', $opt) || $opt['hint'];
     ?>
-  <label class="mt-3 text-sm font-bold md:col-span-2" data-cat-wrap hidden>
+  <label class="<?= e($class) ?>" data-cat-wrap hidden>
     Kategori
     <select name="lesson_cat" data-cat-select data-keep="<?= e($keep) ?>" class="mt-1 w-full rounded-xl border px-3 py-2">
       <option value="">Kategori seçin</option>
     </select>
+    <?php if ($hint): ?>
     <span class="mt-1 block text-xs font-normal text-muted">DHBT ve DKAB gruplarında zorunlu. Ders kaydı bu başlığın altında listelenir.</span>
+    <?php endif; ?>
   </label>
-  <script>
-  window.OI_REC_CATS = <?= json_encode(['map' => $map, 'lists' => $lists], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-  (function () {
-    var data = window.OI_REC_CATS || {};
-    document.querySelectorAll("[data-cat-wrap]").forEach(function (wrap) {
-      var catSel = wrap.querySelector("[data-cat-select]");
-      var form = wrap.closest("form");
-      var groupSel = form && form.querySelector("[data-cat-group]");
-      if (!groupSel || !catSel) return;
-      if (wrap.getAttribute("data-cat-bound") === "1") return;
-      wrap.setAttribute("data-cat-bound", "1");
-      var keep = catSel.getAttribute("data-keep") || "";
-      function fill() {
-        var gid = String(groupSel.value || "");
-        var fam = (data.map && data.map[gid]) || "";
-        var list = (data.lists && data.lists[fam]) || [];
-        catSel.innerHTML = "";
-        if (!fam || !list.length) {
-          wrap.hidden = true;
-          catSel.required = false;
-          return;
-        }
-        wrap.hidden = false;
-        var optional = !!(form && form.querySelector('input[name="test"]'));
-        catSel.required = !optional;
-        var blank = document.createElement("option");
-        blank.value = "";
-        blank.textContent = "Kategori seçin";
-        catSel.appendChild(blank);
-        list.forEach(function (name) {
-          var o = document.createElement("option");
-          o.value = name;
-          o.textContent = name;
-          if (keep && keep === name) o.selected = true;
-          catSel.appendChild(o);
-        });
-      }
-      groupSel.addEventListener("change", fill);
-      fill();
-    });
-  })();
-  </script>
     <?php
+    if (empty($opt['skip_data']) && empty($GLOBALS['_oi_rec_cats_js'])) {
+        $GLOBALS['_oi_rec_cats_js'] = true;
+        echo '<script>window.OI_REC_CATS = ' . json_encode(['map' => $map, 'lists' => $lists], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';</script>';
+    }
 }
 
 function recording_is_test(array $rec): bool
@@ -1036,7 +1002,17 @@ function recordings_render_lesson_tree(array $tree, callable $card, array $opt =
             $n = count($lesson['rows']);
             $heading = (string) ($lesson['heading'] ?? '');
             $catalogCat = $fam !== '' ? recording_normalize_subject($heading, $fam) : '';
-            $open = (($lesson['key'] ?? '') !== '' && ($lesson['key'] ?? '') === ($g['open_key'] ?? '')) ? ' open' : '';
+            $openRec = (int) ($opt['open_rec'] ?? 0);
+            $openThis = false;
+            if ($openRec > 0) {
+                foreach ($lesson['rows'] as $rr) {
+                    if ((int) ($rr['id'] ?? 0) === $openRec) {
+                        $openThis = true;
+                        break;
+                    }
+                }
+            }
+            $open = ($openThis || ($openRec < 1 && ($lesson['key'] ?? '') !== '' && ($lesson['key'] ?? '') === ($g['open_key'] ?? ''))) ? ' open' : '';
             echo '<details class="vod-lesson"' . $open;
             if ($canMove && $catalogCat !== '') {
                 echo ' data-vod-cat="' . e($catalogCat) . '"';
