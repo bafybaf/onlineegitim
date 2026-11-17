@@ -367,33 +367,50 @@
     });
   }
 
+  function startCatEdit(box) {
+    if (!box) return;
+    document.querySelectorAll(".vod-lesson.is-cat-editing").forEach((el) => {
+      if (el !== box) el.classList.remove("is-cat-editing");
+    });
+    box.classList.add("is-cat-editing");
+    box.open = true;
+    const input = box.querySelector('.vod-cat-edit input[name="cat_to"]');
+    if (input) {
+      input.focus({ preventScroll: true });
+      input.select();
+    }
+  }
+
+  function refuseCatDelete(box) {
+    if (!box) return;
+    const n = box.querySelectorAll("[data-vod-rec]").length || box.querySelectorAll("[data-rec-card]").length;
+    if (n > 0) {
+      alert("İçinde ders varken kategori silinmez. Önce dersleri başka kategoriye taşıyın veya tek tek silin.");
+      return;
+    }
+    alert("Bu kategoride silinecek kayıt yok.");
+  }
+
   function bindCatHeadings() {
     document.querySelectorAll(".vod-lesson > summary").forEach((summary) => {
       if (summary.dataset.catHeadBound) return;
       summary.dataset.catHeadBound = "1";
       summary.addEventListener("click", (e) => {
-        if (e.target.closest("[data-cat-edit],[data-cat-del],.vod-lesson-actions,button,a,input,select,label")) {
+        const editBtn = e.target.closest("[data-cat-edit]");
+        const delBtn = e.target.closest("[data-cat-del]");
+        if (editBtn || delBtn || e.target.closest(".vod-lesson-actions,button,a,input,select,label")) {
           e.preventDefault();
           e.stopPropagation();
         }
+        if (editBtn) startCatEdit(editBtn.closest(".vod-lesson"));
+        if (delBtn) refuseCatDelete(delBtn.closest(".vod-lesson"));
       }, true);
     });
     document.addEventListener("click", (e) => {
       const editBtn = e.target.closest("[data-cat-edit]");
       if (editBtn) {
         e.preventDefault();
-        const box = editBtn.closest(".vod-lesson");
-        if (!box) return;
-        document.querySelectorAll(".vod-lesson.is-cat-editing").forEach((el) => {
-          if (el !== box) el.classList.remove("is-cat-editing");
-        });
-        box.classList.add("is-cat-editing");
-        box.open = true;
-        const input = box.querySelector('.vod-cat-edit input[name="cat_to"]');
-        if (input) {
-          input.focus({ preventScroll: true });
-          input.select();
-        }
+        startCatEdit(editBtn.closest(".vod-lesson"));
         return;
       }
       const cancel = e.target.closest("[data-cat-edit-cancel]");
@@ -405,15 +422,7 @@
       const delBtn = e.target.closest("[data-cat-del]");
       if (delBtn) {
         e.preventDefault();
-        const box = delBtn.closest(".vod-lesson");
-        if (!box) return;
-        const heading = box.getAttribute("data-vod-heading") || "";
-        const n = box.querySelectorAll("[data-vod-rec]").length || box.querySelectorAll("[data-rec-card]").length;
-        if (n > 0) {
-          alert("İçinde ders varken kategori silinmez. Önce dersleri başka kategoriye taşıyın veya tek tek silin.");
-          return;
-        }
-        alert("Bu kategoride silinecek kayıt yok.");
+        refuseCatDelete(delBtn.closest(".vod-lesson"));
       }
     });
     document.addEventListener("submit", (e) => {
