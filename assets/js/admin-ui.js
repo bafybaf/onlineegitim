@@ -409,22 +409,11 @@
         if (!box) return;
         const heading = box.getAttribute("data-vod-heading") || "";
         const n = box.querySelectorAll("[data-vod-rec]").length || box.querySelectorAll("[data-rec-card]").length;
-        if (n < 1) {
-          alert("Bu kategoride silinecek kayıt yok.");
+        if (n > 0) {
+          alert("İçinde ders varken kategori silinmez. Önce dersleri başka kategoriye taşıyın veya tek tek silin.");
           return;
         }
-        if (!window.confirm("“" + heading + "” altındaki " + n + " kayıt silinsin mi? Bu işlem geri alınmaz.")) return;
-        postForm(base + "api/kayit-cat.php", {
-          action: "delete_cat",
-          group_id: box.getAttribute("data-vod-group") || "0",
-          cat_from: heading,
-        }).then((j) => {
-          if (!j || !j.ok) {
-            alert("Silinemedi.");
-            return;
-          }
-          location.reload();
-        }).catch(() => alert("Silinemedi."));
+        alert("Bu kategoride silinecek kayıt yok.");
       }
     });
     document.addEventListener("submit", (e) => {

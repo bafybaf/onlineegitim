@@ -26,12 +26,10 @@ if ($action === 'rename_cat' || $action === 'delete_cat') {
     }
     $rows = recording_recs_matching_heading($gid, $from);
     if ($action === 'delete_cat') {
-        $n = 0;
-        foreach ($rows as $row) {
-            academy_delete_recording((int) $row['id'], (int) $u['id'], true);
-            $n++;
+        if ($rows) {
+            json_out(['ok' => false, 'error' => 'not_empty', 'count' => count($rows)], 422);
         }
-        json_out(['ok' => true, 'deleted' => $n]);
+        json_out(['ok' => true, 'deleted' => 0]);
     }
     $to = trim(post('cat_to'));
     $fam = recording_family_for_group_id($gid);

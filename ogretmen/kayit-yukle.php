@@ -223,7 +223,7 @@ panel_head('ogretmen', 'kayitlar', 'Ders kayıtları | Öğretmen Paneli', $u);
   <p class="md:col-span-2 text-xs text-muted">Dosyalar public klasöre konulmaz. Siz ve kayıtlı öğrenciler izleyebilir. En fazla 300 MB. Yüklerken kalite korunarak 1080p MP4’e sıkıştırılır; bu biraz sürebilir.</p>
   <button class="btn-primary md:col-span-2">Yükle</button>
 </form>
-<p class="mb-4 text-sm text-muted">Düzenle ve Sil hem kayıtta hem alt kategori başlığında, olduğu yerde açılır. Alt kategoriyi silmek o başlıktaki kayıtları da kaldırır. DHBT ve DKAB’de tutamacından sürükleyerek taşıyabilirsiniz.</p>
+<p class="mb-4 text-sm text-muted">Düzenle ve Sil hem kayıtta hem alt kategori başlığında, olduğu yerde açılır. İçinde ders olan kategori silinmez; önce dersleri taşıyın veya silin. DHBT ve DKAB’de tutamacından sürükleyerek taşıyabilirsiniz.</p>
 <?php if (count($groupNames) > 1): ?>
   <div class="mb-5 flex flex-wrap gap-2">
     <a class="<?= $filterGid === 0 ? 'btn-primary' : 'btn-outline' ?> text-sm" href="<?= e(url('ogretmen/kayit-yukle')) ?>">Tüm gruplar</a>
