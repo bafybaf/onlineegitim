@@ -116,17 +116,17 @@ function featured_ders_package_defs(): array
 {
     return [
         [
-            'slug' => 'dhbt-2026',
-            'name' => 'DHBT ücretsiz Soru Çözüm Kampı - Canlı + Kayıt (40 günlük)',
-            'days' => 40,
+            'slug' => 'dkab-2027',
+            'name' => 'DKAB ücretsiz Konu Anlatım Kursu',
+            'days' => 100,
             'price' => 0,
             'sort' => 10,
         ],
         [
-            'slug' => 'dkab-2027',
-            'name' => '2027 DKAB Kursu - Full Paket - Canlı + Kayıt',
-            'days' => 365,
-            'price' => 3499,
+            'slug' => 'dhbt-2026',
+            'name' => 'DHBT ücretsiz Soru Çözüm Kampı - Canlı + Kayıt',
+            'days' => 100,
+            'price' => 0,
             'sort' => 20,
         ],
         [
@@ -254,6 +254,220 @@ function packages_all(): array
     }
     unset($row);
     return $rows;
+}
+
+/** @return list<string> */
+function exam_family_program_slugs(string $family): array
+{
+    return match ($family) {
+        'dkab' => ['dkab-2027', 'tefsir'],
+        'dhbt' => ['dhbt-2026', 'hadis'],
+        default => [],
+    };
+}
+
+function exam_family_from_program_slug(string $slug): string
+{
+    $s = mb_strtolower(trim($slug), 'UTF-8');
+    if ($s === '') {
+        return '';
+    }
+    if (in_array($s, exam_family_program_slugs('dkab'), true) || str_contains($s, 'dkab') || str_contains($s, 'oabt')) {
+        return 'dkab';
+    }
+    if (in_array($s, exam_family_program_slugs('dhbt'), true) || str_contains($s, 'dhbt')) {
+        return 'dhbt';
+    }
+    return '';
+}
+
+/** @return list<int> */
+function exam_access_group_ids(?PDO $pdo = null): array
+{
+    $pdo = $pdo ?? db();
+    $slugs = array_merge(exam_family_program_slugs('dkab'), exam_family_program_slugs('dhbt'));
+    $in = implode(',', array_fill(0, count($slugs), '?'));
+    $st = $pdo->prepare(
+        "SELECT g.id FROM class_groups g
+         LEFT JOIN programs p ON p.id = g.program_id
+         WHERE p.slug IN ($in)
+            OR g.name LIKE '%DKAB%'
+            OR g.name LIKE '%DHBT%'
+            OR g.name LIKE '%ÖABT%'
+            OR g.name LIKE '%OABT%'"
+    );
+    $st->execute($slugs);
+    $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []);
+    return array_values(array_filter($ids, static fn (int $id): bool => $id > 0));
+}
+
+function student_enroll_group_access(PDO $pdo, int $studentId, int $groupId, string $expires, ?int $packageId = null): void
+{
+    if ($studentId < 1 || $groupId < 1) {
+        return;
+    }
+    $cols = function_exists('live_enrollment_columns') ? live_enrollment_columns() : [];
+    if ($cols === []) {
+        try {
+            foreach ($pdo->query('SHOW COLUMNS FROM enrollments')->fetchAll() as $row) {
+                $cols[(string) $row['Field']] = true;
+            }
+        } catch (Throwable) {
+            return;
+        }
+    }
+    $chk = $pdo->prepare('SELECT id FROM enrollments WHERE student_id = ? AND group_id = ?');
+    $chk->execute([$studentId, $groupId]);
+    $id = (int) ($chk->fetchColumn() ?: 0);
+    if ($id > 0) {
+        $sets = [];
+        $vals = [];
+        if (isset($cols['status'])) {
+            $sets[] = "status = 'aktif'";
+        }
+        if (isset($cols['expires_at'])) {
+            $sets[] = 'expires_at = ?';
+            $vals[] = $expires;
+        }
+        if ($sets === []) {
+            return;
+        }
+        $vals[] = $id;
+        $pdo->prepare('UPDATE enrollments SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($vals);
+        return;
+    }
+    $fields = ['student_id', 'group_id'];
+    $vals = [$studentId, $groupId];
+    if (isset($cols['progress'])) {
+        $fields[] = 'progress';
+        $vals[] = 0;
+    }
+    if (isset($cols['package_id']) && $packageId) {
+        $fields[] = 'package_id';
+        $vals[] = $packageId;
+    }
+    if (isset($cols['started_at'])) {
+        $fields[] = 'started_at';
+        $vals[] = date('Y-m-d H:i:s');
+    }
+    if (isset($cols['expires_at'])) {
+        $fields[] = 'expires_at';
+        $vals[] = $expires;
+    }
+    if (isset($cols['status'])) {
+        $fields[] = 'status';
+        $vals[] = 'aktif';
+    }
+    $sql = 'INSERT INTO enrollments (' . implode(', ', $fields) . ') VALUES (' . implode(', ', array_fill(0, count($fields), '?')) . ')';
+    $pdo->prepare($sql)->execute($vals);
+}
+
+function student_grant_exam_family_access(PDO $pdo, int $studentId, int $days, ?int $packageId = null): void
+{
+    $days = max(1, $days);
+    $expires = date('Y-m-d H:i:s', time() + ($days * 86400));
+    foreach (exam_access_group_ids($pdo) as $gid) {
+        student_enroll_group_access($pdo, $studentId, $gid, $expires, $packageId);
+    }
+}
+
+function payment_program_slug(PDO $pdo, array $payment): string
+{
+    $pid = (int) ($payment['program_id'] ?? 0);
+    if ($pid > 0) {
+        $st = $pdo->prepare('SELECT slug FROM programs WHERE id = ?');
+        $st->execute([$pid]);
+        $slug = trim((string) ($st->fetchColumn() ?: ''));
+        if ($slug !== '') {
+            return $slug;
+        }
+    }
+    $pkg = (int) ($payment['package_id'] ?? 0);
+    if ($pkg > 0) {
+        $st = $pdo->prepare(
+            'SELECT pr.slug FROM packages pk LEFT JOIN programs pr ON pr.id = pk.program_id WHERE pk.id = ?'
+        );
+        $st->execute([$pkg]);
+        $slug = trim((string) ($st->fetchColumn() ?: ''));
+        if ($slug !== '') {
+            return $slug;
+        }
+    }
+    $gid = (int) ($payment['group_id'] ?? 0);
+    if ($gid > 0) {
+        $st = $pdo->prepare(
+            'SELECT p.slug FROM class_groups g JOIN programs p ON p.id = g.program_id WHERE g.id = ?'
+        );
+        $st->execute([$gid]);
+        return trim((string) ($st->fetchColumn() ?: ''));
+    }
+    return '';
+}
+
+function ensure_students_dhbt_dkab_access(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (function_exists('setting') && setting('student_dhbt_dkab_v1') === '1') {
+            return;
+        }
+        if (function_exists('sync_featured_ders_packages')) {
+            sync_featured_ders_packages();
+        }
+        $pdo = db();
+        $gids = exam_access_group_ids($pdo);
+        $hasDkab = false;
+        foreach ($gids as $gid) {
+            $st = $pdo->prepare(
+                "SELECT p.slug FROM class_groups g JOIN programs p ON p.id = g.program_id WHERE g.id = ?"
+            );
+            $st->execute([$gid]);
+            if (exam_family_from_program_slug((string) ($st->fetchColumn() ?: '')) === 'dkab') {
+                $hasDkab = true;
+                break;
+            }
+        }
+        if (!$hasDkab) {
+            $done = false;
+            return;
+        }
+        $pdo->exec(
+            "UPDATE users
+             SET status = 'aktif', membership_expires_at = DATE_ADD(NOW(), INTERVAL 100 DAY)
+             WHERE role = 'ogrenci'"
+        );
+        try {
+            $pdo->exec(
+                "UPDATE enrollments e
+                 INNER JOIN users u ON u.id = e.student_id AND u.role = 'ogrenci'
+                 SET e.status = 'aktif', e.expires_at = DATE_ADD(NOW(), INTERVAL 100 DAY)"
+            );
+        } catch (Throwable) {
+            $pdo->exec(
+                "UPDATE enrollments e
+                 INNER JOIN users u ON u.id = e.student_id AND u.role = 'ogrenci'
+                 SET e.expires_at = DATE_ADD(NOW(), INTERVAL 100 DAY)"
+            );
+        }
+        $in = implode(',', array_map('intval', $gids));
+        $pdo->exec("UPDATE class_groups SET cap = GREATEST(cap, 9999) WHERE id IN ($in)");
+        $expires = date('Y-m-d H:i:s', time() + (100 * 86400));
+        $students = $pdo->query("SELECT id FROM users WHERE role = 'ogrenci'")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($students as $sid) {
+            foreach ($gids as $gid) {
+                student_enroll_group_access($pdo, (int) $sid, (int) $gid, $expires, null);
+            }
+        }
+        if (function_exists('setting_set')) {
+            setting_set('student_dhbt_dkab_v1', '1');
+        }
+    } catch (Throwable) {
+        $done = false;
+    }
 }
 
 function membership_is_staff(array $u): bool

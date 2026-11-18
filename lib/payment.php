@@ -234,6 +234,16 @@ function fulfill_class_membership(PDO $pdo, array $payment): void
     $userExpires = date('Y-m-d H:i:s', $userBase + ($days * 86400));
     $pdo->prepare('UPDATE users SET status = ?, membership_expires_at = ? WHERE id = ?')
         ->execute(['aktif', $userExpires, $userId]);
+    $grantExam = static function () use ($pdo, $payment, $userId, $days, $packageId): void {
+        if (!function_exists('student_grant_exam_family_access') || !function_exists('exam_family_from_program_slug')) {
+            return;
+        }
+        $slug = function_exists('payment_program_slug') ? payment_program_slug($pdo, $payment) : '';
+        if (exam_family_from_program_slug($slug) === '') {
+            return;
+        }
+        student_grant_exam_family_access($pdo, $userId, $days, $packageId > 0 ? $packageId : null);
+    };
     if ($groupId < 1) {
         if ($packageId > 0) {
             $pst = $pdo->prepare('SELECT gift_book_id FROM packages WHERE id = ?');
@@ -243,6 +253,7 @@ function fulfill_class_membership(PDO $pdo, array $payment): void
                 academy_gift_book($pdo, $userId, $gift);
             }
         }
+        $grantExam();
         return;
     }
     $chk = $pdo->prepare('SELECT id, expires_at FROM enrollments WHERE student_id = ? AND group_id = ? FOR UPDATE');
@@ -269,6 +280,7 @@ function fulfill_class_membership(PDO $pdo, array $payment): void
             academy_gift_book($pdo, $userId, $gift);
         }
     }
+    $grantExam();
 }
 
 function payment_fail(array $payment, string $reason): void

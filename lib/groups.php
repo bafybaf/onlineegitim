@@ -1017,7 +1017,7 @@ function group_ensure_dkab_2027(): void
             'teacher_ids' => $teacherIds,
             'name' => $name,
             'days' => 'Hafta içi 19:00',
-            'cap' => 10,
+            'cap' => 9999,
             'description' => '2027 DKAB-ÖABT hazırlık. Canlı dersler akşam 19:00; konular bitene kadar hafta içi her gün.',
             'whatsapp_url' => null,
         ], 0, true);

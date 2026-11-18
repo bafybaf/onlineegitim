@@ -11,7 +11,7 @@ $all = array_values(array_filter($all, static function (array $r) use ($u): bool
     }
     return (int) ($r['teacher_id'] ?? 0) === (int) $u['id'];
 }));
-panel_head('ogretmen', 'canli', 'Canlı odalar | Öğretmen Paneli', $u);
+panel_head('ogretmen', 'canli', 'Canlı Ders | Öğretmen Paneli', $u);
 $ok = flash_ok();
 $err = flash_error();
 ?>

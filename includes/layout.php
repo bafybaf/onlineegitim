@@ -294,7 +294,7 @@ function panel_nav(string $role, string $page, int $userId = 0): array
             ['label' => 'Ders', 'items' => [
                 ['id' => 'dashboard', 'href' => 'ogretmen', 'label' => 'Özet', 'icon' => 'home'],
                 ['id' => 'siniflar', 'href' => 'ogretmen/siniflar', 'label' => 'Sınıflarım', 'icon' => 'users'],
-                ['id' => 'canli', 'href' => 'ogretmen/canli', 'label' => 'Canlı odalar', 'icon' => 'live', 'badge' => $liveN],
+                ['id' => 'canli', 'href' => 'ogretmen/canli', 'label' => 'Canlı Ders', 'icon' => 'live', 'badge' => $liveN],
                 ['id' => 'takvim', 'href' => 'ogretmen/takvim', 'label' => 'Takvim', 'icon' => 'calendar'],
                 ['id' => 'yoklama', 'href' => 'ogretmen/yoklama', 'label' => 'Yoklama', 'icon' => 'list'],
             ]],

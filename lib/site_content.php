@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function public_program_slugs(): array
 {
-    return ['dhbt-2026', 'dkab-2027', 'mbsts-2027', 'arapca-yokdil'];
+    return ['dkab-2027', 'dhbt-2026', 'mbsts-2027', 'arapca-yokdil'];
 }
 
 function public_programs(): array
@@ -144,13 +144,13 @@ function ensure_public_site_content(): void
     }
     $done = true;
     try {
-        if (setting('public_copy_rev') !== 'kurs-2026-v3') {
+        if (setting('public_copy_rev') !== 'kurs-2026-v4') {
             site_sync_categories();
             site_sync_programs();
             site_sync_highlights();
             site_sync_campaign();
             site_sync_announcement();
-            setting_set('public_copy_rev', 'kurs-2026-v3');
+            setting_set('public_copy_rev', 'kurs-2026-v4');
         }
         if (setting('seo_serp_rev') !== 'exams-v1') {
             site_sync_seo();
@@ -202,6 +202,19 @@ function site_featured_program_defs(): array
     $copy = catalog_program_copy();
     return [
         [
+            'slug' => 'dkab-2027',
+            'aliases' => ['tefsir'],
+            'title' => 'DKAB ücretsiz Konu Anlatım Kursu',
+            'level' => 'DKAB-İHL',
+            'hours' => 'Hafta içi 3 veya 4 gün · 19:00',
+            'price_old' => 0,
+            'price_now' => 0,
+            'tag' => 'Ücretsiz konu anlatım',
+            'description' => '2027 DKAB-ÖABT hazırlık. Ücretsiz konu anlatım kursu.',
+            'body' => $copy['dkab-2027'] ?? '',
+            'image' => 'assets/img/programs/dkab-2027.jpg',
+        ],
+        [
             'slug' => 'dhbt-2026',
             'aliases' => ['hadis'],
             'title' => '2026 DHBT KURSU',
@@ -213,19 +226,6 @@ function site_featured_program_defs(): array
             'description' => '2026 DHBT’ye hazırlanıyorsan, bu kamp tam sana göre!',
             'body' => $copy['dhbt-2026'] ?? '',
             'image' => 'assets/img/programs/dhbt-2026.jpg',
-        ],
-        [
-            'slug' => 'dkab-2027',
-            'aliases' => ['tefsir'],
-            'title' => '2027 DKAB KURSU',
-            'level' => 'DKAB-İHL',
-            'hours' => 'Hafta içi 3 veya 4 gün · 19:00',
-            'price_old' => 6000,
-            'price_now' => 3499,
-            'tag' => 'Full paket',
-            'description' => '2027 DKAB-ÖABT hazırlık.',
-            'body' => $copy['dkab-2027'] ?? '',
-            'image' => 'assets/img/programs/dkab-2027.jpg',
         ],
         [
             'slug' => 'mbsts-2027',
@@ -266,6 +266,18 @@ function site_program_by_slug(string $slug): ?array
 
 function site_sync_programs(): void
 {
+    $hasSort = false;
+    try {
+        foreach (db()->query('SHOW COLUMNS FROM programs')->fetchAll() as $col) {
+            if (($col['Field'] ?? '') === 'sort') {
+                $hasSort = true;
+                break;
+            }
+        }
+    } catch (Throwable) {
+        $hasSort = false;
+    }
+    $sort = 10;
     foreach (site_featured_program_defs() as $def) {
         $row = site_program_by_slug($def['slug']);
         if (!$row) {
@@ -293,6 +305,10 @@ function site_sync_programs(): void
                 $img !== '' ? $img : (string) ($row['image'] ?? ''),
                 (int) $row['id'],
             ]);
+            if ($hasSort) {
+                db()->prepare('UPDATE programs SET sort = ? WHERE id = ?')->execute([$sort, (int) $row['id']]);
+            }
+            $sort += 10;
             continue;
         }
         db()->prepare(
@@ -309,6 +325,11 @@ function site_sync_programs(): void
             $desc,
             $img !== '' ? $img : 'assets/img/programs/arapca.jpg',
         ]);
+        $newId = (int) db()->lastInsertId();
+        if ($hasSort && $newId > 0) {
+            db()->prepare('UPDATE programs SET sort = ? WHERE id = ?')->execute([$sort, $newId]);
+        }
+        $sort += 10;
     }
     db()->prepare("UPDATE programs SET title='Genel Arapça', level='Arapça', tag='Genel Arapça' WHERE slug='arapca'")
         ->execute();

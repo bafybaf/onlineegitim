@@ -36,7 +36,7 @@ if ($relatedSlug !== '') {
 $isFree = (int) $p['price_now'] <= 0;
 $slugKey = (string) $p['slug'];
 $hideTeachers = in_array($slugKey, ['dkab-2027', 'tefsir'], true);
-$hideQuota = in_array($slugKey, ['dhbt-2026', 'hadis'], true);
+$hideQuota = in_array($slugKey, ['dhbt-2026', 'hadis', 'dkab-2027', 'tefsir'], true);
 $kayitLabel = $isFree ? 'Ücretsiz sepete ekle' : 'Sepete ekle';
 $askName = (string) ($u['name'] ?? '');
 $askEmail = (string) ($u['email'] ?? '');

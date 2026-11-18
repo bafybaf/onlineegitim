@@ -52,7 +52,7 @@ panel_head('ogretmen', 'siniflar', (string) $g['name'] . ' | Sınıf | Öğretme
   <div class="mt-5 flex flex-wrap gap-2">
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/ogrenciler.php?grup=' . (int) $g['id'])) ?>">Öğrenci kartları</a>
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/takvim')) ?>">Takvim</a>
-    <a class="btn-outline text-sm" href="<?= e(url('ogretmen/canli')) ?>">Canlı odalar</a>
+    <a class="btn-outline text-sm" href="<?= e(url('ogretmen/canli')) ?>">Canlı Ders</a>
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/odevler')) ?>">Ödevler (<?= (int) $counts['hw'] ?>)</a>
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/testler')) ?>">Testler (<?= (int) $counts['test'] ?>)</a>
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/yoklama.php?grup=' . (int) $g['id'])) ?>">Yoklama</a>
