@@ -62,13 +62,121 @@ function vod_cf_iframe_url(string $url): string
     return $m[1] . '/iframe';
 }
 
+/** @return array{host:string,uid:string} */
+function vod_cf_parts(string $url, string $path = ''): array
+{
+    $host = '';
+    $uid = '';
+    if ($url !== '' && function_exists('live_cf_from_url')) {
+        $p = live_cf_from_url($url);
+        $host = (string) ($p['host'] ?? '');
+        $uid = (string) ($p['uid'] ?? '');
+    }
+    if ($uid === '' && preg_match('#https://(customer-[a-z0-9]+\.cloudflarestream\.com)/([A-Za-z0-9_-]{16,64})#i', $url, $m)) {
+        $host = strtolower($m[1]);
+        $uid = $m[2];
+    }
+    if ($uid === '' && preg_match('#(?:^|/)cf/([A-Za-z0-9_-]{16,64})$#', str_replace('\\', '/', $path), $m)) {
+        $uid = $m[1];
+    }
+    if ($host === '' && $uid !== '' && function_exists('live_cf_from_url') && function_exists('live_cf_url')) {
+        $p = live_cf_from_url(live_cf_url('cam', 'whep'));
+        $host = (string) ($p['host'] ?? '');
+        if ($host === '') {
+            $p = live_cf_from_url(live_cf_url('cam', 'whip'));
+            $host = (string) ($p['host'] ?? '');
+        }
+    }
+    if ($host === '' || $uid === '') {
+        return ['host' => '', 'uid' => ''];
+    }
+    return ['host' => $host, 'uid' => $uid];
+}
+
+/** @return array{host:string,uid:string} */
+function vod_cf_from_rec(array $rec): array
+{
+    return vod_cf_parts(
+        trim((string) ($rec['video_url'] ?? '')),
+        trim((string) ($rec['video_path'] ?? ''))
+    );
+}
+
+function vod_duration_hint(array $rec): int
+{
+    $sec = (int) ($rec['duration_sec'] ?? 0);
+    if ($sec < 1) {
+        $sec = max(0, (int) ($rec['mins'] ?? 0)) * 60;
+    }
+    return $sec > 0 ? min(28800, $sec) : 0;
+}
+
+function vod_cf_iframe_src(string $host, string $uid): string
+{
+    return 'https://' . $host . '/' . $uid . '/iframe?preload=true&dvrEnabled=true';
+}
+
 function vod_remote_player_html(string $src): string
 {
     $iframe = vod_cf_iframe_url($src);
     if ($iframe === '') {
         return '<p class="p-5"><a class="btn-primary" href="' . e($src) . '" target="_blank" rel="noreferrer">Videoyu aç</a></p>';
     }
+    if (!str_contains($iframe, '?')) {
+        $iframe .= '?preload=true&dvrEnabled=true';
+    }
     return '<iframe src="' . e($iframe) . '" class="block w-full bg-black" style="aspect-ratio:16/9;min-height:240px;border:0" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+}
+
+function vod_player_js_url(): string
+{
+    $rel = 'assets/js/vod-player.js';
+    return url($rel) . '?v=' . (int) @filemtime(__DIR__ . '/../' . $rel);
+}
+
+function vod_watch_shell(string $inner): string
+{
+    return '<style>.vod-wide{margin-left:-1.5rem;margin-right:-1.5rem;width:calc(100% + 3rem)}@media(min-width:768px){.vod-wide{margin-left:-2.25rem;margin-right:-2.25rem;width:calc(100% + 4.5rem)}}.vod-wide video,.vod-wide iframe{display:block;width:100%;aspect-ratio:16/9;min-height:240px;border:0;background:#000}</style>'
+        . '<div class="vod-wide" style="background:#000;border-radius:.75rem;overflow:hidden">'
+        . $inner
+        . '</div>';
+}
+
+function vod_watch_video_tag(): string
+{
+    return '<video id="vod-player" class="block w-full bg-black" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="auto" oncontextmenu="return false"></video>';
+}
+
+function vod_watch_html(array $rec, int $userId): string
+{
+    $hint = vod_duration_hint($rec);
+    $cf = vod_cf_from_rec($rec);
+    if ($cf['uid'] !== '') {
+        $base = 'https://' . $cf['host'] . '/' . $cf['uid'];
+        $box = '<div id="vod-box" data-hls="' . e($base . '/manifest/video.m3u8') . '" data-mp4="' . e($base . '/downloads/default.mp4') . '" data-iframe="' . e(vod_cf_iframe_src($cf['host'], $cf['uid'])) . '" data-duration="' . $hint . '">'
+            . vod_watch_video_tag()
+            . '</div>'
+            . '<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>'
+            . '<script src="' . e(vod_player_js_url()) . '"></script>';
+        return vod_watch_shell($box);
+    }
+    [$jsSrc, $src] = vod_player_src($rec, $userId);
+    $play = $jsSrc !== '' ? $jsSrc : $src;
+    $rel = trim((string) ($rec['video_path'] ?? ''));
+    if ($play === '' && $rel !== '' && !vod_is_remote_path($rel)) {
+        $play = url('api/dosya.php?tur=video&id=' . (int) ($rec['id'] ?? 0));
+    }
+    if ($play === '') {
+        return vod_watch_shell('<p class="p-5 text-muted">Bu kayıt için henüz video yüklenmedi.</p>');
+    }
+    if ($jsSrc === '' && !empty($rec['video_url']) && $rel === '' && !preg_match('/\.(mp4|webm|mov)(\?|$)/i', $src)) {
+        return vod_watch_shell('<p class="p-5"><a class="btn-primary" href="' . e($src) . '" target="_blank" rel="noreferrer">Videoyu aç</a></p>');
+    }
+    $box = '<div id="vod-box" data-src="' . e($play) . '" data-duration="' . $hint . '">'
+        . vod_watch_video_tag()
+        . '</div>'
+        . '<script src="' . e(vod_player_js_url()) . '"></script>';
+    return vod_watch_shell($box);
 }
 
 function vod_player_src(array $rec, int $userId): array
