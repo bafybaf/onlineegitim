@@ -244,9 +244,18 @@ function catalog_store_upload(string $field, string $subdir, string $slug): ?str
     return null;
 }
 
+function program_panel_url(int $id, string $panel = 'admin'): string
+{
+    $panel = $panel === 'ogretmen' ? 'ogretmen' : 'admin';
+    if ($id < 1) {
+        return url($panel . '/program/yeni');
+    }
+    return url($panel . '/program/' . $id);
+}
+
 function program_admin_url(int $id): string
 {
-    return rtrim(BASE_URL, '/') . '/admin/program/' . max(0, $id);
+    return program_panel_url($id, 'admin');
 }
 
 function urun_admin_url(int $id): string

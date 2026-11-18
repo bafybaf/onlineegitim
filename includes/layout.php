@@ -309,6 +309,10 @@ function panel_nav(string $role, string $page, int $userId = 0): array
                 ['id' => 'sorular', 'href' => 'ogretmen/sorular', 'label' => 'Sorular', 'icon' => 'mail', 'badge' => function_exists('question_teacher_pending_count') ? question_teacher_pending_count((int) (current_user()['id'] ?? 0)) : 0],
                 ['id' => 'mesajlar', 'href' => 'ogretmen/mesajlar', 'label' => 'Mesajlar', 'icon' => 'mail'],
             ]],
+            ['label' => 'Site', 'items' => [
+                ['id' => 'anasayfa', 'href' => 'ogretmen/anasayfa', 'label' => 'Slider', 'icon' => 'layers'],
+                ['id' => 'programlar', 'href' => 'ogretmen/programlar', 'label' => 'Eğitimler', 'icon' => 'book'],
+            ]],
             ['label' => 'Hesap', 'items' => [
                 ['id' => 'hesap', 'href' => 'ogretmen/hesap', 'label' => 'Hesabım', 'icon' => 'user'],
             ]],

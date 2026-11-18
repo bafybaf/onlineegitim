@@ -85,6 +85,12 @@ function pretty_path(string $path): string
     if ($file === 'admin/program.php' && !empty($params['id'])) {
         return 'admin/program/' . (int) $params['id'];
     }
+    if ($file === 'ogretmen/program.php' && isset($params['id']) && (int) $params['id'] === 0) {
+        return 'ogretmen/program/yeni';
+    }
+    if ($file === 'ogretmen/program.php' && !empty($params['id'])) {
+        return 'ogretmen/program/' . (int) $params['id'];
+    }
     if ($file === 'ogrenci/kayit-izle.php' && !empty($params['id'])) {
         return 'ogrenci/kayit/' . (int) $params['id'];
     }
@@ -370,6 +376,12 @@ function seo_hydrate_route(): void
         $_GET['id'] = $m[1];
     }
     if (preg_match('#^admin/program/(\d+)$#', $path, $m) && empty($_GET['id'])) {
+        $_GET['id'] = $m[1];
+    }
+    if ($path === 'ogretmen/program/yeni' && !isset($_GET['id'])) {
+        $_GET['id'] = '0';
+    }
+    if (preg_match('#^ogretmen/program/(\d+)$#', $path, $m) && empty($_GET['id'])) {
         $_GET['id'] = $m[1];
     }
     if ($path === 'admin/paket/yeni' && !isset($_GET['id'])) {

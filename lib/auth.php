@@ -75,6 +75,18 @@ function is_admin_role(string $role): bool
     return $role === 'admin';
 }
 
+function can_manage_site_content(?array $u): bool
+{
+    $role = (string) ($u['role'] ?? '');
+    return $role === 'admin' || $role === 'ogretmen';
+}
+
+function panel_site_area(?array $u = null): string
+{
+    $role = (string) (($u ?? current_user() ?? [])['role'] ?? '');
+    return $role === 'ogretmen' ? 'ogretmen' : 'admin';
+}
+
 function login_page_for_roles(string ...$roles): string
 {
     $onlyShop = $roles === ['musteri'];

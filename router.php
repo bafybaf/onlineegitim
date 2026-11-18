@@ -120,6 +120,18 @@ if (preg_match('#^admin/program/(\d+)$#', $path, $m)) {
     exit;
 }
 
+if ($path === 'ogretmen/program/yeni') {
+    $_GET['id'] = '0';
+    require __DIR__ . '/ogretmen/program.php';
+    exit;
+}
+
+if (preg_match('#^ogretmen/program/(\d+)$#', $path, $m)) {
+    $_GET['id'] = $m[1];
+    require __DIR__ . '/ogretmen/program.php';
+    exit;
+}
+
 if (preg_match('#^ogrenci/kayit/(\d+)$#', $path, $m)) {
     $_GET['id'] = $m[1];
     require __DIR__ . '/ogrenci/kayit-izle.php';

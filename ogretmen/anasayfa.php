@@ -1,0 +1,6 @@
+<?php
+require_once __DIR__ . '/../lib/bootstrap.php';
+require_once __DIR__ . '/../includes/layout.php';
+$u = require_role('ogretmen');
+$panel = 'ogretmen';
+require __DIR__ . '/../includes/manage_home.php';

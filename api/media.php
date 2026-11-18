@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 
 $u = current_user();
-if (!$u || !is_admin_role($u['role'])) {
+if (!$u || !can_manage_site_content($u)) {
     json_out(['ok' => false, 'error' => 'forbidden'], 403);
 }
 
@@ -11,6 +11,9 @@ $type = post('owner_type');
 $ownerId = (int) post('owner_id');
 if (!isset(media_owner_types()[$type])) {
     json_out(['ok' => false, 'error' => 'type'], 422);
+}
+if (($u['role'] ?? '') === 'ogretmen' && !in_array($type, ['program', 'program_body'], true)) {
+    json_out(['ok' => false, 'error' => 'forbidden'], 403);
 }
 
 if ($action === 'upload') {
