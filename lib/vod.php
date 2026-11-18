@@ -147,11 +147,29 @@ function vod_watch_video_tag(): string
     return '<video id="vod-player" class="block w-full bg-black" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="auto" oncontextmenu="return false"></video>';
 }
 
+function vod_cf_enable_mp4_later(string $uid): void
+{
+    if ($uid === '' || !function_exists('live_cf_enable_mp4')) {
+        return;
+    }
+    if (!empty($GLOBALS['_oi_mp4_kick'][$uid])) {
+        return;
+    }
+    $GLOBALS['_oi_mp4_kick'][$uid] = true;
+    register_shutdown_function(static function () use ($uid) {
+        try {
+            live_cf_enable_mp4($uid);
+        } catch (Throwable $e) {
+        }
+    });
+}
+
 function vod_watch_html(array $rec, int $userId): string
 {
     $hint = vod_duration_hint($rec);
     $cf = vod_cf_from_rec($rec);
     if ($cf['uid'] !== '') {
+        vod_cf_enable_mp4_later($cf['uid']);
         $base = 'https://' . $cf['host'] . '/' . $cf['uid'];
         $box = '<div id="vod-box" data-hls="' . e($base . '/manifest/video.m3u8') . '" data-mp4="' . e($base . '/downloads/default.mp4') . '" data-iframe="' . e(vod_cf_iframe_src($cf['host'], $cf['uid'])) . '" data-duration="' . $hint . '">'
             . vod_watch_video_tag()

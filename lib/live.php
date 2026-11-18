@@ -229,6 +229,17 @@ function live_cf_delete_video(string $uid): bool
     return live_cf_api('stream/' . rawurlencode($uid), 'DELETE') !== null;
 }
 
+function live_cf_enable_mp4(string $uid): void
+{
+    if ($uid === '' || !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
+        return;
+    }
+    try {
+        live_cf_api('stream/' . rawurlencode($uid) . '/downloads', 'POST', '{}', 8);
+    } catch (Throwable $e) {
+    }
+}
+
 function live_cf_download_mp4_url(string $uid): string
 {
     if ($uid === '' || !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $uid)) {
@@ -453,6 +464,7 @@ function live_cf_save_video_recording(PDO $pdo, array $room, array $video, strin
     if (!$isTest && function_exists('notify_group_students')) {
         notify_group_students((int) $room['group_id'], 'Ders kaydı hazır', $label, url('ogrenci/kayitlar'));
     }
+    live_cf_enable_mp4($uid);
     return true;
 }
 
