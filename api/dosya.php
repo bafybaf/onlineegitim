@@ -134,7 +134,7 @@ $inline = in_array($ext, ['mp4', 'webm', 'mov', 'pdf', 'jpg', 'jpeg', 'png', 'we
 $isVideo = in_array($ext, ['mp4', 'webm', 'mov'], true);
 if ($isVideo && $tur === 'video' && function_exists('vod_ensure_playable')) {
     $hintMs = function_exists('vod_hint_ms') ? vod_hint_ms($row) : max(0, (int) ($row['mins'] ?? 0)) * 60 * 1000.0;
-    vod_ensure_playable($abs, $hintMs);
+    vod_ensure_playable($abs, $hintMs, false);
     $abs = function_exists('academy_file_readable') ? (academy_file_readable($rel) ?: $abs) : $abs;
     $needLen = (int) ($row['duration_sec'] ?? 0) < 1;
     if ($needLen && function_exists('vod_sync_recording_length')) {

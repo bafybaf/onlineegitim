@@ -144,7 +144,7 @@ function vod_watch_shell(string $inner): string
 
 function vod_watch_video_tag(): string
 {
-    return '<video id="vod-player" class="block w-full bg-black" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="auto" oncontextmenu="return false"></video>';
+    return '<video id="vod-player" class="block w-full bg-black" controls controlslist="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata" oncontextmenu="return false"></video>';
 }
 
 function vod_cf_enable_mp4_later(string $uid): void
@@ -268,7 +268,7 @@ function vod_marker(string $abs): string
     return $abs . '.ok';
 }
 
-function vod_ensure_playable(string $abs, float $hintMs = 0): bool
+function vod_ensure_playable(string $abs, float $hintMs = 0, bool $heavy = true): bool
 {
     if (!is_file($abs) || !is_readable($abs)) {
         return false;
@@ -277,10 +277,27 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     if ($ext !== 'webm') {
         return true;
     }
-    if (is_file(vod_marker($abs))) {
+    if (vod_webm_header_has_duration($abs)) {
+        if (!is_file(vod_marker($abs))) {
+            @file_put_contents(vod_marker($abs), '1');
+        }
         return true;
     }
-    @set_time_limit(180);
+    if (is_file(vod_marker($abs))) {
+        @unlink(vod_marker($abs));
+    }
+    try {
+        vod_webm_patch_duration($abs, $hintMs, false);
+    } catch (Throwable $e) {
+    }
+    if (vod_webm_header_has_duration($abs)) {
+        @file_put_contents(vod_marker($abs), '1');
+        return true;
+    }
+    if (!$heavy) {
+        return is_file($abs);
+    }
+    @set_time_limit(600);
     $lockPath = $abs . '.lock';
     $lock = @fopen($lockPath, 'c');
     if ($lock === false) {
@@ -293,8 +310,9 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     $ok = false;
     try {
         $ok = vod_stamp_duration($abs, $hintMs);
-        if ($ok) {
+        if ($ok || vod_webm_duration_known($abs)) {
             @file_put_contents(vod_marker($abs), '1');
+            $ok = true;
         }
     } finally {
         flock($lock, LOCK_UN);
@@ -304,11 +322,28 @@ function vod_ensure_playable(string $abs, float $hintMs = 0): bool
     return $ok || is_file($abs);
 }
 
-function vod_webm_duration_known(string $abs): bool
+function vod_stamp_duration_later(string $abs, float $hintMs): void
 {
-    if (vod_ffprobe_ms($abs) > 1000) {
-        return true;
+    if ($abs === '' || !is_file($abs)) {
+        return;
     }
+    $key = realpath($abs) ?: $abs;
+    if (!empty($GLOBALS['_oi_webm_stamp'][$key])) {
+        return;
+    }
+    $GLOBALS['_oi_webm_stamp'][$key] = true;
+    register_shutdown_function(static function () use ($abs, $hintMs) {
+        ignore_user_abort(true);
+        @set_time_limit(600);
+        try {
+            vod_ensure_playable($abs, $hintMs, true);
+        } catch (Throwable $e) {
+        }
+    });
+}
+
+function vod_webm_header_has_duration(string $abs): bool
+{
     $fp = @fopen($abs, 'rb');
     if ($fp === false) {
         return false;
@@ -316,6 +351,14 @@ function vod_webm_duration_known(string $abs): bool
     $buf = (string) fread($fp, 65536);
     fclose($fp);
     return strpos($buf, "\x44\x89") !== false;
+}
+
+function vod_webm_duration_known(string $abs): bool
+{
+    if (vod_webm_header_has_duration($abs)) {
+        return true;
+    }
+    return vod_ffprobe_ms($abs) > 1000;
 }
 
 function vod_stamp_duration(string $abs, float $hintMs = 0): bool
@@ -1275,7 +1318,12 @@ function vod_sync_recording_length(array $rec): array
 
 function vod_prepare_recording(array $rec): array
 {
-    return vod_sync_recording_length($rec);
+    $rec = vod_sync_recording_length($rec);
+    $abs = vod_abs_from_rec($rec);
+    if ($abs !== '' && preg_match('/\.webm$/i', $abs) && !vod_webm_duration_known($abs)) {
+        vod_stamp_duration_later($abs, vod_hint_ms($rec));
+    }
+    return $rec;
 }
 
 function vod_last_committed_id(): int
@@ -1432,7 +1480,19 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
         } catch (Throwable $e) {
             $stamped = false;
         }
-        @file_put_contents(vod_marker($dest), '1');
+        if (!$stamped && $bytes < 80 * 1024 * 1024) {
+            try {
+                $stamped = vod_stamp_duration($dest, $hintMs);
+            } catch (Throwable $e) {
+                $stamped = false;
+            }
+        }
+        if ($stamped || vod_webm_duration_known($dest)) {
+            @file_put_contents(vod_marker($dest), '1');
+        } else {
+            @unlink(vod_marker($dest));
+            vod_stamp_duration_later($dest, $hintMs);
+        }
     }
     $fileMs = $bytes > 0 ? vod_probe_ms($dest, $hintMs) : 0.0;
     $jsSec = $sec > 1 ? $sec : ($mins > 0 ? $mins * 60 : 0);
