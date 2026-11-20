@@ -7,7 +7,7 @@ if (!$u || !can_manage_site_content($u)) {
 }
 
 $table = post('table');
-if (($u['role'] ?? '') === 'ogretmen' && !in_array($table, ['home_slides', 'home_highlights', 'programs'], true)) {
+if (($u['role'] ?? '') === 'ogretmen' && !in_array($table, ['home_slides', 'home_highlights', 'programs', 'books'], true)) {
     json_out(['ok' => false, 'error' => 'forbidden'], 403);
 }
 $ids = $_POST['ids'] ?? [];

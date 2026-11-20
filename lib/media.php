@@ -258,9 +258,18 @@ function program_admin_url(int $id): string
     return program_panel_url($id, 'admin');
 }
 
+function urun_panel_url(int $id, string $panel = 'admin'): string
+{
+    $panel = $panel === 'ogretmen' ? 'ogretmen' : 'admin';
+    if ($id < 1) {
+        return rtrim(BASE_URL, '/') . '/' . $panel . '/urun/yeni';
+    }
+    return rtrim(BASE_URL, '/') . '/' . $panel . '/urun/' . $id;
+}
+
 function urun_admin_url(int $id): string
 {
-    return rtrim(BASE_URL, '/') . '/admin/urun/' . max(0, $id);
+    return urun_panel_url($id, 'admin');
 }
 
 function media_owner_types(): array

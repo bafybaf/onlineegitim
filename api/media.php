@@ -12,7 +12,7 @@ $ownerId = (int) post('owner_id');
 if (!isset(media_owner_types()[$type])) {
     json_out(['ok' => false, 'error' => 'type'], 422);
 }
-if (($u['role'] ?? '') === 'ogretmen' && !in_array($type, ['program', 'program_body'], true)) {
+if (($u['role'] ?? '') === 'ogretmen' && !in_array($type, ['program', 'program_body', 'book'], true)) {
     json_out(['ok' => false, 'error' => 'forbidden'], 403);
 }
 

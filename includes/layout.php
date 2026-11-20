@@ -312,6 +312,7 @@ function panel_nav(string $role, string $page, int $userId = 0): array
             ['label' => 'Site', 'items' => [
                 ['id' => 'anasayfa', 'href' => 'ogretmen/anasayfa', 'label' => 'Slider', 'icon' => 'layers'],
                 ['id' => 'programlar', 'href' => 'ogretmen/programlar', 'label' => 'Eğitimler', 'icon' => 'book'],
+                ['id' => 'urunler', 'href' => 'ogretmen/urunler', 'label' => 'Kitaplar', 'icon' => 'box'],
             ]],
             ['label' => 'Hesap', 'items' => [
                 ['id' => 'hesap', 'href' => 'ogretmen/hesap', 'label' => 'Hesabım', 'icon' => 'user'],

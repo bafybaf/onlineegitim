@@ -162,6 +162,18 @@ if (preg_match('#^sertifika/([A-Za-z0-9\-]+)$#', $path, $m)) {
     exit;
 }
 
+if ($path === 'ogretmen/urun/yeni') {
+    $_GET['id'] = '0';
+    require __DIR__ . '/ogretmen/urun.php';
+    exit;
+}
+
+if (preg_match('#^ogretmen/urun/(\d+)$#', $path, $m)) {
+    $_GET['id'] = $m[1];
+    require __DIR__ . '/ogretmen/urun.php';
+    exit;
+}
+
 if ($path === 'admin/urun/yeni') {
     $_GET['id'] = '0';
     require __DIR__ . '/admin/urun-duzenle.php';
