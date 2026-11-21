@@ -47,6 +47,9 @@
     }
     camInDock = false;
     document.body.classList.remove('is-cam-docked');
+    if (typeof window.liveLayoutPlace === 'function') {
+      window.liveLayoutPlace();
+    }
     playPip();
   }
 

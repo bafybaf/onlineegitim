@@ -78,7 +78,10 @@
       waitDetail.textContent = detail || '';
       waitDetail.hidden = !detail;
     }
-    if (overlay) overlay.classList.toggle('is-off', !show);
+    if (overlay) {
+      overlay.classList.toggle('is-off', !show);
+      overlay.classList.toggle('is-hint', camLive());
+    }
   }
 
   function iceServers() {

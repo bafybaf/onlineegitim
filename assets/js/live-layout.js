@@ -57,6 +57,8 @@
     }
   }
 
+  window.liveLayoutPlace = placePip;
+
   function render() {
     if (shell) {
       shell.classList.toggle('is-board-full', isFull());
@@ -118,6 +120,8 @@
         moved = true;
       }
       pip.style.right = 'auto';
+      pip.style.left = (camX * 100) + '%';
+      pip.style.top = (camY * 100) + '%';
       const r = stage.getBoundingClientRect();
       drag = {
         dx: ev.clientX - r.left - camX * r.width,

@@ -842,6 +842,13 @@ body.is-cam-docked #live-stage #live-cam-pip { display: none; }
   padding: 2rem; background: rgba(8,12,24,.72); pointer-events: none;
 }
 .live-wait.is-off { display: none; }
+/* Kamera görünürken durum yazısı görüntüyü karartmaz; altta küçük şerit */
+.live-shell .live-wait.is-hint {
+  background: linear-gradient(to top, rgba(8,12,24,.78), rgba(8,12,24,0) 70%);
+  justify-content: flex-end; padding: .5rem .7rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8);
+}
+.live-shell .live-wait.is-hint #wait-title { font-size: 12px; line-height: 1.2; font-weight: 800; }
+.live-shell .live-wait.is-hint #wait-detail { font-size: 10px; opacity: .85; }
 .live-wait-kicker { font-size: 10px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: #fca5a5; }
 .live-obs {
   display: flex; flex-wrap: wrap; gap: 12px;
