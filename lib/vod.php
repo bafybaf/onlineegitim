@@ -268,6 +268,47 @@ function vod_marker(string $abs): string
     return $abs . '.ok';
 }
 
+function vod_fail_marker(string $abs): string
+{
+    return $abs . '.fail';
+}
+
+/** Canlı ders açıkken sunucuyu ağır işlerle (ffmpeg/ffprobe/dosya yeniden yazma) meşgul etme. */
+function vod_live_busy(): bool
+{
+    static $busy = null;
+    if ($busy !== null) {
+        return $busy;
+    }
+    $busy = false;
+    try {
+        $n = (int) db()->query("SELECT COUNT(*) FROM live_rooms WHERE status = 'live'")->fetchColumn();
+        $busy = $n > 0;
+    } catch (Throwable $e) {
+        $busy = false;
+    }
+    return $busy;
+}
+
+/** Ağır komutları düşük öncelikte çalıştırır (Linux). */
+function vod_nice_prefix(): string
+{
+    static $p = null;
+    if ($p !== null) {
+        return $p;
+    }
+    $p = '';
+    if (PHP_OS_FAMILY !== 'Windows') {
+        foreach (['/usr/bin/nice', '/bin/nice'] as $nice) {
+            if (is_file($nice)) {
+                $p = escapeshellarg($nice) . ' -n 19 ';
+                break;
+            }
+        }
+    }
+    return $p;
+}
+
 function vod_ensure_playable(string $abs, float $hintMs = 0, bool $heavy = true): bool
 {
     if (!is_file($abs) || !is_readable($abs)) {
@@ -277,14 +318,18 @@ function vod_ensure_playable(string $abs, float $hintMs = 0, bool $heavy = true)
     if ($ext !== 'webm') {
         return true;
     }
-    if (vod_webm_header_has_duration($abs)) {
-        if (!is_file(vod_marker($abs))) {
-            @file_put_contents(vod_marker($abs), '1');
-        }
+    if (is_file(vod_marker($abs)) || is_file(vod_fail_marker($abs))) {
         return true;
     }
-    if (is_file(vod_marker($abs))) {
-        @unlink(vod_marker($abs));
+    if (vod_webm_header_has_duration($abs)) {
+        @file_put_contents(vod_marker($abs), '1');
+        return true;
+    }
+    if (!$heavy) {
+        return true;
+    }
+    if (vod_live_busy()) {
+        return is_file($abs);
     }
     try {
         vod_webm_patch_duration($abs, $hintMs, false);
@@ -293,9 +338,6 @@ function vod_ensure_playable(string $abs, float $hintMs = 0, bool $heavy = true)
     if (vod_webm_header_has_duration($abs)) {
         @file_put_contents(vod_marker($abs), '1');
         return true;
-    }
-    if (!$heavy) {
-        return is_file($abs);
     }
     @set_time_limit(600);
     $lockPath = $abs . '.lock';
@@ -310,9 +352,11 @@ function vod_ensure_playable(string $abs, float $hintMs = 0, bool $heavy = true)
     $ok = false;
     try {
         $ok = vod_stamp_duration($abs, $hintMs);
-        if ($ok || vod_webm_duration_known($abs)) {
+        if ($ok || vod_webm_header_has_duration($abs)) {
             @file_put_contents(vod_marker($abs), '1');
             $ok = true;
+        } else {
+            @file_put_contents(vod_fail_marker($abs), (string) time());
         }
     } finally {
         flock($lock, LOCK_UN);
@@ -324,7 +368,10 @@ function vod_ensure_playable(string $abs, float $hintMs = 0, bool $heavy = true)
 
 function vod_stamp_duration_later(string $abs, float $hintMs): void
 {
-    if ($abs === '' || !is_file($abs)) {
+    if ($abs === '' || !is_file($abs) || is_file(vod_marker($abs)) || is_file(vod_fail_marker($abs))) {
+        return;
+    }
+    if (vod_live_busy()) {
         return;
     }
     $key = realpath($abs) ?: $abs;
@@ -335,6 +382,9 @@ function vod_stamp_duration_later(string $abs, float $hintMs): void
     register_shutdown_function(static function () use ($abs, $hintMs) {
         ignore_user_abort(true);
         @set_time_limit(600);
+        if (vod_live_busy()) {
+            return;
+        }
         try {
             vod_ensure_playable($abs, $hintMs, true);
         } catch (Throwable $e) {
@@ -414,8 +464,8 @@ function vod_ffprobe_ms(string $abs): float
     if ($probe === '' || !is_file($abs)) {
         return 0.0;
     }
-    $cmd = escapeshellarg($probe)
-        . ' -v error -analyzeduration 200M -probesize 50M -show_entries format=duration -of default=nk=1:nw=1 '
+    $cmd = vod_nice_prefix() . escapeshellarg($probe)
+        . ' -v error -analyzeduration 60M -probesize 20M -show_entries format=duration -of default=nk=1:nw=1 '
         . escapeshellarg($abs);
     $out = [];
     $code = 1;
@@ -1289,8 +1339,14 @@ function vod_hint_ms(array $rec): float
 function vod_sync_recording_length(array $rec): array
 {
     $id = (int) ($rec['id'] ?? 0);
+    if ((int) ($rec['duration_sec'] ?? 0) > 0 && (int) ($rec['mins'] ?? 0) > 0) {
+        return $rec;
+    }
     $abs = vod_abs_from_rec($rec);
     if ($id < 1 || $abs === '') {
+        return $rec;
+    }
+    if (vod_live_busy()) {
         return $rec;
     }
     $ms = vod_probe_ms($abs, vod_hint_ms($rec));
@@ -1320,7 +1376,7 @@ function vod_prepare_recording(array $rec): array
 {
     $rec = vod_sync_recording_length($rec);
     $abs = vod_abs_from_rec($rec);
-    if ($abs !== '' && preg_match('/\.webm$/i', $abs) && !vod_webm_duration_known($abs)) {
+    if ($abs !== '' && preg_match('/\.webm$/i', $abs) && !vod_live_busy() && !vod_webm_header_has_duration($abs)) {
         vod_stamp_duration_later($abs, vod_hint_ms($rec));
     }
     return $rec;
@@ -1487,7 +1543,7 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
                 $stamped = false;
             }
         }
-        if ($stamped || vod_webm_duration_known($dest)) {
+        if ($stamped || vod_webm_header_has_duration($dest)) {
             @file_put_contents(vod_marker($dest), '1');
         } else {
             @unlink(vod_marker($dest));
@@ -1748,8 +1804,8 @@ function vod_remux_webm(string $abs): bool
     }
     $tmp = $abs . '.tmp.webm';
     @unlink($tmp);
-    $cmd = escapeshellarg($ff)
-        . ' -y -hide_banner -loglevel error -analyzeduration 200M -probesize 50M -fflags +genpts -i '
+    $cmd = vod_nice_prefix() . escapeshellarg($ff)
+        . ' -y -hide_banner -loglevel error -threads 1 -analyzeduration 200M -probesize 50M -fflags +genpts -i '
         . escapeshellarg($abs)
         . ' -c copy -avoid_negative_ts make_zero ' . escapeshellarg($tmp);
     $out = [];

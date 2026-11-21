@@ -7,7 +7,10 @@
   const api = cfg.url || '';
   const roomId = Number(cfg.roomId || 0);
   const canMove = !!cfg.publish;
+  const mq = window.matchMedia ? window.matchMedia('(max-width: 900px)') : { matches: false };
+  let moved = false;
   let full = false;
+  function isFull() { return full || mq.matches; }
   let camX = 0.72;
   let camY = 0.04;
   let drag = null;
@@ -31,9 +34,15 @@
     if (document.body.classList.contains('is-cam-docked')) {
       return;
     }
-    if (full) {
+    if (isFull()) {
       if (pip.parentNode !== stage) {
         stage.appendChild(pip);
+      }
+      if (mq.matches && !moved) {
+        pip.style.left = 'auto';
+        pip.style.right = '8px';
+        pip.style.top = '8px';
+        return;
       }
       const xy = clamp(camX, camY);
       camX = xy[0];
@@ -50,9 +59,9 @@
 
   function render() {
     if (shell) {
-      shell.classList.toggle('is-board-full', full);
+      shell.classList.toggle('is-board-full', isFull());
     }
-    document.body.classList.toggle('is-board-full', full);
+    document.body.classList.toggle('is-board-full', isFull());
     placePip();
   }
 
@@ -95,12 +104,20 @@
 
   if (pip && canMove) {
     pip.addEventListener('pointerdown', (ev) => {
-      if (!full || ev.button === 2) {
+      if (!isFull() || ev.button === 2) {
         return;
       }
       ev.preventDefault();
       ev.stopPropagation();
       pip.setPointerCapture(ev.pointerId);
+      if (!moved) {
+        const pr = pip.getBoundingClientRect();
+        const sr0 = stage.getBoundingClientRect();
+        camX = (pr.left - sr0.left) / Math.max(1, sr0.width);
+        camY = (pr.top - sr0.top) / Math.max(1, sr0.height);
+        moved = true;
+      }
+      pip.style.right = 'auto';
       const r = stage.getBoundingClientRect();
       drag = {
         dx: ev.clientX - r.left - camX * r.width,
@@ -136,8 +153,12 @@
   }
 
   window.addEventListener('resize', () => {
-    if (full) {
+    if (isFull()) {
       placePip();
     }
   });
+  if (mq.addEventListener) {
+    mq.addEventListener('change', render);
+  }
+  render();
 })();

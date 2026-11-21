@@ -1012,18 +1012,56 @@ body.is-cam-docked #live-stage #live-cam-pip { display: none; }
   .panel-shell.is-nav-open .panel-backdrop { display: block; }
   .topbar-name { display: none; }
   .dash-stats, .dash-grid { grid-template-columns: 1fr; }
-  .live-main { grid-template-columns: minmax(0, 1fr); }
-  .live-side { order: -1; width: auto; border-left: 0; border-bottom: 1px solid var(--chrome-line); }
-  .live-stage { padding: 8px 10px; }
-  .live-stage-oval {
-    min-height: 0;
-    width: 100%;
-    max-width: 100%;
-    height: min(180px, 56vw);
-    aspect-ratio: auto;
-  }
-  .chat { display: none; }
   .live-obs { flex-direction: column; align-items: stretch; }
+}
+/* Canlı sınıf: telefon / tablet — ekran/tahta tam alan, kamera sağ üstte küçük pencere */
+.live-chat-toggle { display: none; }
+@media (max-width: 900px) {
+  .live-shell header { height: 40px; padding: 0 10px; overflow-x: auto; }
+  .live-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .live-shell .live-side,
+  .live-shell.is-board-full .live-side {
+    display: block; height: 0; min-height: 0; overflow: visible; border: 0; background: transparent;
+  }
+  .live-shell .live-stage { display: none; }
+  .live-shell.is-board-full .live-board-stage #live-cam-pip {
+    top: 8px; right: 8px; left: auto;
+    width: clamp(108px, 30vw, 168px); min-height: 0; aspect-ratio: 16 / 9;
+    border-radius: 12px; z-index: 6;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, .5), 0 0 0 2px rgba(255, 255, 255, .85);
+  }
+  .live-shell.is-board-full .live-board-stage #live-cam-pip .live-wait { padding: .4rem; align-items: center; text-align: center; }
+  .live-shell.is-board-full .live-board-stage #live-cam-pip #wait-title { font-size: 11px; line-height: 1.2; }
+  .live-shell.is-board-full .live-board-stage #live-cam-pip .live-unmute-btn {
+    right: 4px; bottom: 4px; padding: 5px 8px; font-size: 11px; border-radius: 8px;
+  }
+  #live-proto, #live-seat-n { display: none !important; }
+  .live-board-bar {
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 6px;
+  }
+  .live-board-bar::-webkit-scrollbar { display: none; }
+  .live-board-bar .live-top-title { display: none; }
+  .live-board-tool, .live-cam-btn, .live-board-bar .live-cam-btn { padding: 9px 12px; }
+  .chat {
+    display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    height: min(58dvh, 440px); border-top: 1px solid var(--chrome-line);
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, .45);
+  }
+  body.is-chat-open .chat { display: flex; }
+  .chat-input { font-size: 16px; }
+  .live-chat-toggle {
+    display: block; position: fixed; right: 10px; bottom: 12px; z-index: 41;
+    border: 0; border-radius: 999px; background: #e8232a; color: #fff;
+    font-weight: 800; font-size: 13px; padding: 11px 16px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .4);
+  }
+  body.is-chat-open .live-chat-toggle { bottom: calc(min(58dvh, 440px) + 10px); }
+}
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
+  .live-shell.is-board-full .live-board-stage #live-cam-pip { width: clamp(100px, 20vw, 150px); }
+  .chat { height: 70dvh; }
+  body.is-chat-open .live-chat-toggle { bottom: calc(70dvh + 10px); }
 }
 body.panel-nav-lock { overflow: hidden; }
 @media (max-width: 640px) {

@@ -300,6 +300,19 @@ if (!empty($zoomEmbed) && function_exists('security_apply_zoom_isolation')) {
     </div>
   </div>
 </div>
+<button type="button" class="live-chat-toggle" id="live-chat-toggle" aria-expanded="false">Sohbet</button>
+<script>
+(function () {
+  var b = document.getElementById('live-chat-toggle');
+  if (!b) return;
+  b.addEventListener('click', function () {
+    var on = document.body.classList.toggle('is-chat-open');
+    b.textContent = on ? 'Kapat' : 'Sohbet';
+    b.setAttribute('aria-expanded', on ? 'true' : 'false');
+    if (on) { var l = document.getElementById('chat-log'); if (l) l.scrollTop = l.scrollHeight; }
+  });
+})();
+</script>
 <script>
 const base = <?= json_encode(same_host_url('')) ?>;
 const roomId = <?= $id ?>;
