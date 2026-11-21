@@ -1016,7 +1016,7 @@ body.is-cam-docked #live-stage #live-cam-pip { display: none; }
 }
 /* Canlı sınıf: telefon / tablet — ekran/tahta tam alan, kamera sağ üstte küçük pencere */
 .live-chat-toggle { display: none; }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .live-shell header { height: 40px; padding: 0 10px; overflow-x: auto; }
   .live-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
   .live-shell .live-side,
@@ -1036,6 +1036,7 @@ body.is-cam-docked #live-stage #live-cam-pip { display: none; }
     right: 4px; bottom: 4px; padding: 5px 8px; font-size: 11px; border-radius: 8px;
   }
   #live-proto, #live-seat-n { display: none !important; }
+  #live-present-btn, #live-present-btn + .live-board-sep { display: none !important; }
   .live-board-bar {
     flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
     -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 6px;

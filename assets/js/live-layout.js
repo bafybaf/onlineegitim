@@ -7,7 +7,7 @@
   const api = cfg.url || '';
   const roomId = Number(cfg.roomId || 0);
   const canMove = !!cfg.publish;
-  const mq = window.matchMedia ? window.matchMedia('(max-width: 900px)') : { matches: false };
+  const mq = window.matchMedia ? window.matchMedia('(max-width: 1100px)') : { matches: false };
   let moved = false;
   let full = false;
   function isFull() { return full || mq.matches; }
