@@ -572,9 +572,12 @@ body { color: var(--text); font-family: Nunito, sans-serif; background: #fff; }
   width: 100%; height: 100%; object-fit: cover; border-radius: 8px; min-height: 0;
 }
 .book-cover-wrap {
-  display: block; aspect-ratio: 5 / 7; overflow: hidden; background: #111;
+  display: block; aspect-ratio: 5 / 7; overflow: hidden; background: #fff;
   position: relative;
 }
+.book-cover-wrap .oi-slide img { background: #fff; }
+.book-cover-wrap .oi-dot { background: rgba(17,17,17,.28); }
+.book-cover-wrap .oi-dot.is-on { background: #111; }
 .book-cover-wrap.h-28,
 .book-cover-wrap.h-40 { aspect-ratio: auto; }
 .book-cover-wrap--aside { aspect-ratio: 16 / 10; }
