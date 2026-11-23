@@ -3,6 +3,19 @@ $panel = ($panel ?? 'admin') === 'ogretmen' ? 'ogretmen' : 'admin';
 $suffix = $panel === 'ogretmen' ? 'Öğretmen Paneli' : 'Admin';
 $listPath = $panel . '/urunler';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('optimize_images') === '1' && $panel === 'admin') {
+    @set_time_limit(300);
+    [$optDone, $optLeft, $optSaved] = media_optimize_existing(25);
+    $msg = $optDone . ' görsel küçültüldü (' . round($optSaved / 1048576, 1) . ' MB kazanç).';
+    if ($optLeft > 0) {
+        $msg .= ' ' . $optLeft . ' görsel kaldı; düğmeye tekrar basın.';
+    } elseif ($optDone === 0) {
+        $msg = 'Küçültülecek görsel kalmadı.';
+    }
+    flash_ok($msg);
+    redirect($listPath);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stocks = $_POST['stock'] ?? [];
     $prices = $_POST['price'] ?? [];
@@ -33,7 +46,12 @@ panel_head($panel, 'urunler', 'Kitaplar | ' . $suffix, $u);
 <?php if ($err): ?><p class="mb-4 font-bold text-accent"><?= e($err) ?></p><?php endif; ?>
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
   <p class="text-sm text-muted">Mağaza kitapları. Satırları tutup sürükleyerek sırayı değiştirin. Kapak için <b>Düzenle</b>.</p>
-  <a class="btn-primary text-sm" href="<?= e(urun_panel_url(0, $panel)) ?>">Yeni kitap</a>
+  <div class="flex flex-wrap items-center gap-2">
+    <?php if ($panel === 'admin'): ?>
+      <form method="post" class="m-0"><input type="hidden" name="optimize_images" value="1"><button class="btn-outline text-sm" type="submit" title="Eski yüklenen görselleri 1400 px ve WEBP'e çevirir">Görselleri küçült (WEBP)</button></form>
+    <?php endif; ?>
+    <a class="btn-primary text-sm" href="<?= e(urun_panel_url(0, $panel)) ?>">Yeni kitap</a>
+  </div>
 </div>
 
 <?php if (!$books): ?>

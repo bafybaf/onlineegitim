@@ -311,6 +311,134 @@ function media_uploaded_files(string $field): array
     ]];
 }
 
+/**
+ * Görseli küçültüp WEBP olarak yazar. GD/WEBP yoksa false döner (çağıran orijinali saklar).
+ */
+function media_save_webp(string $srcPath, string $mime, string $dstAbs, int $maxSide = 1400, int $quality = 82): bool
+{
+    if (!function_exists('imagewebp') || !is_file($srcPath)) {
+        return false;
+    }
+    $img = match ($mime) {
+        'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($srcPath) : false,
+        'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($srcPath) : false,
+        'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($srcPath) : false,
+        default => false,
+    };
+    if (!$img) {
+        return false;
+    }
+    if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
+        $exif = @exif_read_data($srcPath);
+        $o = (int) ($exif['Orientation'] ?? 1);
+        $rot = [3 => 180, 6 => -90, 8 => 90][$o] ?? 0;
+        if ($rot !== 0) {
+            $r = @imagerotate($img, $rot, 0);
+            if ($r) {
+                imagedestroy($img);
+                $img = $r;
+            }
+        }
+    }
+    $w = imagesx($img);
+    $h = imagesy($img);
+    $long = max($w, $h);
+    if ($long > $maxSide) {
+        $s = $maxSide / $long;
+        $nw = max(1, (int) round($w * $s));
+        $nh = max(1, (int) round($h * $s));
+        $dst = imagecreatetruecolor($nw, $nh);
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 255, 255, 255, 127));
+        imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagedestroy($img);
+        $img = $dst;
+    } elseif (!imageistruecolor($img)) {
+        imagepalettetotruecolor($img);
+    }
+    imagealphablending($img, false);
+    imagesavealpha($img, true);
+    $ok = @imagewebp($img, $dstAbs, max(40, min(95, $quality)));
+    imagedestroy($img);
+    if (!$ok || !is_file($dstAbs) || filesize($dstAbs) < 100) {
+        @unlink($dstAbs);
+        return false;
+    }
+    @chmod($dstAbs, 0664);
+    return true;
+}
+
+/**
+ * Daha önce yüklenmiş kitap/program görsellerini küçültüp WEBP'e çevirir.
+ * Bir seferde en fazla $limit görsel işler. Döner: [işlenen, kalan, kazanılan bayt]
+ */
+function media_optimize_existing(int $limit = 25): array
+{
+    $done = 0;
+    $saved = 0;
+    $remaining = 0;
+    try {
+        $rows = db()->query('SELECT * FROM media_items ORDER BY id')->fetchAll();
+    } catch (Throwable) {
+        return [0, 0, 0];
+    }
+    $mimes = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
+    $upd = db()->prepare('UPDATE media_items SET path = ? WHERE id = ?');
+    foreach ($rows as $row) {
+        $path = (string) ($row['path'] ?? '');
+        $abs = $path !== '' ? media_upload_file_abs($path) : '';
+        if ($abs === '' || !is_file($abs)) {
+            continue;
+        }
+        $ext = strtolower((string) pathinfo($abs, PATHINFO_EXTENSION));
+        if (!isset($mimes[$ext])) {
+            continue;
+        }
+        $info = @getimagesize($abs);
+        if (!$info) {
+            continue;
+        }
+        $size = (int) filesize($abs);
+        $isWebp = $ext === 'webp';
+        if ($isWebp && max((int) $info[0], (int) $info[1]) <= 1400 && $size <= 350 * 1024) {
+            continue;
+        }
+        if ($done >= $limit) {
+            $remaining++;
+            continue;
+        }
+        $newAbs = preg_replace('/\.[A-Za-z0-9]+$/', '', $abs) . ($isWebp ? '.opt.webp' : '.webp');
+        if (!media_save_webp($abs, $mimes[$ext], $newAbs, 1400, 82)) {
+            continue;
+        }
+        $newSize = (int) filesize($newAbs);
+        if ($newSize >= $size && $isWebp) {
+            @unlink($newAbs);
+            continue;
+        }
+        if ($isWebp) {
+            @rename($newAbs, $abs);
+            $done++;
+            $saved += max(0, $size - $newSize);
+            continue;
+        }
+        $newRel = preg_replace('/\.[A-Za-z0-9]+$/', '', $path) . '.webp';
+        $finalAbs = preg_replace('/\.[A-Za-z0-9]+$/', '', $abs) . '.webp';
+        if ($newAbs !== $finalAbs) {
+            @rename($newAbs, $finalAbs);
+        }
+        $upd->execute([$newRel, (int) $row['id']]);
+        if (str_starts_with(ltrim($path, '/'), 'uploads/')) {
+            @unlink($abs);
+        }
+        media_sync_cover((string) $row['owner_type'], (int) $row['owner_id']);
+        $done++;
+        $saved += max(0, $size - $newSize);
+    }
+    return [$done, $remaining, $saved];
+}
+
 function media_store_tmp(array $file, string $subdir, string $slug): string
 {
     $err = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
@@ -335,7 +463,13 @@ function media_store_tmp(array $file, string $subdir, string $slug): string
     }
     $slug = preg_replace('/[^A-Za-z0-9\-_]/', '', $slug) ?: 'item';
     $subdir = trim($subdir, '/');
-    $rel = 'uploads/' . $subdir . '/' . $slug . '-' . bin2hex(random_bytes(4)) . '.' . $ok[$mime];
+    $base = 'uploads/' . $subdir . '/' . $slug . '-' . bin2hex(random_bytes(4));
+    $webpRel = $base . '.webp';
+    $webpAbs = media_upload_write_abs($webpRel);
+    if (media_save_webp($tmp, $mime, $webpAbs, 1400, 82)) {
+        return $webpRel;
+    }
+    $rel = $base . '.' . $ok[$mime];
     $abs = media_upload_write_abs($rel);
     if (!move_uploaded_file($tmp, $abs)) {
         throw new RuntimeException('Görsel kaydedilemedi.');
