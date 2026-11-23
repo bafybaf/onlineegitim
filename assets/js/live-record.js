@@ -72,6 +72,8 @@
   let uploadedChunks = 0;
   let uploadFailed = 0;
   let queued = 0;
+  let abandon = false;
+  let wakeLock = null;
   const seqKey = 'oi-rec-seq-' + String(cfg.roomId);
   try {
     seq = Math.max(0, parseInt(sessionStorage.getItem(seqKey) || '0', 10) || 0);
@@ -311,9 +313,10 @@
       var hasAudio = recStream.getAudioTracks().length > 0;
       var types = mimeList(hasAudio);
       for (var i = 0; i < types.length && !recorder; i++) {
-        var opts = { videoBitsPerSecond: 4000000 };
+        // Yayın (WHIP) ile aynı anda yüklenir; 4 Mbps ev internetinde birikme yapıp kaydın sonunu kaybettiriyordu.
+        var opts = { videoBitsPerSecond: 1500000 };
         if (types[i]) opts.mimeType = types[i];
-        if (hasAudio) opts.audioBitsPerSecond = 128000;
+        if (hasAudio) opts.audioBitsPerSecond = 96000;
         try { opts.videoKeyFrameIntervalDuration = 2000; } catch (e) {}
         try { recorder = new MediaRecorder(recStream, opts); } catch (e) { recorder = null; }
       }
@@ -340,7 +343,7 @@
       xhr.open('POST', api);
       xhr.withCredentials = true;
       if (csrfToken) xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
-      xhr.timeout = 30000;
+      xhr.timeout = 120000;
       xhr.onload = function () {
         var j = null;
         try { j = JSON.parse(xhr.responseText); } catch (e) {}
@@ -375,7 +378,10 @@
           return n;
         }).catch(function (err) {
           tries += 1;
-          if (tries < 3) return new Promise(function (r) { setTimeout(r, 700 * tries); }).then(once);
+          // Parça asla atlanmaz: sıra bozulursa video kopar. Bağlantı gelene kadar artan beklemeyle tekrar dene.
+          if (tries < 200 && !abandon) {
+            return new Promise(function (r) { setTimeout(r, Math.min(15000, 700 * tries)); }).then(once);
+          }
           uploadFailed += 1;
           throw err;
         });
@@ -428,6 +434,7 @@
     calcLayout();
     layoutLocked = true;
     startPaintLoop();
+    takeWake();
     var ok = startRecorder(pendingMedia || (video && video.srcObject));
     watchShareMix();
     if (!ok) {
@@ -485,6 +492,40 @@
     return new Promise(function (r) { setTimeout(r, ms); });
   }
 
+  function endLabel(text) {
+    try {
+      var a = document.querySelector('form input[name="action"][value="end"]');
+      var b = a && a.form && a.form.querySelector('button');
+      if (b) b.textContent = text;
+    } catch (e) {}
+  }
+
+  function takeWake() {
+    try {
+      if (navigator.wakeLock && !wakeLock) {
+        navigator.wakeLock.request('screen').then(function (l) {
+          wakeLock = l;
+          l.addEventListener('release', function () { wakeLock = null; });
+        }).catch(function () {});
+      }
+    } catch (e) {}
+  }
+
+  function releaseWake() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && armed && !finishing && !done) takeWake();
+  });
+
+  window.addEventListener('beforeunload', function (ev) {
+    if (queued > 0 && !done) {
+      ev.preventDefault();
+      ev.returnValue = '';
+    }
+  });
+
   async function finish() {
     if (finishing || done) return;
     if (counting) {
@@ -510,7 +551,17 @@
       await sleep(400);
     }
     stopPaintLoop();
-    await waitAtMost(queue, 60000);
+    releaseWake();
+    // Birikmiş tüm parçalar yüklenene kadar bekle (en fazla 40 dk); sayfa bu sürede kapatılmamalı.
+    var waitStart = Date.now();
+    var settledQueue = false;
+    queue.then(function () { settledQueue = true; }, function () { settledQueue = true; });
+    while (!settledQueue && Date.now() - waitStart < 40 * 60 * 1000) {
+      endLabel('Yükleniyor… ' + queued + ' parça kaldı');
+      await sleep(700);
+    }
+    if (!settledQueue) abandon = true;
+    endLabel('Kaydediliyor…');
     if (recorder || uploadedChunks > 0 || seq > 0) {
       var ok = await waitAtMost(postDone(false), 25000);
       if (!ok) {

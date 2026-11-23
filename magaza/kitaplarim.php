@@ -25,8 +25,8 @@ panel_head('musteri', 'kitaplar', 'Kitaplarım | Mağaza', $u);
   </div>
 <?php else: ?>
   <div class="card overflow-hidden">
-    <table class="table">
-      <thead><tr><th>Kitap</th><th>Tür</th><th>Durum</th><th></th></tr></thead>
+    <table class="table" data-sortable>
+      <thead><tr><th>Kitap</th><th>Tür</th><th>Durum</th><th data-nosort></th></tr></thead>
       <tbody>
         <?php foreach ($books as $b): ?>
           <tr>
@@ -48,5 +48,6 @@ panel_head('musteri', 'kitaplar', 'Kitaplarım | Mağaza', $u);
       </tbody>
     </table>
   </div>
+  <script src="<?= e(url('assets/js/table-sort.js')) ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/table-sort.js') ?>"></script>
 <?php endif; ?>
 <?php panel_foot();

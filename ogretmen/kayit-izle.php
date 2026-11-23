@@ -42,9 +42,7 @@ $err = flash_error();
   </div>
   <div class="flex flex-wrap items-center gap-2">
     <a class="btn-outline text-sm" href="<?= e(url('ogretmen/kayit-yukle.php' . '?grup=' . (int) ($r['group_id'] ?? 0) . '&duzenle=' . (int) $r['id'] . '#kayit-' . (int) $r['id'])) ?>">Düzenle</a>
-    <?php if ((int) $r['teacher_id'] === (int) $u['id']): ?>
-      <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
-    <?php endif; ?>
+    <?= panel_delete_form('', ['delete_id' => (int) $r['id']], 'Bu ders kaydı silinsin mi?') ?>
   </div>
 </div>
 <?= function_exists('vod_watch_html') ? vod_watch_html($r, (int) $u['id']) : '' ?>

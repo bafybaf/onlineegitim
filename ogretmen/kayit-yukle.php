@@ -256,9 +256,7 @@ else:
             echo '<a class="btn-primary text-sm" href="' . e($watch) . '">İzle</a>';
         }
         echo '<button type="button" class="btn-outline text-sm" data-rec-edit>Düzenle</button>';
-        if ($mine) {
-            echo panel_delete_form('', ['delete_id' => $rid], 'Bu ders kaydı silinsin mi?');
-        }
+        echo panel_delete_form('', ['delete_id' => $rid], 'Bu ders kaydı silinsin mi?');
         echo '</div></article>';
         ogretmen_kayit_inline_form($r, $groups, $open ? $editKeep : []);
         echo '</div>';

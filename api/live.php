@@ -662,6 +662,20 @@ if ($action === 'record_chunk') {
     if ($lock) {
         flock($lock, LOCK_EX);
     }
+    // Aynı parça tekrar gelirse (yanıt kaybolup istemci yeniden denediğinde) ikinci kez ekleme: video bozulur.
+    $seqFile = $abs . '.seq';
+    $lastSeq = -1;
+    if ($seq > 0 && is_file($seqFile)) {
+        $lastSeq = (int) trim((string) @file_get_contents($seqFile));
+    }
+    if ($seq > 0 && $seq <= $lastSeq) {
+        if ($lock) {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+        $sizeDup = function_exists('vod_file_bytes') ? vod_file_bytes($abs) : (int) @filesize($abs);
+        json_out(['ok' => true, 'seq' => $seq, 'bytes' => 0, 'size' => (int) $sizeDup, 'dup' => true]);
+    }
     $src = fopen($_FILES['chunk']['tmp_name'], 'rb');
     $dst = fopen($abs, 'ab');
     if ($src === false || $dst === false) {
@@ -687,6 +701,7 @@ if ($action === 'record_chunk') {
     if ($wrote === false) {
         json_out(['ok' => false, 'error' => 'write'], 500);
     }
+    @file_put_contents($seqFile, (string) $seq, LOCK_EX);
     @set_time_limit(120);
     $sizeOut = function_exists('vod_file_bytes') ? vod_file_bytes($abs) : (int) @filesize($abs);
     json_out(['ok' => true, 'seq' => $seq, 'bytes' => (int) $wrote, 'size' => (int) $sizeOut]);

@@ -288,16 +288,18 @@ function academy_delete_note(int $noteId, int $teacherId): void
 
 function academy_delete_recording(int $recId, int $teacherId, bool $asAdmin = false): void
 {
-    if ($asAdmin) {
-        $st = db()->prepare('SELECT * FROM recordings WHERE id = ?');
-        $st->execute([$recId]);
-    } else {
-        $st = db()->prepare('SELECT * FROM recordings WHERE id = ? AND teacher_id = ?');
-        $st->execute([$recId, $teacherId]);
-    }
+    $st = db()->prepare('SELECT * FROM recordings WHERE id = ?');
+    $st->execute([$recId]);
     $row = $st->fetch();
     if (!$row) {
         throw new RuntimeException('Kayıt bulunamadı.');
+    }
+    if (!$asAdmin) {
+        $own = (int) ($row['teacher_id'] ?? 0) === $teacherId;
+        $gid = (int) ($row['group_id'] ?? 0);
+        if (!$own && !($gid > 0 && function_exists('group_has_teacher') && group_has_teacher($gid, $teacherId))) {
+            throw new RuntimeException('Kayıt bulunamadı.');
+        }
     }
     $rel = (string) ($row['video_path'] ?? '');
     $abs = $rel !== '' && function_exists('academy_file_readable') ? academy_file_readable($rel) : null;
@@ -318,11 +320,7 @@ function academy_delete_recording(int $recId, int $teacherId, bool $asAdmin = fa
     if ($abs) {
         @unlink($abs . '.ok');
     }
-    if ($asAdmin) {
-        db()->prepare('DELETE FROM recordings WHERE id = ?')->execute([$recId]);
-        return;
-    }
-    db()->prepare('DELETE FROM recordings WHERE id = ? AND teacher_id = ?')->execute([$recId, $teacherId]);
+    db()->prepare('DELETE FROM recordings WHERE id = ?')->execute([$recId]);
 }
 
 function academy_teacher_recording(int $recId, int $teacherId): ?array

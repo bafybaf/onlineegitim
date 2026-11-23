@@ -6,13 +6,13 @@ if (!shop_books_visible()) {
     redirect('ogrenci');
 }
 $st = db()->prepare(
-    'SELECT sb.id, b.title, sb.status, sb.kind, b.is_digital FROM student_books sb JOIN books b ON b.id=sb.book_id WHERE sb.user_id=?'
+    'SELECT sb.id, b.title, sb.status, sb.kind, b.is_digital FROM student_books sb JOIN books b ON b.id=sb.book_id WHERE sb.user_id=? ORDER BY sb.id DESC'
 );
 $st->execute([$u['id']]);
 $rows = $st->fetchAll();
 panel_head('ogrenci', 'kitaplar', 'Kitaplarım | Öğrenci Paneli', $u);
 echo '<p class="mb-4 text-sm text-muted">Mağazadan alınan veya paket hediyesi kitaplar.</p>';
-echo '<div class="card overflow-hidden"><table class="table"><thead><tr><th>Kitap</th><th>Durum</th><th>Tür</th><th></th></tr></thead><tbody>';
+echo '<div class="card overflow-hidden"><table class="table" data-sortable><thead><tr><th>Kitap</th><th>Durum</th><th>Tür</th><th data-nosort></th></tr></thead><tbody>';
 foreach ($rows as $b) {
     $dl = shop_book_downloadable($b);
     echo '<tr><td>' . e($b['title']) . '</td><td>' . e($b['status']) . '</td><td>' . e($b['kind']) . '</td><td>';
@@ -23,5 +23,5 @@ foreach ($rows as $b) {
     }
     echo '</td></tr>';
 }
-echo '</tbody></table></div><a href="' . e(url('kitaplar.php')) . '" class="btn-primary mt-4 inline-flex">Mağazadan yeni kitap</a>';
+echo '</tbody></table></div><script src="' . e(url('assets/js/table-sort.js')) . '?v=' . (int) @filemtime(__DIR__ . '/../assets/js/table-sort.js') . '"></script><a href="' . e(url('kitaplar.php')) . '" class="btn-primary mt-4 inline-flex">Mağazadan yeni kitap</a>';
 panel_foot();

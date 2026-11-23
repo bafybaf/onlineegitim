@@ -1259,7 +1259,8 @@ function recordings_render_lesson_tree(array $tree, callable $card, array $opt =
                     }
                 }
             }
-            $open = ($openThis || ($openRec < 1 && ($lesson['key'] ?? '') !== '' && ($lesson['key'] ?? '') === ($g['open_key'] ?? ''))) ? ' open' : '';
+            // Başlangıçta tüm dersler kapalı; yalnız düzenlenen kaydın dersi açılır.
+            $open = $openThis ? ' open' : '';
             echo '<details class="vod-lesson"' . $open;
             echo ' data-vod-group="' . (int) ($g['id'] ?? 0) . '" data-vod-heading="' . e($heading) . '"';
             if ($canMove && $catalogCat !== '') {
@@ -1513,6 +1514,7 @@ function vod_commit_live_room_locked(PDO $pdo, array $room, int $mins, int $id, 
         } elseif (is_file($tmp) && @realpath($tmp) !== @realpath($dest)) {
             @unlink($tmp);
         }
+        @unlink($tmp . '.seq');
     } else {
         $found = glob(academy_storage() . '/vod/oda-' . $id . '-*.webm') ?: [];
         rsort($found);
